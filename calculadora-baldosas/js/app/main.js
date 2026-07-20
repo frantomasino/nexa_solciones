@@ -25,15 +25,14 @@
   }
 
   function defaultFormState() {
-    const dims = TileCalc.dimensionsFromArea(22);
     return {
       cliente: '',
       referencia: '',
       link: '',
       notas: '',
-      roomWidthM: dims.roomWidthM,
-      roomLengthM: dims.roomLengthM,
-      areaM2: 22,
+      roomWidthM: 0,
+      roomLengthM: 0,
+      areaM2: 0,
       tileWidthCm: 50,
       tileLengthCm: 50,
       tilesPerBox: 4,
@@ -47,6 +46,18 @@
       logoSpan: 1,
       photoThumb: null,
     };
+  }
+
+  function resetEditorForNew() {
+    lastResult = null;
+    logoImageData = null;
+    logoImageEl = null;
+    selectedPattern = 'rejilla';
+    tileSizeMode = '50';
+    if ($('#logoFile')) $('#logoFile').value = '';
+    if ($('#photoFile')) $('#photoFile').value = '';
+    measureSession?.resetAll();
+    setMeasureTab('manual');
   }
 
   function readForm() {
@@ -80,6 +91,10 @@
   function updateAreaFromDims() {
     const w = parseFloat($('#roomWidth').value) || 0;
     const l = parseFloat($('#roomLength').value) || 0;
+    if (!w || !l) {
+      $('#areaFromDims').textContent = '—';
+      return;
+    }
     const area = w * l;
     $('#areaFromDims').textContent = `${area.toFixed(2)} m²`;
     if ($('#areaInput')) $('#areaInput').value = area.toFixed(2);
@@ -99,11 +114,11 @@
     $('#referencia').value = data.referencia || '';
     $('#link').value = data.link || '';
     $('#notas').value = data.notas || '';
-    $('#roomWidth').value = (data.roomWidthM ?? 4.69).toFixed(2);
-    $('#roomLength').value = (data.roomLengthM ?? 4.69).toFixed(2);
+    $('#roomWidth').value = data.roomWidthM > 0 ? data.roomWidthM.toFixed(2) : '';
+    $('#roomLength').value = data.roomLengthM > 0 ? data.roomLengthM.toFixed(2) : '';
     if ($('#areaInput')) {
-      const area = data.areaM2 ?? (data.roomWidthM * data.roomLengthM);
-      $('#areaInput').value = area.toFixed(2);
+      const area = data.areaM2 > 0 ? data.areaM2 : (data.roomWidthM > 0 && data.roomLengthM > 0 ? data.roomWidthM * data.roomLengthM : 0);
+      $('#areaInput').value = area > 0 ? area.toFixed(2) : '';
     }
     updateAreaFromDims();
 
@@ -135,9 +150,9 @@
     $('#logoEnabled').checked = logoOn;
     $('#logoTileBg').value = data.logoTileBg || '#ffffff';
     $('#logoSpan').value = String(data.logoSpan || 1);
-        logoImageData = data.logoImage || Storage.getCompanyLogo();
-        if (data.logoImage) setLogoPreview(data.logoImage);
-        else if (logoOn && logoImageData) setLogoPreview(logoImageData);
+    logoImageData = data.logoImage || null;
+    if (logoOn && logoImageData) setLogoPreview(logoImageData);
+    else setLogoPreview(null);
     updateLogoUI();
 
     updatePatternUI();
@@ -471,6 +486,7 @@
       if (p) fillForm(p);
       $('#editorTitle').textContent = p?.cliente ? `Editar: ${p.cliente}` : 'Editar presupuesto';
     } else {
+      resetEditorForNew();
       fillForm(defaultFormState());
       $('#editorTitle').textContent = 'Nuevo presupuesto';
     }
@@ -623,13 +639,12 @@
   }
 
   function initLogo() {
-    const saved = Storage.getCompanyLogo();
-    if (saved) {
-      logoImageData = saved;
-      setLogoPreview(saved);
-    }
-
     $('#logoEnabled').addEventListener('change', () => {
+      if ($('#logoEnabled').checked && !logoImageData) {
+        const saved = Storage.getCompanyLogo();
+        if (saved) setLogoPreview(saved);
+      }
+      if (!$('#logoEnabled').checked) setLogoPreview(null);
       updateLogoUI();
       debounce(recalculate);
     });

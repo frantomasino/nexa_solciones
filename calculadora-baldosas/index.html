@@ -157,21 +157,21 @@
               <div class="field-row">
                 <label class="field">
                   <span>Ancho (m)</span>
-                  <input type="number" id="roomWidth" min="0.1" step="0.01" value="4.69">
+                  <input type="number" id="roomWidth" min="0.1" step="0.01" placeholder="Ej: 5">
                 </label>
                 <label class="field">
                   <span>Largo (m)</span>
-                  <input type="number" id="roomLength" min="0.1" step="0.01" value="4.69">
+                  <input type="number" id="roomLength" min="0.1" step="0.01" placeholder="Ej: 4.4">
                 </label>
                 <label class="field field-readonly">
                   <span>Superficie</span>
-                  <output id="areaFromDims">22.00 m²</output>
+                  <output id="areaFromDims">—</output>
                 </label>
               </div>
               <div class="field-row area-quick-row">
                 <label class="field">
                   <span>O ingresá m² directo</span>
-                  <input type="number" id="areaInput" min="0.1" step="0.01" value="22" placeholder="Ej: 22">
+                  <input type="number" id="areaInput" min="0.1" step="0.01" placeholder="Ej: 22">
                 </label>
                 <p class="hint area-hint">El m² arma un cuadrado. Después podés cambiar <strong>ancho</strong> y <strong>largo</strong> para modificar cuántas baldosas entran (ej. 10×12 en vez de 12×12).</p>
               </div>
@@ -286,7 +286,7 @@
             <h3>Plano del piso</h3>
             <div class="canvas-wrap canvas-wrap-plan" id="canvasPlaceholder">
               <canvas id="floorCanvas" class="hidden"></canvas>
-              <p id="canvasEmpty" class="canvas-empty">El plano se actualiza solo al cargar medidas y elegir el tipo de piso.</p>
+              <p id="canvasEmpty" class="canvas-empty">Cargá las medidas del ambiente para ver el plano y el cálculo.</p>
             </div>
             <input type="hidden" id="photoThumbData">
 
@@ -334,7 +334,7 @@
                 </tr>
               </tfoot>
             </table>
-            <p id="resultsEmpty" class="hint">El detalle aparece acá al cargar medidas y tipo de piso.</p>
+            <p id="resultsEmpty" class="hint">Cargá las medidas para ver cuántas baldosas necesitás por color.</p>
           </div>
         </aside>
       </div>
