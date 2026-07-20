@@ -51,6 +51,7 @@
       logoEnabled: false,
       logoImage: null,
       logoTileBg: '#ffffff',
+      logoSpan: 1,
       photoThumb: null,
     };
   }
@@ -85,6 +86,7 @@
       logoEnabled: $('#logoEnabled')?.checked || false,
       logoImage: logoImageData,
       logoTileBg: $('#logoTileBg')?.value || '#ffffff',
+      logoSpan: parseInt($('#logoSpan')?.value, 10) || 1,
       photoThumb: $('#photoThumbData').value || null,
     };
   }
@@ -153,6 +155,7 @@
     const logoOn = !!data.logoEnabled;
     $('#logoEnabled').checked = logoOn;
     $('#logoTileBg').value = data.logoTileBg || '#ffffff';
+    $('#logoSpan').value = String(data.logoSpan || 1);
         logoImageData = data.logoImage || Storage.getCompanyLogo();
         if (data.logoImage) setLogoPreview(data.logoImage);
         else if (logoOn && logoImageData) setLogoPreview(logoImageData);
@@ -189,6 +192,7 @@
         src: logoImageData,
         image: logoImageEl,
         tileBg: form.logoTileBg || '#ffffff',
+        span: form.logoSpan || 1,
       };
     }
     return opts;
@@ -353,8 +357,9 @@
 
   function toggleMoreMenu() {
     const menu = $('#moreMenu');
-    const open = menu?.classList.toggle('hidden');
-    $('#btnMoreMenu')?.setAttribute('aria-expanded', open ? 'false' : 'true');
+    menu?.classList.toggle('hidden');
+    const isOpen = !menu?.classList.contains('hidden');
+    $('#btnMoreMenu')?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
 
   function renderDashboard() {
@@ -466,6 +471,7 @@
       logoEnabled: form.logoEnabled,
       logoImage: form.logoEnabled ? logoImageData : null,
       logoTileBg: form.logoTileBg,
+      logoSpan: form.logoSpan,
     };
 
     Storage.save(payload);
@@ -644,9 +650,12 @@
       debounce(recalculate);
     });
 
+    $('#btnPickLogo')?.addEventListener('click', () => $('#logoFile')?.click());
+
     $('#logoFile').addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      $('#logoFileName').textContent = file.name;
       const reader = new FileReader();
       reader.onload = () => {
         logoImageData = reader.result;
@@ -659,6 +668,7 @@
     });
 
     $('#logoTileBg').addEventListener('input', () => debounce(recalculate));
+    $('#logoSpan')?.addEventListener('change', () => debounce(recalculate));
   }
 
   function initPWA() {

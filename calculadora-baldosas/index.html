@@ -192,17 +192,30 @@
             </label>
             <div id="logoOptions" class="logo-options hidden">
               <label class="field">
-                <span>Imagen del logo (PNG/JPG)</span>
-                <input type="file" id="logoFile" accept="image/*">
+                <span>Imagen del logo</span>
+                <div class="file-upload">
+                  <button type="button" class="btn btn-outline btn-sm" id="btnPickLogo">Elegir imagen</button>
+                  <input type="file" id="logoFile" accept="image/*" hidden>
+                  <span id="logoFileName" class="file-name">Ningún archivo</span>
+                </div>
               </label>
               <div class="logo-preview-wrap">
                 <img id="logoPreview" class="logo-preview hidden" alt="Vista previa del logo">
-                <p id="logoPreviewEmpty" class="hint">Se dibuja en una baldosa blanca al centro, como en el piso real.</p>
+                <p id="logoPreviewEmpty" class="hint">Usá una foto de la baldosa con logo (como la de NEXA) o un PNG con fondo transparente.</p>
               </div>
-              <label class="field field-inline">
-                <span>Color baldosa logo</span>
-                <input type="color" id="logoTileBg" value="#ffffff">
-              </label>
+              <div class="field-row">
+                <label class="field">
+                  <span>Color baldosa logo</span>
+                  <input type="color" id="logoTileBg" value="#ffffff">
+                </label>
+                <label class="field">
+                  <span>Tamaño en plano</span>
+                  <select id="logoSpan">
+                    <option value="1">1 baldosa (centro)</option>
+                    <option value="2">2×2 baldosas</option>
+                  </select>
+                </label>
+              </div>
             </div>
           </fieldset>
 

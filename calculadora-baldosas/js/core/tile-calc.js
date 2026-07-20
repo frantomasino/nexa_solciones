@@ -338,24 +338,41 @@
     return canvas;
   }
 
+  function drawImageCover(ctx, img, x, y, w, h) {
+    const scale = Math.max(w / img.width, h / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    const dx = x + (w - dw) / 2;
+    const dy = y + (h - dh) / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.clip();
+    ctx.drawImage(img, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
   function drawLogoOnPlan(ctx, options, cols, rows, padding, cellW, cellH) {
     const logo = options.logo;
     if (!logo?.enabled || !logo.image) return;
 
-    const lc = logo.col ?? Math.floor((cols - 1) / 2);
-    const lr = logo.row ?? Math.floor((rows - 1) / 2);
+    const span = Math.min(logo.span || 1, cols, rows);
+    const lc = logo.col ?? Math.floor((cols - span) / 2);
+    const lr = logo.row ?? Math.floor((rows - span) / 2);
     const x = padding + lc * cellW;
     const y = padding + lr * cellH;
+    const w = cellW * span;
+    const h = cellH * span;
 
     ctx.fillStyle = logo.tileBg || '#ffffff';
-    ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+    ctx.fillRect(x + 0.5, y + 0.5, w - 1, h - 1);
 
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 
-    const inset = Math.min(cellW, cellH) * 0.12;
-    ctx.drawImage(logo.image, x + inset, y + inset, cellW - inset * 2, cellH - inset * 2);
+    const margin = Math.min(w, h) * 0.04;
+    drawImageCover(ctx, logo.image, x + margin, y + margin, w - margin * 2, h - margin * 2);
   }
 
   function loadImage(src) {

@@ -555,9 +555,23 @@ img, video, canvas { max-width: 100%; display: block; }
 }
 
 .logo-preview {
-  max-height: 80px;
+  max-height: 120px;
+  max-width: 100%;
   margin: 0 auto;
   object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.file-name {
+  font-size: 0.82rem;
+  color: var(--text-muted);
 }
 
 .area-quick-row { margin-top: 0.75rem; align-items: flex-end; }
