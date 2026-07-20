@@ -156,6 +156,7 @@
         logoImageData = data.logoImage || Storage.getCompanyLogo();
         if (data.logoImage) setLogoPreview(data.logoImage);
         else if (logoOn && logoImageData) setLogoPreview(logoImageData);
+    updateLogoUI();
 
     updatePatternUI();
     recalculate();
