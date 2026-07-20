@@ -35,11 +35,15 @@
           <span class="user-avatar">👤</span>
           <span id="userNameDisplay">Usuario</span>
         </button>
-        <button type="button" id="btnInstall" class="btn btn-outline">Instalar app</button>
+        <button type="button" id="btnInstall" class="btn btn-install" aria-label="Instalar aplicación">
+          <span class="install-btn-icon" aria-hidden="true">⬇</span>
+          <span class="install-btn-label">Instalar app</span>
+        </button>
         <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
         <div class="menu-wrap">
           <button type="button" id="btnMoreMenu" class="btn btn-icon" title="Más opciones" aria-haspopup="true" aria-expanded="false">⋮</button>
           <div id="moreMenu" class="dropdown-menu hidden" role="menu">
+            <button type="button" id="btnInstallMenu" class="dropdown-item dropdown-item-install" role="menuitem">Instalar app</button>
             <button type="button" id="btnExport" class="dropdown-item" role="menuitem">Exportar backup</button>
             <label class="dropdown-item" role="menuitem">
               Importar backup
@@ -56,6 +60,16 @@
   <main class="app-main">
     <!-- Dashboard -->
     <section id="viewDashboard" class="view">
+      <div id="installBanner" class="install-banner hidden" role="region" aria-label="Instalar aplicación">
+        <div class="install-banner-icon" aria-hidden="true">📲</div>
+        <div class="install-banner-text">
+          <strong>Usala como app en el celular o la compu</strong>
+          <span>Tocá Instalar para agregarla a la pantalla de inicio</span>
+        </div>
+        <button type="button" id="btnInstallBanner" class="btn btn-primary btn-sm">Instalar</button>
+        <button type="button" id="btnDismissInstall" class="btn btn-icon install-banner-close" aria-label="Ocultar aviso">✕</button>
+      </div>
+
       <div class="stats-row" id="statsRow">
         <div class="stat-card"><span class="stat-value" id="statPresupuestos">0</span><span class="stat-label">Presupuestos</span></div>
         <div class="stat-card"><span class="stat-value" id="statM2">0</span><span class="stat-label">m² totales</span></div>

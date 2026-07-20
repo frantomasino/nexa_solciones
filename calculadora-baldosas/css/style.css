@@ -64,6 +64,9 @@ body {
   color: var(--text);
   line-height: 1.5;
   min-height: 100vh;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 img, video, canvas { max-width: 100%; display: block; }
@@ -183,6 +186,73 @@ img, video, canvas { max-width: 100%; display: block; }
   border-color: var(--accent);
   color: var(--accent);
   background: transparent;
+}
+
+.btn-install {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.btn-install:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-text);
+}
+
+.install-btn-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.dropdown-item-install {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, rgba(245, 197, 24, 0.14), rgba(245, 197, 24, 0.05));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.install-banner-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.install-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.install-banner-text strong {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.install-banner-text span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.install-banner-close {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.install-banner-close:hover {
+  opacity: 1;
 }
 
 .btn-ghost {
@@ -582,7 +652,7 @@ img, video, canvas { max-width: 100%; display: block; }
   border: none;
   padding: 0;
   background: transparent;
-  max-width: 420px;
+  max-width: 480px;
   width: calc(100% - 2rem);
 }
 
@@ -626,13 +696,6 @@ img, video, canvas { max-width: 100%; display: block; }
   padding: 0.65rem;
   background: var(--accent-soft);
   border-radius: var(--radius-sm);
-}
-
-/* Safe area móvil (iPhone con notch) */
-body {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .table-empty {
@@ -1059,8 +1122,29 @@ body {
   html { font-size: 14px; }
 
   .header-inner { flex-direction: column; align-items: stretch; gap: 0.75rem; }
-  .header-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+  .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  #btnInstall {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 44px;
+    order: -1;
+  }
   .btn-user span:not(.user-avatar) { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+
+  .install-banner {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .install-banner-text { flex-basis: calc(100% - 2.5rem); }
+  #btnInstallBanner { width: 100%; min-height: 44px; }
+  .install-banner-close { margin-left: auto; }
 
   .stats-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
   .stat-card { padding: 0.85rem; }

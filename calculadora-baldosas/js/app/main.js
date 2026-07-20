@@ -677,11 +677,24 @@
   function initPWA() {
     const btn = $('#btnInstall');
     const modal = $('#installModal');
+    const banner = $('#installBanner');
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     const isFile = window.location.protocol === 'file:';
+    const INSTALL_DISMISS_KEY = 'calculadora_baldosas_install_dismissed';
+
+    function openInstallModal() {
+      modal?.showModal();
+      closeMoreMenu();
+    }
+
+    function hideInstallUI() {
+      btn?.classList.add('hidden');
+      banner?.classList.add('hidden');
+      $('#btnInstallMenu')?.classList.add('hidden');
+    }
 
     if (isStandalone) {
-      btn?.classList.add('hidden');
+      hideInstallUI();
       return;
     }
 
@@ -698,7 +711,16 @@
       }
     }
 
-    btn?.addEventListener('click', () => modal?.showModal());
+    const dismissed = localStorage.getItem(INSTALL_DISMISS_KEY) === '1';
+    if (!dismissed) banner?.classList.remove('hidden');
+
+    btn?.addEventListener('click', openInstallModal);
+    $('#btnInstallMenu')?.addEventListener('click', openInstallModal);
+    $('#btnInstallBanner')?.addEventListener('click', openInstallModal);
+    $('#btnDismissInstall')?.addEventListener('click', () => {
+      localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+      banner?.classList.add('hidden');
+    });
 
     $('#btnInstallNative')?.addEventListener('click', async () => {
       if (!deferredInstallPrompt) return;
