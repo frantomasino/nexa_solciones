@@ -172,6 +172,7 @@
       img.classList.add('hidden');
       empty?.classList.remove('hidden');
       if (fileName) fileName.textContent = 'Ningún archivo';
+      logoImageEl = null;
       return;
     }
     img.src = src;
