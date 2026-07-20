@@ -173,14 +173,17 @@
   function setLogoPreview(src) {
     const img = $('#logoPreview');
     const empty = $('#logoPreviewEmpty');
+    const fileName = $('#logoFileName');
     if (!src) {
       img.classList.add('hidden');
       empty?.classList.remove('hidden');
+      if (fileName) fileName.textContent = 'Ningún archivo';
       return;
     }
     img.src = src;
     img.classList.remove('hidden');
     empty?.classList.add('hidden');
+    if (fileName) fileName.textContent = 'Logo cargado ✓';
     TileCalc.loadImage(src).then((el) => { logoImageEl = el; debounce(recalculate); }).catch(() => {});
   }
 
