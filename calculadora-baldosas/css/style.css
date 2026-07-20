@@ -1,4 +1,4 @@
-/* Nexa Soluciones — identidad corporativa */
+/* Nexa Soluciones — colores del logo / Instagram */
 
 :root {
   --font: 'Inter', system-ui, sans-serif;
@@ -6,50 +6,50 @@
   --radius: 10px;
   --radius-sm: 6px;
   --transition: 0.18s ease;
-  --nexa-blue: #0015a3;
-  --nexa-orange: #f37021;
-  --nexa-navy: #1d2b44;
-  --brand-stripe: linear-gradient(90deg, var(--nexa-blue) 0%, var(--nexa-blue) 55%, var(--nexa-orange) 55%, var(--nexa-orange) 100%);
+  --nexa-blue: #002094;
+  --nexa-orange: #ee7d30;
+  --nexa-navy: #1d2b3a;
+  --brand-stripe: linear-gradient(90deg, var(--nexa-blue) 0%, var(--nexa-blue) 58%, var(--nexa-orange) 58%, var(--nexa-orange) 100%);
 }
 
 [data-theme='dark'] {
-  --bg: #0c1018;
-  --bg-elevated: #1d2b44;
-  --bg-panel: #243044;
+  --bg: #0e1219;
+  --bg-elevated: #1d2b3a;
+  --bg-panel: #243246;
   --bg-input: #151c28;
-  --border: #2e3d56;
-  --border-light: #3d4f6a;
+  --border: #334155;
+  --border-light: #42546d;
   --text: #f4f6fa;
   --text-muted: #9aa8bc;
-  --accent: #f37021;
-  --accent-hover: #e0651c;
+  --accent: #ee7d30;
+  --accent-hover: #d96d24;
   --accent-secondary: #4d7cff;
-  --accent-soft: rgba(243, 112, 33, 0.14);
+  --accent-soft: rgba(0, 32, 148, 0.18);
   --accent-text: #ffffff;
   --canvas-bg: #0a0e14;
   --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25);
-  --stat-bg: #243044;
+  --stat-bg: #243246;
   --row-hover: #2c3a52;
 }
 
 [data-theme='light'] {
-  --bg: #eef1f6;
+  --bg: #f4f6f9;
   --bg-elevated: #ffffff;
   --bg-panel: #ffffff;
-  --bg-input: #f5f7fb;
-  --border: #d8dee8;
-  --border-light: #c5cedb;
-  --text: #1d2b44;
+  --bg-input: #f7f9fc;
+  --border: #dde3ec;
+  --border-light: #c8d1de;
+  --text: #1d2b3a;
   --text-muted: #5a6b82;
-  --accent: #f37021;
-  --accent-hover: #e0651c;
-  --accent-secondary: #0015a3;
-  --accent-soft: rgba(0, 21, 163, 0.08);
+  --accent: #ee7d30;
+  --accent-hover: #d96d24;
+  --accent-secondary: #002094;
+  --accent-soft: rgba(0, 32, 148, 0.08);
   --accent-text: #ffffff;
-  --canvas-bg: #e2e8f0;
-  --shadow: 0 1px 3px rgba(29, 43, 68, 0.06), 0 4px 16px rgba(29, 43, 68, 0.05);
+  --canvas-bg: #e8edf4;
+  --shadow: 0 1px 3px rgba(29, 43, 58, 0.06), 0 4px 16px rgba(29, 43, 58, 0.05);
   --stat-bg: #ffffff;
-  --row-hover: #f3f6fb;
+  --row-hover: #f0f4fa;
 }
 
 *, *::before, *::after { box-sizing: border-box; min-width: 0; }
@@ -84,7 +84,8 @@ img, video, canvas { max-width: 100%; display: block; }
 }
 
 [data-theme='light'] .app-header {
-  border-bottom-color: rgba(0, 21, 163, 0.2);
+  border-bottom-color: rgba(0, 32, 148, 0.15);
+  box-shadow: 0 1px 0 rgba(0, 32, 148, 0.06);
 }
 
 .header-inner {
@@ -108,16 +109,17 @@ img, video, canvas { max-width: 100%; display: block; }
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 0.35rem 0.65rem;
+  padding: 0.2rem 0.45rem;
   background: #ffffff;
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 2px rgba(29, 43, 68, 0.08);
+  border: 1px solid var(--border);
 }
 
 .brand-logo {
   width: auto;
-  height: 28px;
+  height: 34px;
   display: block;
+  object-fit: contain;
 }
 
 .brand-text {
@@ -130,7 +132,7 @@ img, video, canvas { max-width: 100%; display: block; }
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: var(--nexa-blue);
   line-height: 1.2;
 }
 
@@ -218,8 +220,8 @@ img, video, canvas { max-width: 100%; display: block; }
   gap: 0.85rem;
   margin-bottom: 1.25rem;
   padding: 0.9rem 1rem;
-  background: linear-gradient(135deg, rgba(0, 21, 163, 0.08), rgba(243, 112, 33, 0.08));
-  border: 1px solid rgba(0, 21, 163, 0.22);
+  background: linear-gradient(135deg, rgba(0, 32, 148, 0.06), rgba(238, 125, 48, 0.08));
+  border: 1px solid rgba(0, 32, 148, 0.16);
   border-left: 4px solid var(--nexa-orange);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -313,6 +315,7 @@ img, video, canvas { max-width: 100%; display: block; }
 .stat-card {
   background: var(--stat-bg);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--nexa-blue);
   border-radius: var(--radius);
   padding: 1.15rem 1.25rem;
   box-shadow: var(--shadow);
@@ -422,6 +425,15 @@ img, video, canvas { max-width: 100%; display: block; }
 }
 
 .dropdown-item:hover { background: var(--row-hover); }
+
+a.dropdown-item {
+  text-decoration: none;
+  color: var(--text);
+}
+
+a.dropdown-item:hover {
+  color: var(--accent-secondary);
+}
 
 .search-input {
   width: 280px;
