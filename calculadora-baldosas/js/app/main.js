@@ -244,12 +244,17 @@
       $('#statNetas').textContent = '—';
       $('#statRepuesto').textContent = '—';
       $('#statComprar').textContent = '—';
+      $('#statAreaPedida').textContent = '—';
       $('#statCubierto').textContent = '—';
       $('#statGrilla').textContent = '—';
+      $('#gridHint').textContent = '';
       $('#subtotalNetas').textContent = '—';
       $('#subtotalRepuesto').textContent = '—';
       $('#subtotalComprar').textContent = '—';
       $('#subtotalCajas').textContent = '—';
+      $('#totalNetasLabel').textContent = '—';
+      $('#totalRepuestoLabel').textContent = '—';
+      $('#totalSparePct').textContent = '—';
       $('#totalFinalLabel').textContent = '—';
       $('#totalBoxes').textContent = '—';
       $('#canvasEmpty').classList.remove('hidden');
@@ -276,12 +281,20 @@
     $('#statNetas').textContent = result.totalTiles;
     $('#statRepuesto').textContent = `+${result.totalSpareTiles ?? 0} (${sparePct}%)`;
     $('#statComprar').textContent = result.totalTilesWithSpare;
+    $('#statAreaPedida').textContent = `${result.areaM2.toFixed(1)} m²`;
     $('#statCubierto').textContent = `${result.coveredM2.toFixed(1)} m²`;
-    $('#statGrilla').textContent = `${result.cols}×${result.rows}`;
+    $('#statGrilla').textContent = `${result.cols} × ${result.rows} baldosas`;
+    const extraM2 = result.coveredM2 - result.areaM2;
+    $('#gridHint').textContent = extraM2 > 0.05
+      ? `El plano usa baldosas enteras: ${result.cols} de ancho × ${result.rows} de largo (${result.actualWidthM.toFixed(2)} m × ${result.actualLengthM.toFixed(2)} m). Por eso cubre ${result.coveredM2.toFixed(1)} m² en vez de ${result.areaM2.toFixed(1)} m².`
+      : `Plano: ${result.cols} baldosas de ancho × ${result.rows} de largo.`;
     $('#subtotalNetas').textContent = result.totalTiles;
     $('#subtotalRepuesto').textContent = `+${result.totalSpareTiles ?? 0}`;
     $('#subtotalComprar').textContent = result.totalTilesWithSpare;
     $('#subtotalCajas').textContent = result.totalBoxes;
+    $('#totalNetasLabel').textContent = result.totalTiles;
+    $('#totalRepuestoLabel').textContent = result.totalSpareTiles ?? 0;
+    $('#totalSparePct').textContent = sparePct;
     $('#totalFinalLabel').textContent = result.totalTilesWithSpare;
     $('#totalBoxes').textContent = result.totalBoxes;
   }
@@ -333,19 +346,6 @@
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
     document.body.dataset.view = view;
     if (view === 'dashboard') renderDashboard();
-    closeMoreMenu();
-  }
-
-  function closeMoreMenu() {
-    $('#moreMenu')?.classList.add('hidden');
-    $('#btnMoreMenu')?.setAttribute('aria-expanded', 'false');
-  }
-
-  function toggleMoreMenu() {
-    const menu = $('#moreMenu');
-    menu?.classList.toggle('hidden');
-    const isOpen = !menu?.classList.contains('hidden');
-    $('#btnMoreMenu')?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   }
 
   function renderDashboard() {
@@ -665,13 +665,11 @@
 
     function openInstallModal() {
       modal?.showModal();
-      closeMoreMenu();
     }
 
     function hideInstallUI() {
       btn?.classList.add('hidden');
       banner?.classList.add('hidden');
-      $('#btnInstallMenu')?.classList.add('hidden');
     }
 
     if (isStandalone) {
@@ -696,7 +694,6 @@
     if (!dismissed) banner?.classList.remove('hidden');
 
     btn?.addEventListener('click', openInstallModal);
-    $('#btnInstallMenu')?.addEventListener('click', openInstallModal);
     $('#btnInstallBanner')?.addEventListener('click', openInstallModal);
     $('#btnDismissInstall')?.addEventListener('click', () => {
       localStorage.setItem(INSTALL_DISMISS_KEY, '1');
@@ -720,23 +717,6 @@
     $('#btnShare').addEventListener('click', shareWhatsApp);
     $('#btnPrint').addEventListener('click', printPresupuesto);
     $('#themeToggle').addEventListener('click', toggleTheme);
-    $('#btnMoreMenu')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleMoreMenu();
-    });
-    document.addEventListener('click', closeMoreMenu);
-    $('#moreMenu')?.addEventListener('click', (e) => e.stopPropagation());
-    $('#importFile').addEventListener('change', (e) => {
-      const f = e.target.files?.[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try { Storage.importAll(reader.result, true); alert('Backup importado.'); renderDashboard(); }
-        catch (err) { alert('Error: ' + err.message); }
-      };
-      reader.readAsText(f);
-      e.target.value = '';
-    });
 
     $$('.measure-tab').forEach((tab) => tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab)));
 

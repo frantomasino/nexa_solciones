@@ -42,17 +42,6 @@
           <span class="install-btn-label">Instalar app</span>
         </button>
         <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
-        <div class="menu-wrap">
-          <button type="button" id="btnMoreMenu" class="btn btn-icon" title="Más opciones" aria-haspopup="true" aria-expanded="false">⋮</button>
-          <div id="moreMenu" class="dropdown-menu hidden" role="menu">
-            <button type="button" id="btnInstallMenu" class="dropdown-item" role="menuitem">Instalar app</button>
-            <a href="https://www.instagram.com/nexa_soluciones/" class="dropdown-item" role="menuitem" target="_blank" rel="noopener noreferrer">Instagram</a>
-            <label class="dropdown-item" role="menuitem">
-              Importar backup
-              <input type="file" id="importFile" accept=".json" hidden>
-            </label>
-          </div>
-        </div>
       </nav>
     </div>
   </header>
@@ -305,9 +294,11 @@
               <div class="quick-stat"><span class="qs-label">Baldosas netas</span><span class="qs-value" id="statNetas">—</span></div>
               <div class="quick-stat"><span class="qs-label">Repuesto cortes</span><span class="qs-value" id="statRepuesto">—</span></div>
               <div class="quick-stat"><span class="qs-label">Total a comprar</span><span class="qs-value" id="statComprar">—</span></div>
-              <div class="quick-stat"><span class="qs-label">m² cubiertos</span><span class="qs-value" id="statCubierto">—</span></div>
-              <div class="quick-stat"><span class="qs-label">Grilla</span><span class="qs-value" id="statGrilla">—</span></div>
+              <div class="quick-stat"><span class="qs-label">m² pedidos</span><span class="qs-value qs-value-sm" id="statAreaPedida">—</span></div>
+              <div class="quick-stat"><span class="qs-label">m² cubiertos</span><span class="qs-value qs-value-sm" id="statCubierto">—</span></div>
+              <div class="quick-stat quick-stat-wide"><span class="qs-label">Baldosas en el plano (ancho × largo)</span><span class="qs-value qs-value-sm" id="statGrilla">—</span></div>
             </div>
+            <p class="grid-hint" id="gridHint"></p>
           </div>
 
           <div class="panel results-panel">
@@ -333,7 +324,13 @@
                   <td id="subtotalCajas">—</td>
                 </tr>
                 <tr class="total-row">
-                  <td colspan="6"><strong>Total final a comprar: <span id="totalFinalLabel">—</span> baldosas · <span id="totalBoxes">—</span> cajas</strong></td>
+                  <td colspan="6">
+                    <strong>Total final:</strong>
+                    <span id="totalNetasLabel">—</span> netas
+                    + <span id="totalRepuestoLabel">—</span> repuesto cortes (<span id="totalSparePct">10</span>%)
+                    = <strong><span id="totalFinalLabel">—</span> baldosas</strong>
+                    · <span id="totalBoxes">—</span> cajas
+                  </td>
                 </tr>
               </tfoot>
             </table>
