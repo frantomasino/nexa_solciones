@@ -335,6 +335,82 @@
     ctx.lineWidth = 2;
     ctx.strokeRect(padding, padding, drawW, drawH);
 
+    return canvas;
+  }
+
+  function drawLogoOnPlan(ctx, options, cols, rows, padding, cellW, cellH) {
+    const logo = options.logo;
+    if (!logo?.enabled || !logo.image) return;
+
+    const lc = logo.col ?? Math.floor((cols - 1) / 2);
+    const lr = logo.row ?? Math.floor((rows - 1) / 2);
+    const x = padding + lc * cellW;
+    const y = padding + lr * cellH;
+
+    ctx.fillStyle = logo.tileBg || '#ffffff';
+    ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+
+    const inset = Math.min(cellW, cellH) * 0.12;
+    ctx.drawImage(logo.image, x + inset, y + inset, cellW - inset * 2, cellH - inset * 2);
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  async function drawFloorPlanAsync(canvas, result, options = {}) {
+    if (!canvas || !result?.grid) return null;
+
+    const temp = drawFloorPlan(canvas, result, options);
+    if (!temp) return null;
+
+    const { cols, rows, pattern } = result;
+    const padding = options.padding ?? 20;
+    const maxSize = options.maxSize ?? 520;
+    const aspect = cols / rows;
+    let drawW, drawH;
+    if (aspect >= 1) { drawW = maxSize; drawH = maxSize / aspect; }
+    else { drawH = maxSize; drawW = maxSize * aspect; }
+    const cellW = drawW / cols;
+    const cellH = drawH / rows;
+
+    const ctx = canvas.getContext('2d');
+
+    if (options.logo?.enabled && options.logo.src) {
+      try {
+        const img = options.logo.image || await loadImage(options.logo.src);
+        drawLogoOnPlan(ctx, { ...options, logo: { ...options.logo, image: img } }, cols, rows, padding, cellW, cellH);
+      } catch {
+        /* logo no cargó */
+      }
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function drawFloorPlanSync(canvas, result, options = {}) {
+    drawFloorPlan(canvas, result, options);
+    if (options.logo?.enabled && options.logo.image) {
+      const { cols, rows } = result;
+      const padding = options.padding ?? 20;
+      const maxSize = options.maxSize ?? 520;
+      const aspect = cols / rows;
+      let drawW, drawH;
+      if (aspect >= 1) { drawW = maxSize; drawH = maxSize / aspect; }
+      else { drawH = maxSize; drawW = maxSize * aspect; }
+      const cellW = drawW / cols;
+      const cellH = drawH / rows;
+      drawLogoOnPlan(canvas.getContext('2d'), options, cols, rows, padding, cellW, cellH);
+    }
     return canvas.toDataURL('image/png');
   }
 
@@ -367,6 +443,9 @@
     DEFAULT_COLORS,
     calculate,
     drawFloorPlan,
+    drawFloorPlanAsync,
+    drawFloorPlanSync,
+    loadImage,
     computeGrid,
     dimensionsFromArea,
     getPatternPreview,

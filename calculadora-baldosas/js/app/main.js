@@ -16,6 +16,9 @@
   let lastResult = null;
   let selectedPattern = 'rejilla';
   let tileSizeMode = '50';
+  let logoImageData = null;
+  let logoImageEl = null;
+  let deferredInstallPrompt = null;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -44,7 +47,10 @@
       stripeWidth: 1,
       colors: TileCalc.DEFAULT_COLORS.map((c) => ({ ...c })),
       customPercents: [50, 30, 20],
-      measureMethod: 'area',
+      measureMethod: 'manual',
+      logoEnabled: false,
+      logoImage: null,
+      logoTileBg: '#ffffff',
       photoThumb: null,
     };
   }
@@ -76,6 +82,9 @@
         parseFloat($('#customPct3').value) || 0,
       ],
       measureMethod: document.querySelector('.measure-tab.active')?.dataset.tab || 'manual',
+      logoEnabled: $('#logoEnabled')?.checked || false,
+      logoImage: logoImageData,
+      logoTileBg: $('#logoTileBg')?.value || '#ffffff',
       photoThumb: $('#photoThumbData').value || null,
     };
   }
@@ -139,9 +148,49 @@
     $('#customPct3').value = pcts[2];
 
     $('#photoThumbData').value = data.photoThumb || '';
-    setMeasureTab(data.measureMethod || 'area');
+    setMeasureTab(data.measureMethod || 'manual');
+
+    const logoOn = !!data.logoEnabled;
+    $('#logoEnabled').checked = logoOn;
+    $('#logoTileBg').value = data.logoTileBg || '#ffffff';
+        logoImageData = data.logoImage || Storage.getCompanyLogo();
+        if (data.logoImage) setLogoPreview(data.logoImage);
+        else if (logoOn && logoImageData) setLogoPreview(logoImageData);
+
     updatePatternUI();
     recalculate();
+  }
+
+  function updateLogoUI() {
+    const on = $('#logoEnabled')?.checked;
+    $('#logoOptions')?.classList.toggle('hidden', !on);
+  }
+
+  function setLogoPreview(src) {
+    const img = $('#logoPreview');
+    const empty = $('#logoPreviewEmpty');
+    if (!src) {
+      img.classList.add('hidden');
+      empty?.classList.remove('hidden');
+      return;
+    }
+    img.src = src;
+    img.classList.remove('hidden');
+    empty?.classList.add('hidden');
+    TileCalc.loadImage(src).then((el) => { logoImageEl = el; debounce(recalculate); }).catch(() => {});
+  }
+
+  function getDrawOptions(form) {
+    const opts = {};
+    if (form?.logoEnabled && logoImageData) {
+      opts.logo = {
+        enabled: true,
+        src: logoImageData,
+        image: logoImageEl,
+        tileBg: form.logoTileBg || '#ffffff',
+      };
+    }
+    return opts;
   }
 
   function setTileSize(mode, w, l) {
@@ -188,7 +237,7 @@
     updatePatternUI();
   }
 
-  function recalculate() {
+  async function recalculate() {
     const form = readForm();
     if (form.roomWidthM <= 0 || form.roomLengthM <= 0) {
       renderResults(null);
@@ -198,13 +247,11 @@
     lastResult = TileCalc.calculate(form);
     const canvas = $('#floorCanvas');
     const empty = $('#canvasEmpty');
-    TileCalc.drawFloorPlan(canvas, lastResult);
+    await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
     canvas.classList.remove('hidden');
     empty.classList.add('hidden');
 
-    const thumbFull = canvas.toDataURL('image/png');
-    $('#photoThumbData').value = thumbFull;
-
+    $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
   }
 
@@ -284,6 +331,7 @@
     return items.filter((p) => {
       const hay = [
         p.cliente, p.referencia, p.link, p.notas,
+        p.createdBy, p.updatedBy,
         TileCalc.PATTERNS[p.pattern] || p.pattern,
       ].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
@@ -330,7 +378,7 @@
     tableWrap.classList.remove('hidden');
 
     if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="8" class="table-empty">No hay resultados para "${escapeHtml(getSearchQuery())}"</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="table-empty">No hay resultados para "${escapeHtml(getSearchQuery())}"</td></tr>`;
       return;
     }
 
@@ -348,6 +396,8 @@
           ? `<a href="${escapeHtml(p.link)}" class="row-link" target="_blank" rel="noopener" title="Abrir link" onclick="event.stopPropagation()">↗</a>`
           : '';
 
+        const usuario = escapeHtml(p.createdBy || p.updatedBy || '—');
+
         return `
         <tr class="budget-row" data-id="${p.id}" tabindex="0">
           <td class="col-thumb">
@@ -360,6 +410,7 @@
             ${ref}
             ${linkIcon}
           </td>
+          <td class="col-user"><span class="user-tag">${usuario}</span></td>
           <td class="col-date">${date}</td>
           <td class="col-area"><strong>${area}</strong> m²</td>
           <td class="col-pattern"><span class="pattern-tag">${escapeHtml(patron)}</span></td>
@@ -377,14 +428,19 @@
       .join('');
   }
 
-  function savePresupuesto() {
+  async function savePresupuesto() {
     const form = readForm();
     if (!form.cliente) {
       alert('Ingresá el nombre del cliente antes de guardar.');
       $('#cliente').focus();
       return;
     }
-    if (!lastResult) recalculate();
+    if (!Storage.getCurrentUser().name) {
+      openUserModal();
+      alert('Configurá tu nombre de usuario primero.');
+      return;
+    }
+    if (!lastResult) await recalculate();
 
     const payload = {
       ...form,
@@ -394,6 +450,9 @@
       totalBoxes: lastResult?.totalBoxes,
       canvasThumb: createThumb($('#floorCanvas')) || $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
+      logoEnabled: form.logoEnabled,
+      logoImage: form.logoEnabled ? logoImageData : null,
+      logoTileBg: form.logoTileBg,
     };
 
     Storage.save(payload);
@@ -532,38 +591,76 @@
     $('#btnMeasureReset').addEventListener('click', () => measureSession.resetAll());
   }
 
-  function initMeasureVideo() {
-    const video = $('#measureVideo');
-    const canvas = $('#measureVideoCanvas');
-    let session = null;
+  function initUser() {
+    const user = Storage.getCurrentUser();
+    updateUserDisplay(user.name);
 
-    $('#videoFile').addEventListener('change', (e) => {
+    $('#btnUser').addEventListener('click', openUserModal);
+    $('#userForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#userNameInput').value.trim();
+      if (!name) return;
+      Storage.setCurrentUser(name);
+      updateUserDisplay(name);
+      $('#userModal').close();
+    });
+
+    if (!user.name) setTimeout(openUserModal, 500);
+  }
+
+  function updateUserDisplay(name) {
+    $('#userNameDisplay').textContent = name || 'Configurar usuario';
+  }
+
+  function openUserModal() {
+    const user = Storage.getCurrentUser();
+    $('#userNameInput').value = user.name || '';
+    $('#userModal').showModal();
+  }
+
+  function initLogo() {
+    const saved = Storage.getCompanyLogo();
+    if (saved) {
+      logoImageData = saved;
+      setLogoPreview(saved);
+    }
+
+    $('#logoEnabled').addEventListener('change', () => {
+      updateLogoUI();
+      debounce(recalculate);
+    });
+
+    $('#logoFile').addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      video.src = URL.createObjectURL(file);
-      video.classList.remove('hidden');
+      const reader = new FileReader();
+      reader.onload = () => {
+        logoImageData = reader.result;
+        Storage.setCompanyLogo(logoImageData);
+        setLogoPreview(logoImageData);
+        $('#logoEnabled').checked = true;
+        updateLogoUI();
+      };
+      reader.readAsDataURL(file);
     });
 
-    $('#btnCaptureFrame').addEventListener('click', () => {
-      if (video.readyState < 2) { alert('Esperá a que cargue el video.'); return; }
-      canvas.classList.remove('hidden');
-      if (!session) {
-        session = PhotoMeasure.createMeasureSession(canvas);
-        session.setOnUpdate((result) => {
-          if (result.ready) {
-            $('#roomWidth').value = result.widthM.toFixed(2);
-            $('#roomLength').value = result.lengthM.toFixed(2);
-            updateAreaFromDims();
-            debounce(recalculate);
-          }
-        });
-      }
-      session.setImage(PhotoMeasure.captureVideoFrame(video));
-      session.resetAll();
+    $('#logoTileBg').addEventListener('input', () => debounce(recalculate));
+  }
+
+  function initPWA() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      $('#btnInstall')?.classList.remove('hidden');
     });
 
-    $('#refLengthVideo').addEventListener('input', () => session?.setRefLength(parseFloat($('#refLengthVideo').value) || 1));
-    $('#btnVideoRefDone').addEventListener('click', () => session?.setMode('contour'));
+    $('#btnInstall')?.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      $('#btnInstall')?.classList.add('hidden');
+    });
   }
 
   function bindEvents() {
@@ -639,7 +736,9 @@
     buildPatternGrids();
     bindEvents();
     initMeasurePhoto();
-    initMeasureVideo();
+    initUser();
+    initLogo();
+    initPWA();
     showView('dashboard');
   }
 

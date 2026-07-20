@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1c1c1f">
+  <meta name="description" content="Calculadora de baldosas para presupuestos de piso técnico de goma">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <title>Calculadora de Baldosas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +26,11 @@
         </div>
       </div>
       <nav class="header-actions">
+        <button type="button" id="btnUser" class="btn btn-user" title="Usuario activo">
+          <span class="user-avatar">👤</span>
+          <span id="userNameDisplay">Usuario</span>
+        </button>
+        <button type="button" id="btnInstall" class="btn btn-outline hidden">Instalar app</button>
         <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
         <button type="button" id="btnExport" class="btn btn-outline">Exportar backup</button>
         <label class="btn btn-outline">
@@ -71,6 +80,7 @@
               <tr>
                 <th class="col-thumb"></th>
                 <th>Cliente / Obra</th>
+                <th>Usuario</th>
                 <th>Fecha</th>
                 <th>Superficie</th>
                 <th>Patrón</th>
@@ -126,9 +136,7 @@
             <legend>Medición del ambiente</legend>
             <div class="measure-tabs">
               <button type="button" class="measure-tab active" data-tab="manual">Manual</button>
-              <button type="button" class="measure-tab" data-tab="area">Por m²</button>
               <button type="button" class="measure-tab" data-tab="photo">Con foto</button>
-              <button type="button" class="measure-tab" data-tab="video">Con video</button>
             </div>
 
             <div class="measure-panel" data-panel="manual">
@@ -146,15 +154,12 @@
                   <output id="areaFromDims">22.00 m²</output>
                 </label>
               </div>
-            </div>
-
-            <div class="measure-panel hidden" data-panel="area">
-              <p class="hint">Ingresá los m² que pidió el cliente. Se calcula un ambiente cuadrado (podés ajustar ancho/largo en Manual).</p>
-              <div class="field-row">
-                <label class="field field-highlight">
-                  <span>Superficie total (m²)</span>
+              <div class="field-row area-quick-row">
+                <label class="field">
+                  <span>O ingresá m² directo</span>
                   <input type="number" id="areaInput" min="0.1" step="0.01" value="22" placeholder="Ej: 22">
                 </label>
+                <p class="hint area-hint">Calcula un ambiente cuadrado. Podés ajustar ancho y largo después.</p>
               </div>
             </div>
 
@@ -170,14 +175,28 @@
               </div>
             </div>
 
-            <div class="measure-panel hidden" data-panel="video">
-              <p id="videoMeasureStep" class="hint">Subí un video, elegí un cuadro y medí igual que con foto</p>
-              <label class="field"><span>Subir video</span><input type="file" id="videoFile" accept="video/*"></label>
-              <video id="measureVideo" class="measure-video hidden" controls></video>
-              <button type="button" id="btnCaptureFrame" class="btn btn-sm btn-outline">Capturar cuadro actual</button>
-              <label class="field field-inline"><span>Longitud referencia (m)</span><input type="number" id="refLengthVideo" min="0.01" step="0.01" value="0.5"></label>
-              <div class="canvas-wrap"><canvas id="measureVideoCanvas" class="hidden"></canvas></div>
-              <button type="button" id="btnVideoRefDone" class="btn btn-sm btn-outline">Confirmar referencia →</button>
+          </fieldset>
+
+          <!-- Logo en plano -->
+          <fieldset class="panel">
+            <legend>Logo en el plano</legend>
+            <label class="checkbox-row">
+              <input type="checkbox" id="logoEnabled">
+              <span>Incluir logo de la empresa en el centro del piso</span>
+            </label>
+            <div id="logoOptions" class="logo-options hidden">
+              <label class="field">
+                <span>Imagen del logo (PNG/JPG)</span>
+                <input type="file" id="logoFile" accept="image/*">
+              </label>
+              <div class="logo-preview-wrap">
+                <img id="logoPreview" class="logo-preview hidden" alt="Vista previa del logo">
+                <p id="logoPreviewEmpty" class="hint">Se dibuja en una baldosa blanca al centro, como en el piso real.</p>
+              </div>
+              <label class="field field-inline">
+                <span>Color baldosa logo</span>
+                <input type="color" id="logoTileBg" value="#ffffff">
+              </label>
             </div>
           </fieldset>
 
@@ -306,9 +325,29 @@
     <table id="printTable"></table>
   </div>
 
+  <!-- Modal usuario -->
+  <dialog id="userModal" class="modal">
+    <form method="dialog" class="modal-box" id="userForm">
+      <h3>¿Quién sos?</h3>
+      <p class="hint">Este nombre aparece en el historial de presupuestos. Cuando conectemos usuarios en la nube, se reemplaza por login.</p>
+      <label class="field">
+        <span>Tu nombre</span>
+        <input type="text" id="userNameInput" placeholder="Ej: Francisco" required>
+      </label>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="js/core/tile-calc.js"></script>
   <script src="js/core/photo-measure.js"></script>
   <script src="js/data/storage.js"></script>
   <script src="js/app/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>
