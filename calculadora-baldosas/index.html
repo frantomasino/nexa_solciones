@@ -3,31 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1c1c1f">
+  <meta name="theme-color" content="#1D2B44">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Baldosas">
-  <meta name="description" content="Calculadora de baldosas para presupuestos de piso técnico de goma">
+  <meta name="apple-mobile-web-app-title" content="Nexa">
+  <meta name="description" content="Nexa Soluciones — presupuestos de piso técnico de goma">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <title>Calculadora de Baldosas</title>
+  <title>Nexa Soluciones</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="hazard-stripe hazard-top"></div>
+  <div class="brand-stripe brand-stripe-top"></div>
 
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <span class="brand-icon" aria-hidden="true">▦</span>
-        <div>
-          <h1>Calculadora de Baldosas</h1>
-          <p class="brand-sub">Presupuestos de piso técnico de goma — showroom / taller</p>
+        <div class="brand-logo-wrap">
+          <img src="icons/nexa-logo.svg" alt="Nexa" class="brand-logo" width="132" height="32">
+        </div>
+        <div class="brand-text">
+          <p class="brand-title">Soluciones</p>
+          <p class="brand-sub">Presupuestos de piso técnico de goma</p>
         </div>
       </div>
       <nav class="header-actions">
@@ -43,8 +45,7 @@
         <div class="menu-wrap">
           <button type="button" id="btnMoreMenu" class="btn btn-icon" title="Más opciones" aria-haspopup="true" aria-expanded="false">⋮</button>
           <div id="moreMenu" class="dropdown-menu hidden" role="menu">
-            <button type="button" id="btnInstallMenu" class="dropdown-item dropdown-item-install" role="menuitem">Instalar app</button>
-            <button type="button" id="btnExport" class="dropdown-item" role="menuitem">Exportar backup</button>
+            <button type="button" id="btnInstallMenu" class="dropdown-item" role="menuitem">Instalar app</button>
             <label class="dropdown-item" role="menuitem">
               Importar backup
               <input type="file" id="importFile" accept=".json" hidden>
@@ -54,8 +55,6 @@
       </nav>
     </div>
   </header>
-
-  <div class="hazard-stripe hazard-bottom"></div>
 
   <main class="app-main">
     <!-- Dashboard -->
@@ -353,7 +352,7 @@
   </main>
 
   <div id="printArea" class="print-only">
-    <h1>Presupuesto de Baldosas</h1>
+    <h1>Nexa Soluciones</h1>
     <p><strong>Cliente:</strong> <span id="printCliente"></span></p>
     <p><strong>Referencia:</strong> <span id="printReferencia"></span></p>
     <p><strong>Medidas:</strong> <span id="printMedidas"></span></p>
@@ -384,7 +383,7 @@
           </div>
           <div class="install-step">
             <strong>Computadora (Chrome / Edge)</strong>
-            <p>Ícono de instalar en la barra de direcciones, o menú → <strong>Instalar Calculadora de Baldosas</strong></p>
+            <p>Ícono de instalar en la barra de direcciones, o menú → <strong>Instalar Nexa Soluciones</strong></p>
           </div>
         </div>
         <p class="hint">Para que aparezca "Instalar", la app tiene que abrirse desde un link web (https), no como archivo local.</p>

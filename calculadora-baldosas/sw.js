@@ -1,4 +1,4 @@
-const CACHE = 'baldosas-v1';
+const CACHE = 'nexa-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './js/app/main.js',
   './manifest.json',
   './icons/icon.svg',
+  './icons/nexa-logo.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

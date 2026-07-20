@@ -1,15 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1c1c1f"/>
-  <rect x="64" y="64" width="384" height="384" rx="24" fill="#2a2a2e" stroke="#e8b90a" stroke-width="8"/>
-  <g fill="#e8b90a">
-    <rect x="120" y="120" width="72" height="72" rx="4"/>
-    <rect x="220" y="120" width="72" height="72" rx="4" opacity=".7"/>
-    <rect x="320" y="120" width="72" height="72" rx="4" opacity=".4"/>
-    <rect x="120" y="220" width="72" height="72" rx="4" opacity=".7"/>
-    <rect x="220" y="220" width="72" height="72" rx="4"/>
-    <rect x="320" y="220" width="72" height="72" rx="4" opacity=".7"/>
-    <rect x="120" y="320" width="72" height="72" rx="4" opacity=".4"/>
-    <rect x="220" y="320" width="72" height="72" rx="4" opacity=".7"/>
-    <rect x="320" y="320" width="72" height="72" rx="4"/>
+  <rect width="512" height="512" rx="96" fill="#1D2B44"/>
+  <g transform="translate(56 156) scale(2)">
+    <g fill="#0015A3">
+      <path d="M2 42V6h9.5l14.5 24.5V6H36v36H26.5L12 17.5V42H2z"/>
+      <path d="M42 42V6h9v14.5h1.2L66 6h10.5L58 23.5 77.5 42H66.5L51 26.5 51 42H42z"/>
+      <path d="M84 42l11-36h9.5l11 36h-9l-1.8-6.5H94.8L93 42H84zm13.5-14.5h6.8l-3.4-12.2-3.4 12.2z"/>
+      <path d="M118 42V6h9v30h19v6H118z"/>
+    </g>
+    <path fill="#F37021" d="M152 6l18 14.5V6h9v36h-9L152 27.5V42h-9V6h9z"/>
+    <path fill="#ffffff" d="M186 42l-10-14 10-14h10.5l-6 8.5 6.5 9h-10.5l-3.5-5-3.5 5H176l6.5-9-6-8.5H186z"/>
   </g>
 </svg>

@@ -746,12 +746,6 @@
     });
     document.addEventListener('click', closeMoreMenu);
     $('#moreMenu')?.addEventListener('click', (e) => e.stopPropagation());
-    $('#btnExport').addEventListener('click', () => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([Storage.exportAll()], { type: 'application/json' }));
-      a.download = `presupuestos_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-    });
     $('#importFile').addEventListener('change', (e) => {
       const f = e.target.files?.[0];
       if (!f) return;

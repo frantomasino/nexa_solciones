@@ -1,12 +1,12 @@
 {
-  "name": "Calculadora de Baldosas",
-  "short_name": "Baldosas",
+  "name": "Nexa Soluciones",
+  "short_name": "Nexa",
   "description": "Presupuestos de piso técnico de goma — Nexa Soluciones",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0f0f10",
-  "theme_color": "#1c1c1f",
+  "background_color": "#1d2b44",
+  "theme_color": "#1d2b44",
   "orientation": "any",
   "lang": "es-AR",
   "icons": [

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 40" role="img" aria-label="Nexa">
+  <g fill="#0015A3">
+    <path d="M0 36V4h7.2L18.8 24.8V4h7.2v32h-7.2L7.2 15.2V36H0z"/>
+    <path d="M28 36V4h7.2v11.2h.8L44.8 4H52l-9.6 15.2L53.6 36H46l-11.2-14.4V36H28z"/>
+    <path d="M58 36l9.6-32h8.4l9.6 32h-7.8l-1.6-5.6H67.4L65.8 36H58zm11.8-12.8h5.8L68.8 12.4l-5 10.8z"/>
+  </g>
+  <path fill="#0015A3" d="M86 36V4h7.2v24h15.2v8H86z"/>
+  <path fill="#F37021" d="M112 4h7.2v11.2L136.8 4H145l-16.8 12.8L148 36h-7.8l-12-14.4V36H112V4z"/>
+  <path fill="#1D2B44" d="M152 36l-8.8-12.4L152 11.2h9.2l-5.2 7.4L161.6 36H152z"/>
+</svg>
