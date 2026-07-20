@@ -343,6 +343,18 @@
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
     document.body.dataset.view = view;
     if (view === 'dashboard') renderDashboard();
+    closeMoreMenu();
+  }
+
+  function closeMoreMenu() {
+    $('#moreMenu')?.classList.add('hidden');
+    $('#btnMoreMenu')?.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleMoreMenu() {
+    const menu = $('#moreMenu');
+    const open = menu?.classList.toggle('hidden');
+    $('#btnMoreMenu')?.setAttribute('aria-expanded', open ? 'false' : 'true');
   }
 
   function renderDashboard() {
@@ -457,7 +469,6 @@
     };
 
     Storage.save(payload);
-    alert('Presupuesto guardado.');
     showView('dashboard');
   }
 
@@ -466,8 +477,10 @@
     if (id) {
       const p = Storage.getById(id);
       if (p) fillForm(p);
+      $('#editorTitle').textContent = p?.cliente ? `Editar: ${p.cliente}` : 'Editar presupuesto';
     } else {
       fillForm(defaultFormState());
+      $('#editorTitle').textContent = 'Nuevo presupuesto';
     }
     showView('editor');
   }
@@ -673,6 +686,12 @@
     $('#btnPrint').addEventListener('click', printPresupuesto);
     $('#btnCalculate').addEventListener('click', recalculate);
     $('#themeToggle').addEventListener('click', toggleTheme);
+    $('#btnMoreMenu')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMoreMenu();
+    });
+    document.addEventListener('click', closeMoreMenu);
+    $('#moreMenu')?.addEventListener('click', (e) => e.stopPropagation());
     $('#btnExport').addEventListener('click', () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([Storage.exportAll()], { type: 'application/json' }));

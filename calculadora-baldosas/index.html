@@ -32,12 +32,16 @@
         </button>
         <button type="button" id="btnInstall" class="btn btn-outline hidden">Instalar app</button>
         <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
-        <button type="button" id="btnExport" class="btn btn-outline">Exportar backup</button>
-        <label class="btn btn-outline">
-          Importar backup
-          <input type="file" id="importFile" accept=".json" hidden>
-        </label>
-        <button type="button" id="btnNew" class="btn btn-primary">+ Nuevo presupuesto</button>
+        <div class="menu-wrap">
+          <button type="button" id="btnMoreMenu" class="btn btn-icon" title="Más opciones" aria-haspopup="true" aria-expanded="false">⋮</button>
+          <div id="moreMenu" class="dropdown-menu hidden" role="menu">
+            <button type="button" id="btnExport" class="dropdown-item" role="menuitem">Exportar backup</button>
+            <label class="dropdown-item" role="menuitem">
+              Importar backup
+              <input type="file" id="importFile" accept=".json" hidden>
+            </label>
+          </div>
+        </div>
       </nav>
     </div>
   </header>
@@ -62,6 +66,7 @@
           </div>
           <div class="list-toolbar-right">
             <input type="search" id="searchPresupuestos" class="search-input" placeholder="Buscar cliente, referencia o patrón…">
+            <button type="button" id="btnNew" class="btn btn-primary">+ Nuevo presupuesto</button>
           </div>
         </div>
 
@@ -98,11 +103,12 @@
     <!-- Editor -->
     <section id="viewEditor" class="view hidden">
       <div class="editor-topbar">
-        <button type="button" id="btnBack" class="btn btn-ghost">← Volver al listado</button>
+        <button type="button" id="btnBack" class="btn btn-ghost">← Volver</button>
+        <h2 id="editorTitle" class="editor-title">Nuevo presupuesto</h2>
         <div class="editor-topbar-actions">
-          <button type="button" id="btnShare" class="btn btn-outline">Compartir</button>
-          <button type="button" id="btnPrint" class="btn btn-outline">Imprimir / PDF</button>
-          <button type="button" id="btnSave" class="btn btn-primary">Guardar presupuesto</button>
+          <button type="button" id="btnShare" class="btn btn-outline btn-sm">Compartir</button>
+          <button type="button" id="btnPrint" class="btn btn-outline btn-sm">PDF</button>
+          <button type="button" id="btnSave" class="btn btn-primary">Guardar</button>
         </div>
       </div>
 
