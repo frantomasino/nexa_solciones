@@ -6,7 +6,7 @@
   <title>Calculadora de Baldosas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -45,16 +45,44 @@
         <div class="stat-card"><span class="stat-value" id="statLinks">0</span><span class="stat-label">Con link adjunto</span></div>
       </div>
 
-      <div class="section-head">
-        <h2>Presupuestos guardados</h2>
-      </div>
+      <div class="list-panel">
+        <div class="list-toolbar">
+          <div class="list-toolbar-left">
+            <h2>Presupuestos guardados</h2>
+            <span class="badge-count" id="listCount">0</span>
+          </div>
+          <div class="list-toolbar-right">
+            <input type="search" id="searchPresupuestos" class="search-input" placeholder="Buscar cliente, referencia o patrón…">
+          </div>
+        </div>
 
-      <div id="dashboardEmpty" class="empty-state">
-        <div class="empty-icon">📋</div>
-        <p>Todavía no hay presupuestos guardados.</p>
-        <p class="hint">Tocá <strong>+ Nuevo presupuesto</strong> para crear el primero.</p>
+        <div id="dashboardEmpty" class="empty-state">
+          <div class="empty-icon" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+          </div>
+          <h3>Sin presupuestos todavía</h3>
+          <p>Creá tu primer presupuesto para ver el listado acá.</p>
+          <button type="button" class="btn btn-primary" id="btnNewEmpty">+ Nuevo presupuesto</button>
+        </div>
+
+        <div id="dashboardTableWrap" class="table-wrap hidden">
+          <table class="budget-table" id="budgetTable">
+            <thead>
+              <tr>
+                <th class="col-thumb"></th>
+                <th>Cliente / Obra</th>
+                <th>Fecha</th>
+                <th>Superficie</th>
+                <th>Patrón</th>
+                <th>Baldosas</th>
+                <th>Cajas</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardTableBody"></tbody>
+          </table>
+        </div>
       </div>
-      <div id="dashboardGrid" class="dashboard-grid hidden"></div>
     </section>
 
     <!-- Editor -->

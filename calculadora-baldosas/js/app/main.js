@@ -202,8 +202,8 @@
     canvas.classList.remove('hidden');
     empty.classList.add('hidden');
 
-    const thumb = canvas.toDataURL('image/png');
-    $('#photoThumbData').value = thumb;
+    const thumbFull = canvas.toDataURL('image/png');
+    $('#photoThumbData').value = thumbFull;
 
     renderResults(lastResult, form);
   }
@@ -248,12 +248,47 @@
     $('#totalPct').textContent = '100%';
   }
 
+  function createThumb(canvas, maxW = 96, maxH = 64) {
+    if (!canvas?.width) return null;
+    const c = document.createElement('canvas');
+    const scale = Math.min(maxW / canvas.width, maxH / canvas.height, 1);
+    c.width = Math.max(1, Math.round(canvas.width * scale));
+    c.height = Math.max(1, Math.round(canvas.height * scale));
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#141414';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(canvas, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.9);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('es-AR', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  }
+
   function escapeHtml(str) {
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
   }
 
+  function getSearchQuery() {
+    return ($('#searchPresupuestos')?.value || '').trim().toLowerCase();
+  }
+
+  function filterItems(items) {
+    const q = getSearchQuery();
+    if (!q) return items;
+    return items.filter((p) => {
+      const hay = [
+        p.cliente, p.referencia, p.link, p.notas,
+        TileCalc.PATTERNS[p.pattern] || p.pattern,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
   function showView(view) {
     $('#viewDashboard').classList.toggle('hidden', view !== 'dashboard');
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
@@ -263,7 +298,9 @@
 
   function renderDashboard() {
     const items = Storage.getAll();
-    const grid = $('#dashboardGrid');
+    const filtered = filterItems(items);
+    const tbody = $('#dashboardTableBody');
+    const tableWrap = $('#dashboardTableWrap');
     const empty = $('#dashboardEmpty');
 
     let totalM2 = 0;
@@ -280,40 +317,62 @@
     $('#statM2').textContent = totalM2.toFixed(0);
     $('#statBaldosas').textContent = totalBaldosas;
     $('#statLinks').textContent = totalLinks;
+    $('#listCount').textContent = items.length;
 
     if (!items.length) {
-      grid.innerHTML = '';
-      grid.classList.add('hidden');
+      tbody.innerHTML = '';
+      tableWrap.classList.add('hidden');
       empty.classList.remove('hidden');
       return;
     }
 
     empty.classList.add('hidden');
-    grid.classList.remove('hidden');
-    grid.innerHTML = items
+    tableWrap.classList.remove('hidden');
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="table-empty">No hay resultados para "${escapeHtml(getSearchQuery())}"</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered
       .map((p) => {
-        const date = new Date(p.updatedAt || p.createdAt).toLocaleDateString('es-AR');
+        const date = formatDate(p.updatedAt || p.createdAt);
         const area = ((p.roomWidthM || 0) * (p.roomLengthM || 0)).toFixed(1);
-        const thumb = p.photoThumb || p.canvasThumb;
+        const thumb = p.canvasThumb || p.photoThumb;
         const tiles = p.totalTilesWithSpare ?? '—';
         const boxes = p.totalBoxes ?? '—';
-        const patron = TileCalc.PATTERNS[p.pattern] || p.pattern;
+        const patron = TileCalc.PATTERNS[p.pattern] || p.pattern || '—';
+        const cliente = escapeHtml(p.cliente || 'Sin cliente');
+        const ref = p.referencia ? `<span class="row-ref">${escapeHtml(p.referencia)}</span>` : '';
+        const linkIcon = p.link
+          ? `<a href="${escapeHtml(p.link)}" class="row-link" target="_blank" rel="noopener" title="Abrir link" onclick="event.stopPropagation()">↗</a>`
+          : '';
+
         return `
-        <article class="presupuesto-card" data-id="${p.id}">
-          <div class="card-thumb">${thumb ? `<img src="${thumb}" alt="">` : '<div class="thumb-placeholder">▦</div>'}</div>
-          <div class="card-body">
-            <h3>${escapeHtml(p.cliente || 'Sin cliente')}</h3>
-            ${p.referencia ? `<p class="card-ref">${escapeHtml(p.referencia)}</p>` : ''}
-            <p class="card-meta">${date} · ${area} m² · ${escapeHtml(patron)}</p>
-            <p class="card-stats">${tiles} baldosas · ${boxes} cajas</p>
-            ${p.link ? `<a href="${escapeHtml(p.link)}" class="card-link" target="_blank" rel="noopener">Ver link adjunto</a>` : ''}
-          </div>
-          <div class="card-actions">
-            <button type="button" class="btn btn-sm btn-outline" data-action="edit" data-id="${p.id}">Editar</button>
-            <button type="button" class="btn btn-sm btn-ghost" data-action="dup" data-id="${p.id}">Duplicar</button>
-            <button type="button" class="btn btn-sm btn-danger" data-action="del" data-id="${p.id}">Borrar</button>
-          </div>
-        </article>`;
+        <tr class="budget-row" data-id="${p.id}" tabindex="0">
+          <td class="col-thumb">
+            <div class="row-thumb">
+              ${thumb ? `<img src="${thumb}" alt="Plano" loading="lazy">` : '<span class="thumb-fallback">▦</span>'}
+            </div>
+          </td>
+          <td class="col-client">
+            <span class="row-client">${cliente}</span>
+            ${ref}
+            ${linkIcon}
+          </td>
+          <td class="col-date">${date}</td>
+          <td class="col-area"><strong>${area}</strong> m²</td>
+          <td class="col-pattern"><span class="pattern-tag">${escapeHtml(patron)}</span></td>
+          <td class="col-tiles">${tiles}</td>
+          <td class="col-boxes">${boxes}</td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <button type="button" class="btn-icon-action" data-action="edit" data-id="${p.id}" title="Editar">✎</button>
+              <button type="button" class="btn-icon-action" data-action="dup" data-id="${p.id}" title="Duplicar">⧉</button>
+              <button type="button" class="btn-icon-action btn-icon-danger" data-action="del" data-id="${p.id}" title="Borrar">✕</button>
+            </div>
+          </td>
+        </tr>`;
       })
       .join('');
   }
@@ -333,7 +392,7 @@
       areaM2: form.roomWidthM * form.roomLengthM,
       totalTilesWithSpare: lastResult?.totalTilesWithSpare,
       totalBoxes: lastResult?.totalBoxes,
-      canvasThumb: $('#photoThumbData').value || null,
+      canvasThumb: createThumb($('#floorCanvas')) || $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
     };
 
@@ -509,6 +568,7 @@
 
   function bindEvents() {
     $('#btnNew').addEventListener('click', () => openEditor(null));
+    $('#btnNewEmpty')?.addEventListener('click', () => openEditor(null));
     $('#btnBack').addEventListener('click', () => showView('dashboard'));
     $('#btnSave').addEventListener('click', savePresupuesto);
     $('#btnShare').addEventListener('click', shareWhatsApp);
@@ -551,13 +611,26 @@
     const inputs = '#cliente, #referencia, #link, #notas, #tileWidth, #tileLength, #tilesPerBox, #sparePercent, #aisleWidth, #stripeWidth, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex, #customPct1, #customPct2, #customPct3';
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
-    $('#dashboardGrid').addEventListener('click', (e) => {
+    $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());
+
+    $('#dashboardTableBody').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const { id, action } = btn.dataset;
-      if (action === 'edit') openEditor(id);
-      else if (action === 'dup') { Storage.duplicate(id); renderDashboard(); }
-      else if (action === 'del' && confirm('¿Borrar este presupuesto?')) { Storage.remove(id); renderDashboard(); }
+      if (btn) {
+        const { id, action } = btn.dataset;
+        if (action === 'edit') openEditor(id);
+        else if (action === 'dup') { Storage.duplicate(id); renderDashboard(); }
+        else if (action === 'del' && confirm('¿Borrar este presupuesto?')) { Storage.remove(id); renderDashboard(); }
+        return;
+      }
+      const row = e.target.closest('.budget-row');
+      if (row?.dataset.id) openEditor(row.dataset.id);
+    });
+
+    $('#dashboardTableBody').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const row = e.target.closest('.budget-row');
+        if (row?.dataset.id) openEditor(row.dataset.id);
+      }
     });
   }
 
