@@ -204,10 +204,10 @@
 
           <!-- Logo en plano -->
           <fieldset class="panel">
-            <legend>Logo en el plano</legend>
+            <legend>Logo en el plano (opcional)</legend>
             <label class="checkbox-row">
               <input type="checkbox" id="logoEnabled">
-              <span>Incluir logo de la empresa en el centro del piso</span>
+              <span>Incluir logo del cliente en el centro del piso</span>
             </label>
             <div id="logoOptions" class="logo-options hidden">
               <label class="field">
@@ -257,16 +257,6 @@
             <p class="field-label">Tipo de piso</p>
             <div class="floor-type-grid" id="floorTypeGrid"></div>
 
-            <p class="field-label">Otros patrones de distribución</p>
-            <div class="pattern-grid" id="patternGrid"></div>
-
-            <div id="aisleWidthGroup" class="field hidden">
-              <label class="field"><span>Ancho carril (baldosas)</span><input type="number" id="aisleWidth" min="1" value="2"></label>
-            </div>
-            <div id="stripeWidthGroup" class="field hidden">
-              <label class="field"><span>Ancho de franja (baldosas)</span><input type="number" id="stripeWidth" min="1" value="1"></label>
-            </div>
-
             <p class="field-label">Colores</p>
             <div class="colors-row">
               <div class="color-chip">
@@ -283,11 +273,6 @@
               </div>
             </div>
 
-            <div id="customPctGroup" class="field-row hidden">
-              <label class="field"><span>% Gris</span><input type="number" id="customPct1" min="0" max="100" value="50"></label>
-              <label class="field"><span>% Negro</span><input type="number" id="customPct2" min="0" max="100" value="30"></label>
-              <label class="field"><span>% Rojo</span><input type="number" id="customPct3" min="0" max="100" value="20"></label>
-            </div>
           </fieldset>
 
           <!-- Compra -->
@@ -304,7 +289,6 @@
                 <small class="field-hint">Repuesto por cortes en costados y bordes</small>
               </label>
             </div>
-            <button type="button" id="btnCalculate" class="btn btn-calc">Calcular y dibujar piso</button>
           </fieldset>
         </div>
 
@@ -313,13 +297,14 @@
             <h3>Plano del piso</h3>
             <div class="canvas-wrap canvas-wrap-plan" id="canvasPlaceholder">
               <canvas id="floorCanvas" class="hidden"></canvas>
-              <p id="canvasEmpty" class="canvas-empty">Cargá las medidas y tocá <strong>Calcular y dibujar piso</strong></p>
+              <p id="canvasEmpty" class="canvas-empty">El plano se actualiza solo al cargar medidas y elegir el tipo de piso.</p>
             </div>
             <input type="hidden" id="photoThumbData">
 
             <div class="quick-stats">
               <div class="quick-stat"><span class="qs-label">Baldosas netas</span><span class="qs-value" id="statNetas">—</span></div>
-              <div class="quick-stat"><span class="qs-label">A comprar</span><span class="qs-value" id="statComprar">—</span></div>
+              <div class="quick-stat"><span class="qs-label">Repuesto cortes</span><span class="qs-value" id="statRepuesto">—</span></div>
+              <div class="quick-stat"><span class="qs-label">Total a comprar</span><span class="qs-value" id="statComprar">—</span></div>
               <div class="quick-stat"><span class="qs-label">m² cubiertos</span><span class="qs-value" id="statCubierto">—</span></div>
               <div class="quick-stat"><span class="qs-label">Grilla</span><span class="qs-value" id="statGrilla">—</span></div>
             </div>
@@ -330,22 +315,29 @@
               <thead>
                 <tr>
                   <th>Color</th>
-                  <th>Baldosas</th>
+                  <th>Netas</th>
+                  <th>Repuesto</th>
+                  <th>A comprar</th>
                   <th>%</th>
                   <th>Cajas</th>
                 </tr>
               </thead>
               <tbody id="resultsBody"></tbody>
               <tfoot>
+                <tr class="subtotal-row">
+                  <td>Subtotal</td>
+                  <td id="subtotalNetas">—</td>
+                  <td id="subtotalRepuesto">—</td>
+                  <td id="subtotalComprar">—</td>
+                  <td>100%</td>
+                  <td id="subtotalCajas">—</td>
+                </tr>
                 <tr class="total-row">
-                  <td>Total <small>(+ repuesto)</small></td>
-                  <td id="totalTiles">—</td>
-                  <td id="totalPct">100%</td>
-                  <td id="totalBoxes">—</td>
+                  <td colspan="6"><strong>Total final a comprar: <span id="totalFinalLabel">—</span> baldosas · <span id="totalBoxes">—</span> cajas</strong></td>
                 </tr>
               </tfoot>
             </table>
-            <p id="resultsEmpty" class="hint">Los resultados aparecen acá al calcular.</p>
+            <p id="resultsEmpty" class="hint">El detalle aparece acá al cargar medidas y tipo de piso.</p>
           </div>
         </aside>
       </div>

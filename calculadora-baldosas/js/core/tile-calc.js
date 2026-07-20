@@ -214,11 +214,13 @@
     }
 
     const withSpare = applySpare(baseCounts, sparePercent);
+    const spareCounts = baseCounts.map((c, i) => (withSpare[i] || 0) - c);
     const boxes = computeBoxes(withSpare, tilesPerBox);
 
     const breakdown = activeColors.map((color, i) => ({
       ...color,
       tiles: baseCounts[i] || 0,
+      spareTiles: spareCounts[i] || 0,
       tilesWithSpare: withSpare[i] || 0,
       boxes: boxes[i] || 0,
       percent: totalTiles ? Math.round(((baseCounts[i] || 0) / totalTiles) * 1000) / 10 : 0,
@@ -228,6 +230,7 @@
       cols,
       rows,
       totalTiles,
+      totalSpareTiles: spareCounts.reduce((a, b) => a + b, 0),
       totalTilesWithSpare: withSpare.reduce((a, b) => a + b, 0),
       totalBoxes: boxes.reduce((a, b) => a + b, 0),
       areaM2,

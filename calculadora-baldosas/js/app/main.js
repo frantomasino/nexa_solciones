@@ -5,10 +5,6 @@
   'use strict';
 
   const DEBOUNCE_MS = 300;
-  const OTHER_PATTERNS = [
-    'solid', 'border-center', 'checkerboard',
-    'stripes-h', 'stripes-v', 'center-aisle', 'transverse-aisle', 'custom',
-  ];
 
   let currentId = null;
   let measureSession = null;
@@ -43,10 +39,7 @@
       tilesPerBox: 4,
       sparePercent: 10,
       pattern: 'rejilla',
-      aisleWidth: 2,
-      stripeWidth: 1,
       colors: TileCalc.DEFAULT_COLORS.map((c) => ({ ...c })),
-      customPercents: [50, 30, 20],
       measureMethod: 'manual',
       logoEnabled: false,
       logoImage: null,
@@ -70,17 +63,10 @@
       tilesPerBox: parseInt($('#tilesPerBox').value, 10) || 4,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
-      aisleWidth: parseInt($('#aisleWidth').value, 10) || 2,
-      stripeWidth: parseInt($('#stripeWidth').value, 10) || 1,
       colors: [
         { name: $('#color1Name').value, hex: $('#color1Hex').value },
         { name: $('#color2Name').value, hex: $('#color2Hex').value },
         { name: $('#color3Name').value, hex: $('#color3Hex').value },
-      ],
-      customPercents: [
-        parseFloat($('#customPct1').value) || 0,
-        parseFloat($('#customPct2').value) || 0,
-        parseFloat($('#customPct3').value) || 0,
       ],
       measureMethod: document.querySelector('.measure-tab.active')?.dataset.tab || 'manual',
       logoEnabled: $('#logoEnabled')?.checked || false,
@@ -131,10 +117,8 @@
     $('#sparePercent').value = data.sparePercent ?? 10;
 
     selectedPattern = data.pattern || 'rejilla';
+    if (!TileCalc.FLOOR_TYPES[selectedPattern]) selectedPattern = 'rejilla';
     updatePatternSelection();
-
-    $('#aisleWidth').value = data.aisleWidth ?? 2;
-    $('#stripeWidth').value = data.stripeWidth ?? 1;
 
     const colors = data.colors || TileCalc.DEFAULT_COLORS;
     $('#color1Name').value = colors[0]?.name || 'Gris (fondo)';
@@ -143,11 +127,6 @@
     $('#color2Hex').value = colors[1]?.hex || '#1a1a1a';
     $('#color3Name').value = colors[2]?.name || 'Rojo';
     $('#color3Hex').value = colors[2]?.hex || '#c41e1e';
-
-    const pcts = data.customPercents || [50, 30, 20];
-    $('#customPct1').value = pcts[0];
-    $('#customPct2').value = pcts[1];
-    $('#customPct3').value = pcts[2];
 
     $('#photoThumbData').value = data.photoThumb || '';
     setMeasureTab(data.measureMethod || 'manual');
@@ -225,21 +204,13 @@
   }
 
   function updatePatternUI() {
-    const pattern = selectedPattern;
-    const needs2 = !['solid', 'custom', 'rejilla', 'trama', 'moneda'].includes(pattern);
-    const needs3 = ['custom', 'rejilla', 'trama', 'moneda'].includes(pattern);
-    const needsAisle = pattern === 'center-aisle' || pattern === 'transverse-aisle';
-    const needsStripe = pattern === 'stripes-h' || pattern === 'stripes-v';
-
-    $('#color2Group').classList.toggle('hidden', !needs2 && !needs3);
+    const needs3 = ['rejilla', 'trama', 'moneda'].includes(selectedPattern);
+    $('#color2Group').classList.toggle('hidden', !needs3);
     $('#color3Group').classList.toggle('hidden', !needs3);
-    $('#customPctGroup').classList.toggle('hidden', pattern !== 'custom');
-    $('#aisleWidthGroup').classList.toggle('hidden', !needsAisle);
-    $('#stripeWidthGroup').classList.toggle('hidden', !needsStripe);
   }
 
   function updatePatternSelection() {
-    $$('.pattern-btn, .floor-type-btn').forEach((btn) => {
+    $$('.floor-type-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.pattern === selectedPattern);
     });
     updatePatternUI();
@@ -271,10 +242,15 @@
       tbody.innerHTML = '';
       empty.classList.remove('hidden');
       $('#statNetas').textContent = '—';
+      $('#statRepuesto').textContent = '—';
       $('#statComprar').textContent = '—';
       $('#statCubierto').textContent = '—';
       $('#statGrilla').textContent = '—';
-      $('#totalTiles').textContent = '—';
+      $('#subtotalNetas').textContent = '—';
+      $('#subtotalRepuesto').textContent = '—';
+      $('#subtotalComprar').textContent = '—';
+      $('#subtotalCajas').textContent = '—';
+      $('#totalFinalLabel').textContent = '—';
       $('#totalBoxes').textContent = '—';
       $('#canvasEmpty').classList.remove('hidden');
       $('#floorCanvas').classList.add('hidden');
@@ -282,12 +258,15 @@
     }
 
     empty.classList.add('hidden');
+    const sparePct = form?.sparePercent ?? result.sparePercent ?? 10;
     tbody.innerHTML = result.breakdown
       .map(
         (row) => `
       <tr>
         <td><span class="color-swatch" style="background:${row.hex}"></span>${escapeHtml(row.name)}</td>
-        <td>${row.tilesWithSpare}</td>
+        <td>${row.tiles}</td>
+        <td class="col-spare">+${row.spareTiles ?? (row.tilesWithSpare - row.tiles)}</td>
+        <td><strong>${row.tilesWithSpare}</strong></td>
         <td>${row.percent}%</td>
         <td>${row.boxes}</td>
       </tr>`
@@ -295,12 +274,16 @@
       .join('');
 
     $('#statNetas').textContent = result.totalTiles;
+    $('#statRepuesto').textContent = `+${result.totalSpareTiles ?? 0} (${sparePct}%)`;
     $('#statComprar').textContent = result.totalTilesWithSpare;
     $('#statCubierto').textContent = `${result.coveredM2.toFixed(1)} m²`;
     $('#statGrilla').textContent = `${result.cols}×${result.rows}`;
-    $('#totalTiles').textContent = result.totalTilesWithSpare;
+    $('#subtotalNetas').textContent = result.totalTiles;
+    $('#subtotalRepuesto').textContent = `+${result.totalSpareTiles ?? 0}`;
+    $('#subtotalComprar').textContent = result.totalTilesWithSpare;
+    $('#subtotalCajas').textContent = result.totalBoxes;
+    $('#totalFinalLabel').textContent = result.totalTilesWithSpare;
     $('#totalBoxes').textContent = result.totalBoxes;
-    $('#totalPct').textContent = '100%';
   }
 
   function createThumb(canvas, maxW = 96, maxH = 64) {
@@ -492,6 +475,7 @@
       $('#editorTitle').textContent = 'Nuevo presupuesto';
     }
     showView('editor');
+    debounce(recalculate);
   }
 
   function initTheme() {
@@ -518,9 +502,13 @@
       `Superficie: ${lastResult.areaM2.toFixed(2)} m² (${form.roomWidthM.toFixed(2)} × ${form.roomLengthM.toFixed(2)} m)`,
       `Piso: ${TileCalc.PATTERNS[form.pattern]}`,
       `Baldosas netas: ${lastResult.totalTiles}`,
-      `A comprar (+${form.sparePercent}% cortes): ${lastResult.totalTilesWithSpare}`,
+      `Repuesto cortes (+${form.sparePercent}%): +${lastResult.totalSpareTiles ?? 0}`,
+      `Total a comprar: ${lastResult.totalTilesWithSpare}`,
       `Cajas: ${lastResult.totalBoxes}`,
-      ...lastResult.breakdown.map((r) => `• ${r.name}: ${r.tilesWithSpare} u. (${r.boxes} cajas)`),
+      ...lastResult.breakdown.map((r) => {
+        const spare = r.spareTiles ?? (r.tilesWithSpare - r.tiles);
+        return `• ${r.name}: ${r.tiles} netas + ${spare} rep. = ${r.tilesWithSpare} u. (${r.boxes} cajas)`;
+      }),
     ].filter(Boolean);
 
     try {
@@ -549,11 +537,15 @@
     wrap.appendChild($('#floorCanvas').cloneNode(true));
 
     $('#printTable').innerHTML = `
-      <thead><tr><th>Color</th><th>Netas</th><th>Con repuesto</th><th>Cajas</th></tr></thead>
-      <tbody>${lastResult.breakdown.map((r) =>
-        `<tr><td>${escapeHtml(r.name)}</td><td>${r.tiles}</td><td>${r.tilesWithSpare}</td><td>${r.boxes}</td></tr>`
-      ).join('')}</tbody>
-      <tfoot><tr><td><strong>Total</strong></td><td>${lastResult.totalTiles}</td><td>${lastResult.totalTilesWithSpare}</td><td>${lastResult.totalBoxes}</td></tr></tfoot>`;
+      <thead><tr><th>Color</th><th>Netas</th><th>Repuesto</th><th>A comprar</th><th>Cajas</th></tr></thead>
+      <tbody>${lastResult.breakdown.map((r) => {
+        const spare = r.spareTiles ?? (r.tilesWithSpare - r.tiles);
+        return `<tr><td>${escapeHtml(r.name)}</td><td>${r.tiles}</td><td>+${spare}</td><td>${r.tilesWithSpare}</td><td>${r.boxes}</td></tr>`;
+      }).join('')}</tbody>
+      <tfoot>
+        <tr><td><strong>Subtotal</strong></td><td>${lastResult.totalTiles}</td><td>+${lastResult.totalSpareTiles ?? 0}</td><td>${lastResult.totalTilesWithSpare}</td><td>${lastResult.totalBoxes}</td></tr>
+        <tr><td colspan="5"><strong>Total final: ${lastResult.totalTilesWithSpare} baldosas · ${lastResult.totalBoxes} cajas</strong></td></tr>
+      </tfoot>`;
 
     window.print();
   }
@@ -569,18 +561,7 @@
         </button>`;
       }).join('');
 
-    const patGrid = $('#patternGrid');
-    patGrid.innerHTML = OTHER_PATTERNS
-      .map((key) => {
-        const label = TileCalc.PATTERNS[key];
-        const preview = TileCalc.getPatternPreview(key);
-        return `<button type="button" class="pattern-btn${key === selectedPattern ? ' active' : ''}" data-pattern="${key}">
-          <img src="${preview}" alt="${label}" width="48" height="48">
-          <span>${label}</span>
-        </button>`;
-      }).join('');
-
-    $$('.pattern-btn, .floor-type-btn').forEach((btn) => {
+    $$('.floor-type-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         selectedPattern = btn.dataset.pattern;
         updatePatternSelection();
@@ -738,7 +719,6 @@
     $('#btnSave').addEventListener('click', savePresupuesto);
     $('#btnShare').addEventListener('click', shareWhatsApp);
     $('#btnPrint').addEventListener('click', printPresupuesto);
-    $('#btnCalculate').addEventListener('click', recalculate);
     $('#themeToggle').addEventListener('click', toggleTheme);
     $('#btnMoreMenu')?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -773,7 +753,7 @@
       });
     });
 
-    const inputs = '#cliente, #referencia, #link, #notas, #tileWidth, #tileLength, #tilesPerBox, #sparePercent, #aisleWidth, #stripeWidth, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex, #customPct1, #customPct2, #customPct3';
+    const inputs = '#cliente, #referencia, #link, #notas, #tileWidth, #tileLength, #tilesPerBox, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
     $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());

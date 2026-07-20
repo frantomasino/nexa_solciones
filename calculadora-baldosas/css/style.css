@@ -1096,7 +1096,7 @@ a.dropdown-item:hover {
 /* Quick stats */
 .quick-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
@@ -1149,7 +1149,26 @@ a.dropdown-item:hover {
 .results-table tfoot td {
   border-top: 2px solid var(--accent);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--text);
+}
+
+.results-table .col-spare {
+  color: var(--accent-secondary);
+  font-weight: 600;
+}
+
+.results-table .subtotal-row td {
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+  background: var(--bg-input);
+}
+
+.results-table .total-row td {
+  border-top: none;
+  background: var(--accent-soft);
+  color: var(--text);
+  text-align: center;
+  padding: 0.75rem;
 }
 
 .color-swatch {
