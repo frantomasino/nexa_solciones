@@ -2,11 +2,16 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1c1c1f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Baldosas">
   <meta name="description" content="Calculadora de baldosas para presupuestos de piso técnico de goma">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>Calculadora de Baldosas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +35,7 @@
           <span class="user-avatar">👤</span>
           <span id="userNameDisplay">Usuario</span>
         </button>
-        <button type="button" id="btnInstall" class="btn btn-outline hidden">Instalar app</button>
+        <button type="button" id="btnInstall" class="btn btn-outline">Instalar app</button>
         <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
         <div class="menu-wrap">
           <button type="button" id="btnMoreMenu" class="btn btn-icon" title="Más opciones" aria-haspopup="true" aria-expanded="false">⋮</button>
@@ -343,6 +348,38 @@
     <div id="printCanvasWrap"></div>
     <table id="printTable"></table>
   </div>
+
+  <!-- Modal instalar app -->
+  <dialog id="installModal" class="modal">
+    <form method="dialog" class="modal-box">
+      <h3>Instalar en celular o computadora</h3>
+      <div id="installNative" class="install-block hidden">
+        <p>Tu navegador permite instalar la app directamente:</p>
+        <button type="button" id="btnInstallNative" class="btn btn-primary">Instalar ahora</button>
+      </div>
+      <div id="installManual">
+        <p class="hint install-warning" id="installFileWarning"></p>
+        <div class="install-steps">
+          <div class="install-step">
+            <strong>iPhone / iPad (Safari)</strong>
+            <p>Tocá <strong>Compartir</strong> ↗ abajo → <strong>Agregar a pantalla de inicio</strong></p>
+          </div>
+          <div class="install-step">
+            <strong>Android (Chrome)</strong>
+            <p>Menú ⋮ → <strong>Instalar aplicación</strong> o <strong>Agregar a pantalla principal</strong></p>
+          </div>
+          <div class="install-step">
+            <strong>Computadora (Chrome / Edge)</strong>
+            <p>Ícono de instalar en la barra de direcciones, o menú → <strong>Instalar Calculadora de Baldosas</strong></p>
+          </div>
+        </div>
+        <p class="hint">Para que aparezca "Instalar", la app tiene que abrirse desde un link web (https), no como archivo local.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('installModal').close()">Entendido</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Modal usuario -->
   <dialog id="userModal" class="modal">

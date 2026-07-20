@@ -675,18 +675,37 @@
   }
 
   function initPWA() {
+    const btn = $('#btnInstall');
+    const modal = $('#installModal');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isFile = window.location.protocol === 'file:';
+
+    if (isStandalone) {
+      btn?.classList.add('hidden');
+      return;
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
-      $('#btnInstall')?.classList.remove('hidden');
+      $('#installNative')?.classList.remove('hidden');
     });
 
-    $('#btnInstall')?.addEventListener('click', async () => {
+    if (isFile) {
+      const warn = $('#installFileWarning');
+      if (warn) {
+        warn.textContent = 'Estás abriendo el archivo directo. Para instalar, usá: python3 -m http.server 8080 y abrí http://localhost:8080';
+      }
+    }
+
+    btn?.addEventListener('click', () => modal?.showModal());
+
+    $('#btnInstallNative')?.addEventListener('click', async () => {
       if (!deferredInstallPrompt) return;
       deferredInstallPrompt.prompt();
       await deferredInstallPrompt.userChoice;
       deferredInstallPrompt = null;
-      $('#btnInstall')?.classList.add('hidden');
+      modal?.close();
     });
   }
 
