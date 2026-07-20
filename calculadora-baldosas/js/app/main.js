@@ -544,7 +544,7 @@
       }).join('')}</tbody>
       <tfoot>
         <tr><td><strong>Subtotal</strong></td><td>${lastResult.totalTiles}</td><td>+${lastResult.totalSpareTiles ?? 0}</td><td>${lastResult.totalTilesWithSpare}</td><td>${lastResult.totalBoxes}</td></tr>
-        <tr><td colspan="5"><strong>Total final: ${lastResult.totalTilesWithSpare} baldosas · ${lastResult.totalBoxes} cajas</strong></td></tr>
+        <tr><td colspan="5"><strong>Total final: ${lastResult.totalTiles} netas + ${lastResult.totalSpareTiles ?? 0} repuesto (${form.sparePercent}%) = ${lastResult.totalTilesWithSpare} baldosas · ${lastResult.totalBoxes} cajas</strong></td></tr>
       </tfoot>`;
 
     window.print();
