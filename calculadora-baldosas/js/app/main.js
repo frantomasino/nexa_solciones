@@ -439,9 +439,9 @@
           <td class="col-boxes">${boxes}</td>
           <td class="col-actions">
             <div class="row-actions">
-              <button type="button" class="btn-icon-action" data-action="edit" data-id="${p.id}" title="Editar">✎</button>
-              <button type="button" class="btn-icon-action" data-action="dup" data-id="${p.id}" title="Duplicar">⧉</button>
-              <button type="button" class="btn-icon-action btn-icon-danger" data-action="del" data-id="${p.id}" title="Borrar">✕</button>
+              <button type="button" class="btn-icon-action has-tip" data-action="edit" data-id="${p.id}" data-tip="Editar presupuesto" aria-label="Editar presupuesto" title="Editar presupuesto">✎</button>
+              <button type="button" class="btn-icon-action has-tip" data-action="dup" data-id="${p.id}" data-tip="Duplicar presupuesto" aria-label="Duplicar presupuesto" title="Duplicar presupuesto">⧉</button>
+              <button type="button" class="btn-icon-action btn-icon-danger has-tip" data-action="del" data-id="${p.id}" data-tip="Eliminar presupuesto" aria-label="Eliminar presupuesto" title="Eliminar presupuesto">✕</button>
             </div>
           </td>
         </tr>`;
