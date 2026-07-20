@@ -6,50 +6,65 @@
   <title>Calculadora de Baldosas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <div class="hazard-stripe hazard-top"></div>
+
   <header class="app-header">
     <div class="header-inner">
       <div class="brand">
-        <span class="brand-icon">▦</span>
-        <h1>Calculadora de Baldosas</h1>
+        <span class="brand-icon" aria-hidden="true">▦</span>
+        <div>
+          <h1>Calculadora de Baldosas</h1>
+          <p class="brand-sub">Presupuestos de piso técnico de goma — showroom / taller</p>
+        </div>
       </div>
       <nav class="header-actions">
-        <button type="button" id="btnExport" class="btn btn-ghost btn-sm" title="Exportar backup">⬇ Backup</button>
-        <label class="btn btn-ghost btn-sm" title="Importar backup">
-          ⬆ Importar
+        <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
+        <button type="button" id="btnExport" class="btn btn-outline">Exportar backup</button>
+        <label class="btn btn-outline">
+          Importar backup
           <input type="file" id="importFile" accept=".json" hidden>
         </label>
-        <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
+        <button type="button" id="btnNew" class="btn btn-primary">+ Nuevo presupuesto</button>
       </nav>
     </div>
   </header>
 
+  <div class="hazard-stripe hazard-bottom"></div>
+
   <main class="app-main">
     <!-- Dashboard -->
     <section id="viewDashboard" class="view">
-      <div class="view-header">
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card"><span class="stat-value" id="statPresupuestos">0</span><span class="stat-label">Presupuestos</span></div>
+        <div class="stat-card"><span class="stat-value" id="statM2">0</span><span class="stat-label">m² totales</span></div>
+        <div class="stat-card"><span class="stat-value" id="statBaldosas">0</span><span class="stat-label">Baldosas totales</span></div>
+        <div class="stat-card"><span class="stat-value" id="statLinks">0</span><span class="stat-label">Con link adjunto</span></div>
+      </div>
+
+      <div class="section-head">
         <h2>Presupuestos guardados</h2>
-        <button type="button" id="btnNew" class="btn btn-primary">+ Nuevo presupuesto</button>
       </div>
-      <div id="dashboardEmpty" class="empty-state hidden">
-        <p>No hay presupuestos guardados todavía.</p>
-        <button type="button" class="btn btn-primary" onclick="document.getElementById('btnNew').click()">Crear el primero</button>
+
+      <div id="dashboardEmpty" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>Todavía no hay presupuestos guardados.</p>
+        <p class="hint">Tocá <strong>+ Nuevo presupuesto</strong> para crear el primero.</p>
       </div>
-      <div id="dashboardGrid" class="dashboard-grid"></div>
+      <div id="dashboardGrid" class="dashboard-grid hidden"></div>
     </section>
 
     <!-- Editor -->
     <section id="viewEditor" class="view hidden">
-      <div class="view-header">
-        <button type="button" id="btnBack" class="btn btn-ghost">← Volver</button>
-        <h2 id="editorTitle">Nuevo presupuesto</h2>
-        <div class="editor-actions">
-          <button type="button" id="btnShare" class="btn btn-ghost">Compartir</button>
-          <button type="button" id="btnPrint" class="btn btn-ghost">Imprimir / PDF</button>
-          <button type="button" id="btnSave" class="btn btn-primary">Guardar</button>
+      <div class="editor-topbar">
+        <button type="button" id="btnBack" class="btn btn-ghost">← Volver al listado</button>
+        <div class="editor-topbar-actions">
+          <button type="button" id="btnShare" class="btn btn-outline">Compartir</button>
+          <button type="button" id="btnPrint" class="btn btn-outline">Imprimir / PDF</button>
+          <button type="button" id="btnSave" class="btn btn-primary">Guardar presupuesto</button>
         </div>
       </div>
 
@@ -57,17 +72,25 @@
         <div class="editor-form">
           <!-- Cliente -->
           <fieldset class="panel">
-            <legend>Cliente</legend>
-            <div class="field-row">
+            <legend>Datos del cliente / obra</legend>
+            <div class="field-row field-row-2">
               <label class="field">
-                <span>Nombre del cliente</span>
-                <input type="text" id="cliente" placeholder="Ej: Gimnasio Norte">
+                <span>Cliente</span>
+                <input type="text" id="cliente" placeholder="Ej: Taller Chito">
               </label>
               <label class="field">
-                <span>Link (fotos / Drive / ubicación)</span>
-                <input type="url" id="link" placeholder="https://...">
+                <span>Nº de referencia / obra</span>
+                <input type="text" id="referencia" placeholder="Ej: PRES-014">
               </label>
             </div>
+            <label class="field">
+              <span>Link (fotos, planos, Drive, ubicación…)</span>
+              <input type="url" id="link" placeholder="https://...">
+            </label>
+            <label class="field">
+              <span>Notas</span>
+              <textarea id="notas" rows="2" placeholder="Observaciones internas…"></textarea>
+            </label>
           </fieldset>
 
           <!-- Medición -->
@@ -75,6 +98,7 @@
             <legend>Medición del ambiente</legend>
             <div class="measure-tabs">
               <button type="button" class="measure-tab active" data-tab="manual">Manual</button>
+              <button type="button" class="measure-tab" data-tab="area">Por m²</button>
               <button type="button" class="measure-tab" data-tab="photo">Con foto</button>
               <button type="button" class="measure-tab" data-tab="video">Con video</button>
             </div>
@@ -83,30 +107,36 @@
               <div class="field-row">
                 <label class="field">
                   <span>Ancho (m)</span>
-                  <input type="number" id="roomWidth" min="0.1" step="0.01" value="6">
+                  <input type="number" id="roomWidth" min="0.1" step="0.01" value="4.69">
                 </label>
                 <label class="field">
                   <span>Largo (m)</span>
-                  <input type="number" id="roomLength" min="0.1" step="0.01" value="8">
+                  <input type="number" id="roomLength" min="0.1" step="0.01" value="4.69">
+                </label>
+                <label class="field field-readonly">
+                  <span>Superficie</span>
+                  <output id="areaFromDims">22.00 m²</output>
+                </label>
+              </div>
+            </div>
+
+            <div class="measure-panel hidden" data-panel="area">
+              <p class="hint">Ingresá los m² que pidió el cliente. Se calcula un ambiente cuadrado (podés ajustar ancho/largo en Manual).</p>
+              <div class="field-row">
+                <label class="field field-highlight">
+                  <span>Superficie total (m²)</span>
+                  <input type="number" id="areaInput" min="0.1" step="0.01" value="22" placeholder="Ej: 22">
                 </label>
               </div>
             </div>
 
             <div class="measure-panel hidden" data-panel="photo">
               <p id="measureStep" class="hint">1. Subí una foto y marcá los dos extremos de una referencia conocida</p>
-              <label class="field">
-                <span>Subir foto</span>
-                <input type="file" id="photoFile" accept="image/*">
-              </label>
-              <label class="field field-inline">
-                <span>Longitud de referencia (m)</span>
-                <input type="number" id="refLength" min="0.01" step="0.01" value="0.5">
-              </label>
-              <div class="canvas-wrap">
-                <canvas id="measureCanvas"></canvas>
-              </div>
+              <label class="field"><span>Subir foto</span><input type="file" id="photoFile" accept="image/*"></label>
+              <label class="field field-inline"><span>Longitud referencia (m)</span><input type="number" id="refLength" min="0.01" step="0.01" value="0.5"></label>
+              <div class="canvas-wrap"><canvas id="measureCanvas"></canvas></div>
               <div class="btn-row">
-                <button type="button" id="btnRefDone" class="btn btn-sm">Confirmar referencia →</button>
+                <button type="button" id="btnRefDone" class="btn btn-sm btn-outline">Confirmar referencia →</button>
                 <button type="button" id="btnContourUndo" class="btn btn-sm btn-ghost">Deshacer punto</button>
                 <button type="button" id="btnMeasureReset" class="btn btn-sm btn-ghost">Reiniciar</button>
               </div>
@@ -114,176 +144,143 @@
 
             <div class="measure-panel hidden" data-panel="video">
               <p id="videoMeasureStep" class="hint">Subí un video, elegí un cuadro y medí igual que con foto</p>
-              <label class="field">
-                <span>Subir video</span>
-                <input type="file" id="videoFile" accept="video/*">
-              </label>
+              <label class="field"><span>Subir video</span><input type="file" id="videoFile" accept="video/*"></label>
               <video id="measureVideo" class="measure-video hidden" controls></video>
-              <button type="button" id="btnCaptureFrame" class="btn btn-sm">Capturar cuadro actual</button>
-              <label class="field field-inline">
-                <span>Longitud de referencia (m)</span>
-                <input type="number" id="refLengthVideo" min="0.01" step="0.01" value="0.5">
-              </label>
-              <div class="canvas-wrap">
-                <canvas id="measureVideoCanvas" class="hidden"></canvas>
-              </div>
-              <button type="button" id="btnVideoRefDone" class="btn btn-sm">Confirmar referencia →</button>
+              <button type="button" id="btnCaptureFrame" class="btn btn-sm btn-outline">Capturar cuadro actual</button>
+              <label class="field field-inline"><span>Longitud referencia (m)</span><input type="number" id="refLengthVideo" min="0.01" step="0.01" value="0.5"></label>
+              <div class="canvas-wrap"><canvas id="measureVideoCanvas" class="hidden"></canvas></div>
+              <button type="button" id="btnVideoRefDone" class="btn btn-sm btn-outline">Confirmar referencia →</button>
             </div>
           </fieldset>
 
-          <!-- Baldosa -->
+          <!-- Baldosa y patrón -->
           <fieldset class="panel">
-            <legend>Baldosa</legend>
-            <div class="field-row">
-              <label class="field">
-                <span>Ancho baldosa (cm)</span>
-                <input type="number" id="tileWidth" min="1" step="0.1" value="50">
-              </label>
-              <label class="field">
-                <span>Largo baldosa (cm)</span>
-                <input type="number" id="tileLength" min="1" step="0.1" value="50">
-              </label>
-              <label class="field">
-                <span>Baldosas por caja</span>
-                <input type="number" id="tilesPerBox" min="1" value="20">
-              </label>
-              <label class="field">
-                <span>Repuesto (%)</span>
-                <input type="number" id="sparePercent" min="0" max="50" value="10">
-              </label>
-            </div>
-          </fieldset>
+            <legend>Baldosa y patrón</legend>
 
-          <!-- Patrón -->
-          <fieldset class="panel">
-            <legend>Patrón de piso</legend>
-            <label class="field">
-              <span>Patrón</span>
-              <select id="pattern"></select>
-            </label>
+            <p class="field-label">Tamaño de baldosa</p>
+            <div class="tile-size-btns" id="tileSizeBtns">
+              <button type="button" class="tile-size-btn" data-size="40">40×40</button>
+              <button type="button" class="tile-size-btn active" data-size="50">50×50</button>
+              <button type="button" class="tile-size-btn" data-size="60">60×60</button>
+              <button type="button" class="tile-size-btn" data-size="custom">Otro</button>
+            </div>
+            <div id="customSizeRow" class="field-row hidden">
+              <label class="field"><span>Ancho (cm)</span><input type="number" id="tileWidth" min="1" step="0.1" value="50"></label>
+              <label class="field"><span>Largo (cm)</span><input type="number" id="tileLength" min="1" step="0.1" value="50"></label>
+            </div>
+
+            <p class="field-label">Tipo de piso</p>
+            <div class="floor-type-grid" id="floorTypeGrid"></div>
+
+            <p class="field-label">Otros patrones de distribución</p>
+            <div class="pattern-grid" id="patternGrid"></div>
 
             <div id="aisleWidthGroup" class="field hidden">
-              <label>
-                <span>Ancho carril central (baldosas)</span>
-                <input type="number" id="aisleWidth" min="1" value="2">
-              </label>
+              <label class="field"><span>Ancho carril (baldosas)</span><input type="number" id="aisleWidth" min="1" value="2"></label>
             </div>
             <div id="stripeWidthGroup" class="field hidden">
-              <label>
-                <span>Ancho de franja (baldosas)</span>
-                <input type="number" id="stripeWidth" min="1" value="1">
-              </label>
+              <label class="field"><span>Ancho de franja (baldosas)</span><input type="number" id="stripeWidth" min="1" value="1"></label>
             </div>
 
-            <div class="colors-grid">
-              <div class="color-field">
-                <label class="field">
-                  <span>Color 1</span>
-                  <input type="text" id="color1Name" value="Gris">
-                </label>
-                <div class="color-input-wrap">
-                  <span class="color-preview" style="background:#6b7280"></span>
-                  <input type="color" id="color1Hex" class="color-hex" value="#6b7280">
-                </div>
+            <p class="field-label">Colores</p>
+            <div class="colors-row">
+              <div class="color-chip">
+                <input type="color" id="color1Hex" class="color-hex" value="#7a7a7a">
+                <input type="text" id="color1Name" class="color-name" value="Gris (fondo)">
               </div>
-              <div id="color2Group" class="color-field hidden">
-                <label class="field">
-                  <span>Color 2</span>
-                  <input type="text" id="color2Name" value="Negro">
-                </label>
-                <div class="color-input-wrap">
-                  <span class="color-preview" style="background:#1f2937"></span>
-                  <input type="color" id="color2Hex" class="color-hex" value="#1f2937">
-                </div>
+              <div class="color-chip" id="color2Group">
+                <input type="color" id="color2Hex" class="color-hex" value="#1a1a1a">
+                <input type="text" id="color2Name" class="color-name" value="Negro">
               </div>
-              <div id="color3Group" class="color-field hidden">
-                <label class="field">
-                  <span>Color 3</span>
-                  <input type="text" id="color3Name" value="Rojo">
-                </label>
-                <div class="color-input-wrap">
-                  <span class="color-preview" style="background:#dc2626"></span>
-                  <input type="color" id="color3Hex" class="color-hex" value="#dc2626">
-                </div>
+              <div class="color-chip" id="color3Group">
+                <input type="color" id="color3Hex" class="color-hex" value="#c41e1e">
+                <input type="text" id="color3Name" class="color-name" value="Rojo">
               </div>
             </div>
 
             <div id="customPctGroup" class="field-row hidden">
+              <label class="field"><span>% Gris</span><input type="number" id="customPct1" min="0" max="100" value="50"></label>
+              <label class="field"><span>% Negro</span><input type="number" id="customPct2" min="0" max="100" value="30"></label>
+              <label class="field"><span>% Rojo</span><input type="number" id="customPct3" min="0" max="100" value="20"></label>
+            </div>
+          </fieldset>
+
+          <!-- Compra -->
+          <fieldset class="panel panel-compra">
+            <legend>Compra</legend>
+            <div class="field-row">
               <label class="field">
-                <span>% Color 1</span>
-                <input type="number" id="customPct1" min="0" max="100" value="50">
+                <span>Baldosas por caja</span>
+                <input type="number" id="tilesPerBox" min="1" value="4">
               </label>
               <label class="field">
-                <span>% Color 2</span>
-                <input type="number" id="customPct2" min="0" max="100" value="30">
-              </label>
-              <label class="field">
-                <span>% Color 3</span>
-                <input type="number" id="customPct3" min="0" max="100" value="20">
+                <span>% extra para cortes</span>
+                <input type="number" id="sparePercent" min="0" max="50" value="10">
+                <small class="field-hint">Repuesto por cortes en costados y bordes</small>
               </label>
             </div>
+            <button type="button" id="btnCalculate" class="btn btn-calc">Calcular y dibujar piso</button>
           </fieldset>
         </div>
 
         <aside class="editor-preview">
           <div class="panel preview-panel">
             <h3>Plano del piso</h3>
-            <div class="canvas-wrap canvas-wrap-center">
-              <canvas id="floorCanvas"></canvas>
+            <div class="canvas-wrap canvas-wrap-plan" id="canvasPlaceholder">
+              <canvas id="floorCanvas" class="hidden"></canvas>
+              <p id="canvasEmpty" class="canvas-empty">Cargá las medidas y tocá <strong>Calcular y dibujar piso</strong></p>
             </div>
-            <p id="gridInfo" class="hint"></p>
             <input type="hidden" id="photoThumbData">
+
+            <div class="quick-stats">
+              <div class="quick-stat"><span class="qs-label">Baldosas netas</span><span class="qs-value" id="statNetas">—</span></div>
+              <div class="quick-stat"><span class="qs-label">A comprar</span><span class="qs-value" id="statComprar">—</span></div>
+              <div class="quick-stat"><span class="qs-label">m² cubiertos</span><span class="qs-value" id="statCubierto">—</span></div>
+              <div class="quick-stat"><span class="qs-label">Grilla</span><span class="qs-value" id="statGrilla">—</span></div>
+            </div>
           </div>
 
           <div class="panel results-panel">
-            <h3>Resumen</h3>
-            <dl class="summary-dl">
-              <dt>Cliente</dt><dd id="summaryCliente">—</dd>
-              <dt>Medidas</dt><dd id="summaryMedidas">—</dd>
-              <dt>Área</dt><dd id="areaDisplay">—</dd>
-              <dt>Patrón</dt><dd id="summaryPatron">—</dd>
-              <dt>Total baldosas</dt><dd id="totalTiles">—</dd>
-              <dt>Total cajas</dt><dd id="totalBoxes">—</dd>
-            </dl>
-
             <table class="results-table">
               <thead>
                 <tr>
                   <th>Color</th>
-                  <th>Bald.</th>
-                  <th>+Rep.</th>
-                  <th>Cajas</th>
+                  <th>Baldosas</th>
                   <th>%</th>
+                  <th>Cajas</th>
                 </tr>
               </thead>
               <tbody id="resultsBody"></tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td>Total <small>(+ repuesto)</small></td>
+                  <td id="totalTiles">—</td>
+                  <td id="totalPct">100%</td>
+                  <td id="totalBoxes">—</td>
+                </tr>
+              </tfoot>
             </table>
-            <p id="resultsEmpty" class="hint">Ingresá medidas válidas para ver el cálculo.</p>
+            <p id="resultsEmpty" class="hint">Los resultados aparecen acá al calcular.</p>
           </div>
         </aside>
       </div>
     </section>
   </main>
 
-  <!-- Print template -->
   <div id="printArea" class="print-only">
     <h1>Presupuesto de Baldosas</h1>
     <p><strong>Cliente:</strong> <span id="printCliente"></span></p>
+    <p><strong>Referencia:</strong> <span id="printReferencia"></span></p>
     <p><strong>Medidas:</strong> <span id="printMedidas"></span></p>
     <p><strong>Área:</strong> <span id="printArea2"></span></p>
-    <p><strong>Patrón:</strong> <span id="printPatron"></span></p>
+    <p><strong>Piso / Patrón:</strong> <span id="printPatron"></span></p>
     <div id="printCanvasWrap"></div>
     <table id="printTable"></table>
   </div>
-
-  <footer class="app-footer">
-    <p>Calculadora de Baldosas — uso interno</p>
-  </footer>
 
   <script src="js/core/tile-calc.js"></script>
   <script src="js/core/photo-measure.js"></script>
   <script src="js/data/storage.js"></script>
   <script src="js/app/main.js"></script>
-  <!-- Supabase (desconectado): ver js/pendiente-login/README.md -->
 </body>
 </html>

@@ -5,10 +5,17 @@
   'use strict';
 
   const DEBOUNCE_MS = 300;
+  const OTHER_PATTERNS = [
+    'solid', 'border-center', 'checkerboard',
+    'stripes-h', 'stripes-v', 'center-aisle', 'transverse-aisle', 'custom',
+  ];
+
   let currentId = null;
   let measureSession = null;
   let debounceTimer = null;
   let lastResult = null;
+  let selectedPattern = 'rejilla';
+  let tileSizeMode = '50';
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -19,21 +26,25 @@
   }
 
   function defaultFormState() {
+    const dims = TileCalc.dimensionsFromArea(22);
     return {
       cliente: '',
+      referencia: '',
       link: '',
-      roomWidthM: 6,
-      roomLengthM: 8,
+      notas: '',
+      roomWidthM: dims.roomWidthM,
+      roomLengthM: dims.roomLengthM,
+      areaM2: 22,
       tileWidthCm: 50,
       tileLengthCm: 50,
-      tilesPerBox: 20,
+      tilesPerBox: 4,
       sparePercent: 10,
-      pattern: 'solid',
+      pattern: 'rejilla',
       aisleWidth: 2,
       stripeWidth: 1,
       colors: TileCalc.DEFAULT_COLORS.map((c) => ({ ...c })),
       customPercents: [50, 30, 20],
-      measureMethod: 'manual',
+      measureMethod: 'area',
       photoThumb: null,
     };
   }
@@ -41,14 +52,17 @@
   function readForm() {
     return {
       cliente: $('#cliente').value.trim(),
+      referencia: $('#referencia').value.trim(),
       link: $('#link').value.trim(),
+      notas: $('#notas').value.trim(),
       roomWidthM: parseFloat($('#roomWidth').value) || 0,
       roomLengthM: parseFloat($('#roomLength').value) || 0,
+      areaM2: parseFloat($('#areaInput')?.value) || 0,
       tileWidthCm: parseFloat($('#tileWidth').value) || 50,
       tileLengthCm: parseFloat($('#tileLength').value) || 50,
-      tilesPerBox: parseInt($('#tilesPerBox').value, 10) || 20,
+      tilesPerBox: parseInt($('#tilesPerBox').value, 10) || 4,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
-      pattern: $('#pattern').value,
+      pattern: selectedPattern,
       aisleWidth: parseInt($('#aisleWidth').value, 10) || 2,
       stripeWidth: parseInt($('#stripeWidth').value, 10) || 1,
       colors: [
@@ -66,26 +80,58 @@
     };
   }
 
+  function updateAreaFromDims() {
+    const w = parseFloat($('#roomWidth').value) || 0;
+    const l = parseFloat($('#roomLength').value) || 0;
+    const area = w * l;
+    $('#areaFromDims').textContent = `${area.toFixed(2)} m²`;
+    if ($('#areaInput')) $('#areaInput').value = area.toFixed(2);
+  }
+
+  function applyAreaInput() {
+    const area = parseFloat($('#areaInput').value);
+    if (!area || area <= 0) return;
+    const dims = TileCalc.dimensionsFromArea(area);
+    $('#roomWidth').value = dims.roomWidthM.toFixed(2);
+    $('#roomLength').value = dims.roomLengthM.toFixed(2);
+    updateAreaFromDims();
+  }
+
   function fillForm(data) {
     $('#cliente').value = data.cliente || '';
+    $('#referencia').value = data.referencia || '';
     $('#link').value = data.link || '';
-    $('#roomWidth').value = data.roomWidthM ?? 6;
-    $('#roomLength').value = data.roomLengthM ?? 8;
-    $('#tileWidth').value = data.tileWidthCm ?? 50;
-    $('#tileLength').value = data.tileLengthCm ?? 50;
-    $('#tilesPerBox').value = data.tilesPerBox ?? 20;
+    $('#notas').value = data.notas || '';
+    $('#roomWidth').value = (data.roomWidthM ?? 4.69).toFixed(2);
+    $('#roomLength').value = (data.roomLengthM ?? 4.69).toFixed(2);
+    if ($('#areaInput')) {
+      const area = data.areaM2 ?? (data.roomWidthM * data.roomLengthM);
+      $('#areaInput').value = area.toFixed(2);
+    }
+    updateAreaFromDims();
+
+    const tw = data.tileWidthCm ?? 50;
+    const preset = Object.keys(TileCalc.TILE_PRESETS).find(
+      (k) => TileCalc.TILE_PRESETS[k].w === tw && TileCalc.TILE_PRESETS[k].l === tw
+    );
+    setTileSize(preset || 'custom', tw, data.tileLengthCm ?? tw);
+
+    $('#tilesPerBox').value = data.tilesPerBox ?? 4;
     $('#sparePercent').value = data.sparePercent ?? 10;
-    $('#pattern').value = data.pattern || 'solid';
+
+    selectedPattern = data.pattern || 'rejilla';
+    updatePatternSelection();
+
     $('#aisleWidth').value = data.aisleWidth ?? 2;
     $('#stripeWidth').value = data.stripeWidth ?? 1;
 
     const colors = data.colors || TileCalc.DEFAULT_COLORS;
-    $('#color1Name').value = colors[0]?.name || 'Gris';
-    $('#color1Hex').value = colors[0]?.hex || '#6b7280';
+    $('#color1Name').value = colors[0]?.name || 'Gris (fondo)';
+    $('#color1Hex').value = colors[0]?.hex || '#7a7a7a';
     $('#color2Name').value = colors[1]?.name || 'Negro';
-    $('#color2Hex').value = colors[1]?.hex || '#1f2937';
+    $('#color2Hex').value = colors[1]?.hex || '#1a1a1a';
     $('#color3Name').value = colors[2]?.name || 'Rojo';
-    $('#color3Hex').value = colors[2]?.hex || '#dc2626';
+    $('#color3Hex').value = colors[2]?.hex || '#c41e1e';
 
     const pcts = data.customPercents || [50, 30, 20];
     $('#customPct1').value = pcts[0];
@@ -93,9 +139,27 @@
     $('#customPct3').value = pcts[2];
 
     $('#photoThumbData').value = data.photoThumb || '';
-    setMeasureTab(data.measureMethod || 'manual');
+    setMeasureTab(data.measureMethod || 'area');
     updatePatternUI();
     recalculate();
+  }
+
+  function setTileSize(mode, w, l) {
+    tileSizeMode = mode;
+    $$('.tile-size-btn').forEach((b) => b.classList.toggle('active', b.dataset.size === mode));
+    const customRow = $('#customSizeRow');
+    if (mode === 'custom') {
+      customRow.classList.remove('hidden');
+      $('#tileWidth').value = w ?? 50;
+      $('#tileLength').value = l ?? 50;
+    } else {
+      customRow.classList.add('hidden');
+      const p = TileCalc.TILE_PRESETS[mode];
+      if (p) {
+        $('#tileWidth').value = p.w;
+        $('#tileLength').value = p.l;
+      }
+    }
   }
 
   function setMeasureTab(tab) {
@@ -104,17 +168,24 @@
   }
 
   function updatePatternUI() {
-    const pattern = $('#pattern').value;
-    const needs2 = pattern !== 'solid' && pattern !== 'custom';
-    const needs3 = pattern === 'custom';
-    const needsAisle = pattern === 'center-aisle';
+    const pattern = selectedPattern;
+    const needs2 = !['solid', 'custom', 'rejilla', 'trama', 'moneda'].includes(pattern);
+    const needs3 = ['custom', 'rejilla', 'trama', 'moneda'].includes(pattern);
+    const needsAisle = pattern === 'center-aisle' || pattern === 'transverse-aisle';
     const needsStripe = pattern === 'stripes-h' || pattern === 'stripes-v';
 
     $('#color2Group').classList.toggle('hidden', !needs2 && !needs3);
     $('#color3Group').classList.toggle('hidden', !needs3);
-    $('#customPctGroup').classList.toggle('hidden', !needs3);
+    $('#customPctGroup').classList.toggle('hidden', pattern !== 'custom');
     $('#aisleWidthGroup').classList.toggle('hidden', !needsAisle);
     $('#stripeWidthGroup').classList.toggle('hidden', !needsStripe);
+  }
+
+  function updatePatternSelection() {
+    $$('.pattern-btn, .floor-type-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.pattern === selectedPattern);
+    });
+    updatePatternUI();
   }
 
   function recalculate() {
@@ -126,22 +197,32 @@
 
     lastResult = TileCalc.calculate(form);
     const canvas = $('#floorCanvas');
-    const thumb = TileCalc.drawFloorPlan(canvas, lastResult);
-    if (thumb) $('#photoThumbData').value = thumb;
+    const empty = $('#canvasEmpty');
+    TileCalc.drawFloorPlan(canvas, lastResult);
+    canvas.classList.remove('hidden');
+    empty.classList.add('hidden');
 
-    renderResults(lastResult);
-    renderSummary(form, lastResult);
+    const thumb = canvas.toDataURL('image/png');
+    $('#photoThumbData').value = thumb;
+
+    renderResults(lastResult, form);
   }
 
-  function renderResults(result) {
+  function renderResults(result, form) {
     const tbody = $('#resultsBody');
     const empty = $('#resultsEmpty');
+
     if (!result) {
       tbody.innerHTML = '';
       empty.classList.remove('hidden');
+      $('#statNetas').textContent = '—';
+      $('#statComprar').textContent = '—';
+      $('#statCubierto').textContent = '—';
+      $('#statGrilla').textContent = '—';
       $('#totalTiles').textContent = '—';
       $('#totalBoxes').textContent = '—';
-      $('#areaDisplay').textContent = '—';
+      $('#canvasEmpty').classList.remove('hidden');
+      $('#floorCanvas').classList.add('hidden');
       return;
     }
 
@@ -150,25 +231,21 @@
       .map(
         (row) => `
       <tr>
-        <td><span class="color-swatch" style="background:${row.hex}"></span> ${escapeHtml(row.name)}</td>
-        <td>${row.tiles}</td>
+        <td><span class="color-swatch" style="background:${row.hex}"></span>${escapeHtml(row.name)}</td>
         <td>${row.tilesWithSpare}</td>
-        <td>${row.boxes}</td>
         <td>${row.percent}%</td>
+        <td>${row.boxes}</td>
       </tr>`
       )
       .join('');
 
+    $('#statNetas').textContent = result.totalTiles;
+    $('#statComprar').textContent = result.totalTilesWithSpare;
+    $('#statCubierto').textContent = `${result.coveredM2.toFixed(1)} m²`;
+    $('#statGrilla').textContent = `${result.cols}×${result.rows}`;
     $('#totalTiles').textContent = result.totalTilesWithSpare;
     $('#totalBoxes').textContent = result.totalBoxes;
-    $('#areaDisplay').textContent = `${result.areaM2.toFixed(2)} m²`;
-    $('#gridInfo').textContent = `${result.cols} × ${result.rows} baldosas (${result.actualWidthM.toFixed(2)} × ${result.actualLengthM.toFixed(2)} m cubiertos)`;
-  }
-
-  function renderSummary(form, result) {
-    $('#summaryCliente').textContent = form.cliente || '—';
-    $('#summaryMedidas').textContent = `${form.roomWidthM} × ${form.roomLengthM} m`;
-    $('#summaryPatron').textContent = TileCalc.PATTERNS[form.pattern] || form.pattern;
+    $('#totalPct').textContent = '100%';
   }
 
   function escapeHtml(str) {
@@ -189,31 +266,50 @@
     const grid = $('#dashboardGrid');
     const empty = $('#dashboardEmpty');
 
+    let totalM2 = 0;
+    let totalBaldosas = 0;
+    let totalLinks = 0;
+
+    items.forEach((p) => {
+      totalM2 += (p.roomWidthM || 0) * (p.roomLengthM || 0);
+      totalBaldosas += p.totalTilesWithSpare || 0;
+      if (p.link) totalLinks++;
+    });
+
+    $('#statPresupuestos').textContent = items.length;
+    $('#statM2').textContent = totalM2.toFixed(0);
+    $('#statBaldosas').textContent = totalBaldosas;
+    $('#statLinks').textContent = totalLinks;
+
     if (!items.length) {
       grid.innerHTML = '';
+      grid.classList.add('hidden');
       empty.classList.remove('hidden');
       return;
     }
 
     empty.classList.add('hidden');
+    grid.classList.remove('hidden');
     grid.innerHTML = items
       .map((p) => {
         const date = new Date(p.updatedAt || p.createdAt).toLocaleDateString('es-AR');
-        const area = (p.roomWidthM * p.roomLengthM).toFixed(1);
+        const area = ((p.roomWidthM || 0) * (p.roomLengthM || 0)).toFixed(1);
         const thumb = p.photoThumb || p.canvasThumb;
         const tiles = p.totalTilesWithSpare ?? '—';
         const boxes = p.totalBoxes ?? '—';
+        const patron = TileCalc.PATTERNS[p.pattern] || p.pattern;
         return `
-        <article class="card presupuesto-card" data-id="${p.id}">
-          <div class="card-thumb">${thumb ? `<img src="${thumb}" alt="">` : '<div class="thumb-placeholder">📐</div>'}</div>
+        <article class="presupuesto-card" data-id="${p.id}">
+          <div class="card-thumb">${thumb ? `<img src="${thumb}" alt="">` : '<div class="thumb-placeholder">▦</div>'}</div>
           <div class="card-body">
             <h3>${escapeHtml(p.cliente || 'Sin cliente')}</h3>
-            <p class="card-meta">${date} · ${area} m²</p>
+            ${p.referencia ? `<p class="card-ref">${escapeHtml(p.referencia)}</p>` : ''}
+            <p class="card-meta">${date} · ${area} m² · ${escapeHtml(patron)}</p>
             <p class="card-stats">${tiles} baldosas · ${boxes} cajas</p>
-            ${p.link ? `<a href="${escapeHtml(p.link)}" class="card-link" target="_blank" rel="noopener">Ver ubicación</a>` : ''}
+            ${p.link ? `<a href="${escapeHtml(p.link)}" class="card-link" target="_blank" rel="noopener">Ver link adjunto</a>` : ''}
           </div>
           <div class="card-actions">
-            <button type="button" class="btn btn-sm" data-action="edit" data-id="${p.id}">Editar</button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="edit" data-id="${p.id}">Editar</button>
             <button type="button" class="btn btn-sm btn-ghost" data-action="dup" data-id="${p.id}">Duplicar</button>
             <button type="button" class="btn btn-sm btn-danger" data-action="del" data-id="${p.id}">Borrar</button>
           </div>
@@ -229,18 +325,19 @@
       $('#cliente').focus();
       return;
     }
+    if (!lastResult) recalculate();
 
     const payload = {
       ...form,
       id: currentId,
+      areaM2: form.roomWidthM * form.roomLengthM,
       totalTilesWithSpare: lastResult?.totalTilesWithSpare,
       totalBoxes: lastResult?.totalBoxes,
       canvasThumb: $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
     };
 
-    const saved = Storage.save(payload);
-    currentId = saved.id;
+    Storage.save(payload);
     alert('Presupuesto guardado.');
     showView('dashboard');
   }
@@ -250,10 +347,8 @@
     if (id) {
       const p = Storage.getById(id);
       if (p) fillForm(p);
-      $('#editorTitle').textContent = 'Editar presupuesto';
     } else {
       fillForm(defaultFormState());
-      $('#editorTitle').textContent = 'Nuevo presupuesto';
     }
     showView('editor');
   }
@@ -261,158 +356,129 @@
   function initTheme() {
     const theme = Storage.getTheme();
     document.documentElement.dataset.theme = theme;
-    updateThemeIcon(theme);
+    $('#themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
   }
 
   function toggleTheme() {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     Storage.setTheme(next);
-    updateThemeIcon(next);
-    recalculate();
-  }
-
-  function updateThemeIcon(theme) {
-    $('#themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
-    $('#themeToggle').title = theme === 'dark' ? 'Modo claro' : 'Modo oscuro';
+    $('#themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+    if (lastResult) recalculate();
   }
 
   async function shareWhatsApp() {
-    if (!lastResult) {
-      alert('Completá las medidas primero.');
-      return;
-    }
-
+    if (!lastResult) { alert('Calculá el piso primero.'); return; }
     const form = readForm();
     const canvas = $('#floorCanvas');
     const lines = [
       `*Presupuesto — ${form.cliente || 'Cliente'}*`,
-      `Medidas: ${form.roomWidthM} × ${form.roomLengthM} m (${lastResult.areaM2.toFixed(2)} m²)`,
-      `Patrón: ${TileCalc.PATTERNS[form.pattern]}`,
-      `Baldosas: ${lastResult.totalTilesWithSpare} (+${form.sparePercent}% repuesto)`,
+      form.referencia ? `Ref: ${form.referencia}` : '',
+      `Superficie: ${lastResult.areaM2.toFixed(2)} m² (${form.roomWidthM.toFixed(2)} × ${form.roomLengthM.toFixed(2)} m)`,
+      `Piso: ${TileCalc.PATTERNS[form.pattern]}`,
+      `Baldosas netas: ${lastResult.totalTiles}`,
+      `A comprar (+${form.sparePercent}% cortes): ${lastResult.totalTilesWithSpare}`,
       `Cajas: ${lastResult.totalBoxes}`,
       ...lastResult.breakdown.map((r) => `• ${r.name}: ${r.tilesWithSpare} u. (${r.boxes} cajas)`),
-    ];
+    ].filter(Boolean);
 
     try {
       const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
       const file = new File([blob], 'plano-piso.png', { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: 'Presupuesto baldosa',
-          text: lines.join('\n'),
-          files: [file],
-        });
+        await navigator.share({ title: 'Presupuesto baldosa', text: lines.join('\n'), files: [file] });
         return;
       }
-    } catch {
-      /* fallback */
-    }
+    } catch { /* fallback */ }
 
-    const text = encodeURIComponent(lines.join('\n'));
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
   }
 
   function printPresupuesto() {
-    if (!lastResult) {
-      alert('Completá las medidas primero.');
-      return;
-    }
+    if (!lastResult) { alert('Calculá el piso primero.'); return; }
     const form = readForm();
     $('#printCliente').textContent = form.cliente || '—';
-    $('#printMedidas').textContent = `${form.roomWidthM} × ${form.roomLengthM} m`;
+    $('#printReferencia').textContent = form.referencia || '—';
+    $('#printMedidas').textContent = `${form.roomWidthM.toFixed(2)} × ${form.roomLengthM.toFixed(2)} m`;
     $('#printArea2').textContent = `${lastResult.areaM2.toFixed(2)} m²`;
     $('#printPatron').textContent = TileCalc.PATTERNS[form.pattern] || form.pattern;
 
     const wrap = $('#printCanvasWrap');
     wrap.innerHTML = '';
-    const clone = $('#floorCanvas').cloneNode(true);
-    wrap.appendChild(clone);
+    wrap.appendChild($('#floorCanvas').cloneNode(true));
 
-    const pt = $('#printTable');
-    pt.innerHTML = `
-      <thead><tr><th>Color</th><th>Baldosas</th><th>Con repuesto</th><th>Cajas</th></tr></thead>
-      <tbody>${lastResult.breakdown
-        .map(
-          (r) =>
-            `<tr><td>${escapeHtml(r.name)}</td><td>${r.tiles}</td><td>${r.tilesWithSpare}</td><td>${r.boxes}</td></tr>`
-        )
-        .join('')}</tbody>
-      <tfoot><tr><td colspan="2"><strong>Total</strong></td><td>${lastResult.totalTilesWithSpare}</td><td>${lastResult.totalBoxes}</td></tr></tfoot>`;
+    $('#printTable').innerHTML = `
+      <thead><tr><th>Color</th><th>Netas</th><th>Con repuesto</th><th>Cajas</th></tr></thead>
+      <tbody>${lastResult.breakdown.map((r) =>
+        `<tr><td>${escapeHtml(r.name)}</td><td>${r.tiles}</td><td>${r.tilesWithSpare}</td><td>${r.boxes}</td></tr>`
+      ).join('')}</tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td>${lastResult.totalTiles}</td><td>${lastResult.totalTilesWithSpare}</td><td>${lastResult.totalBoxes}</td></tr></tfoot>`;
 
     window.print();
   }
 
-  function exportBackup() {
-    const json = Storage.exportAll();
-    const blob = new Blob([json], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `presupuestos_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
+  function buildPatternGrids() {
+    const floorGrid = $('#floorTypeGrid');
+    floorGrid.innerHTML = Object.entries(TileCalc.FLOOR_TYPES)
+      .map(([key, label]) => {
+        const preview = TileCalc.getPatternPreview(key);
+        return `<button type="button" class="pattern-btn floor-type-btn${key === selectedPattern ? ' active' : ''}" data-pattern="${key}">
+          <img src="${preview}" alt="${label}" width="48" height="48">
+          <span>${label}</span>
+        </button>`;
+      }).join('');
 
-  function importBackup(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        Storage.importAll(reader.result, true);
-        alert('Backup importado correctamente.');
-        renderDashboard();
-      } catch (e) {
-        alert('Error al importar: ' + e.message);
-      }
-    };
-    reader.readAsText(file);
+    const patGrid = $('#patternGrid');
+    patGrid.innerHTML = OTHER_PATTERNS
+      .map((key) => {
+        const label = TileCalc.PATTERNS[key];
+        const preview = TileCalc.getPatternPreview(key);
+        return `<button type="button" class="pattern-btn${key === selectedPattern ? ' active' : ''}" data-pattern="${key}">
+          <img src="${preview}" alt="${label}" width="48" height="48">
+          <span>${label}</span>
+        </button>`;
+      }).join('');
+
+    $$('.pattern-btn, .floor-type-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedPattern = btn.dataset.pattern;
+        updatePatternSelection();
+        debounce(recalculate);
+      });
+    });
   }
 
   function initMeasurePhoto() {
     const canvas = $('#measureCanvas');
-    const fileInput = $('#photoFile');
-    const refLength = $('#refLength');
-
     measureSession = PhotoMeasure.createMeasureSession(canvas);
     measureSession.setOnUpdate((result) => {
       if (result.ready) {
         $('#roomWidth').value = result.widthM.toFixed(2);
         $('#roomLength').value = result.lengthM.toFixed(2);
+        updateAreaFromDims();
         debounce(recalculate);
       }
     });
 
-    fileInput.addEventListener('change', async (e) => {
+    $('#photoFile').addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const img = await PhotoMeasure.loadImageFromFile(file);
-      measureSession.setImage(img);
+      measureSession.setImage(await PhotoMeasure.loadImageFromFile(file));
       measureSession.resetAll();
-      $('#measureStep').textContent = '1. Marcá los dos extremos de una referencia conocida';
     });
 
-    refLength.addEventListener('input', () => {
-      measureSession.setRefLength(parseFloat(refLength.value) || 1);
-    });
-
-    $('#btnRefDone').addEventListener('click', () => {
-      measureSession.setMode('contour');
-      $('#measureStep').textContent = '2. Marcá el contorno del piso (clic para agregar puntos)';
-    });
-
+    $('#refLength').addEventListener('input', () => measureSession.setRefLength(parseFloat($('#refLength').value) || 1));
+    $('#btnRefDone').addEventListener('click', () => measureSession.setMode('contour'));
     $('#btnContourUndo').addEventListener('click', () => measureSession.undoContour());
-    $('#btnMeasureReset').addEventListener('click', () => {
-      measureSession.resetAll();
-      $('#measureStep').textContent = '1. Marcá los dos extremos de una referencia conocida';
-    });
+    $('#btnMeasureReset').addEventListener('click', () => measureSession.resetAll());
   }
 
   function initMeasureVideo() {
     const video = $('#measureVideo');
-    const fileInput = $('#videoFile');
     const canvas = $('#measureVideoCanvas');
     let session = null;
 
-    fileInput.addEventListener('change', (e) => {
+    $('#videoFile').addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       video.src = URL.createObjectURL(file);
@@ -420,11 +486,7 @@
     });
 
     $('#btnCaptureFrame').addEventListener('click', () => {
-      if (video.readyState < 2) {
-        alert('Esperá a que cargue el video.');
-        return;
-      }
-      const frame = PhotoMeasure.captureVideoFrame(video);
+      if (video.readyState < 2) { alert('Esperá a que cargue el video.'); return; }
       canvas.classList.remove('hidden');
       if (!session) {
         session = PhotoMeasure.createMeasureSession(canvas);
@@ -432,23 +494,17 @@
           if (result.ready) {
             $('#roomWidth').value = result.widthM.toFixed(2);
             $('#roomLength').value = result.lengthM.toFixed(2);
+            updateAreaFromDims();
             debounce(recalculate);
           }
         });
       }
-      session.setImage(frame);
+      session.setImage(PhotoMeasure.captureVideoFrame(video));
       session.resetAll();
-      $('#videoMeasureStep').textContent = '1. Marcá referencia en el cuadro capturado';
     });
 
-    $('#refLengthVideo').addEventListener('input', () => {
-      session?.setRefLength(parseFloat($('#refLengthVideo').value) || 1);
-    });
-
-    $('#btnVideoRefDone').addEventListener('click', () => {
-      session?.setMode('contour');
-      $('#videoMeasureStep').textContent = '2. Marcá el contorno del piso';
-    });
+    $('#refLengthVideo').addEventListener('input', () => session?.setRefLength(parseFloat($('#refLengthVideo').value) || 1));
+    $('#btnVideoRefDone').addEventListener('click', () => session?.setMode('contour'));
   }
 
   function bindEvents() {
@@ -457,68 +513,61 @@
     $('#btnSave').addEventListener('click', savePresupuesto);
     $('#btnShare').addEventListener('click', shareWhatsApp);
     $('#btnPrint').addEventListener('click', printPresupuesto);
+    $('#btnCalculate').addEventListener('click', recalculate);
     $('#themeToggle').addEventListener('click', toggleTheme);
-    $('#btnExport').addEventListener('click', exportBackup);
+    $('#btnExport').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([Storage.exportAll()], { type: 'application/json' }));
+      a.download = `presupuestos_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    });
     $('#importFile').addEventListener('change', (e) => {
       const f = e.target.files?.[0];
-      if (f) importBackup(f);
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { Storage.importAll(reader.result, true); alert('Backup importado.'); renderDashboard(); }
+        catch (err) { alert('Error: ' + err.message); }
+      };
+      reader.readAsText(f);
       e.target.value = '';
     });
 
-    $$('.measure-tab').forEach((tab) => {
-      tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab));
+    $$('.measure-tab').forEach((tab) => tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab)));
+
+    $('#areaInput')?.addEventListener('input', () => { applyAreaInput(); debounce(recalculate); });
+    $('#roomWidth').addEventListener('input', () => { updateAreaFromDims(); debounce(recalculate); });
+    $('#roomLength').addEventListener('input', () => { updateAreaFromDims(); debounce(recalculate); });
+
+    $$('.tile-size-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const size = btn.dataset.size;
+        if (size === 'custom') setTileSize('custom', parseFloat($('#tileWidth').value), parseFloat($('#tileLength').value));
+        else setTileSize(size);
+        debounce(recalculate);
+      });
     });
 
-    $('#pattern').addEventListener('change', () => {
-      updatePatternUI();
-      debounce(recalculate);
-    });
-
-    const inputs = '#cliente, #link, #roomWidth, #roomLength, #tileWidth, #tileLength, #tilesPerBox, #sparePercent, #aisleWidth, #stripeWidth, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex, #customPct1, #customPct2, #customPct3';
-    $$(inputs).forEach((el) => {
-      el.addEventListener('input', () => debounce(recalculate));
-    });
+    const inputs = '#cliente, #referencia, #link, #notas, #tileWidth, #tileLength, #tilesPerBox, #sparePercent, #aisleWidth, #stripeWidth, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex, #customPct1, #customPct2, #customPct3';
+    $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
     $('#dashboardGrid').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
-      const id = btn.dataset.id;
-      const action = btn.dataset.action;
+      const { id, action } = btn.dataset;
       if (action === 'edit') openEditor(id);
-      else if (action === 'dup') {
-        Storage.duplicate(id);
-        renderDashboard();
-      } else if (action === 'del') {
-        if (confirm('¿Borrar este presupuesto?')) {
-          Storage.remove(id);
-          renderDashboard();
-        }
-      }
-    });
-
-    $$('.color-hex').forEach((input) => {
-      input.addEventListener('input', () => {
-        const preview = input.parentElement.querySelector('.color-preview');
-        if (preview) preview.style.background = input.value;
-        debounce(recalculate);
-      });
+      else if (action === 'dup') { Storage.duplicate(id); renderDashboard(); }
+      else if (action === 'del' && confirm('¿Borrar este presupuesto?')) { Storage.remove(id); renderDashboard(); }
     });
   }
 
   function init() {
     initTheme();
+    buildPatternGrids();
     bindEvents();
     initMeasurePhoto();
     initMeasureVideo();
-    populatePatterns();
     showView('dashboard');
-  }
-
-  function populatePatterns() {
-    const sel = $('#pattern');
-    sel.innerHTML = Object.entries(TileCalc.PATTERNS)
-      .map(([k, v]) => `<option value="${k}">${v}</option>`)
-      .join('');
   }
 
   document.addEventListener('DOMContentLoaded', init);

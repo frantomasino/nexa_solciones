@@ -1,23 +1,40 @@
 /**
  * Cálculo de grilla de baldosas y dibujo en canvas.
+ * Tipos de piso: rejilla, trama, moneda (+ patrones de distribución).
  */
 (function (global) {
   'use strict';
 
+  const FLOOR_TYPES = {
+    rejilla: 'Rejilla',
+    trama: 'Trama',
+    moneda: 'Moneda',
+  };
+
   const PATTERNS = {
+    rejilla: 'Rejilla',
+    trama: 'Trama',
+    moneda: 'Moneda',
     solid: 'Sólido',
     'border-center': 'Marco + centro',
     checkerboard: 'Damero',
     'stripes-h': 'Rayas horizontales',
     'stripes-v': 'Rayas verticales',
     'center-aisle': 'Carril central',
-    custom: 'Personalizado (%)',
+    'transverse-aisle': 'Carril transversal',
+    custom: 'Personalizado',
+  };
+
+  const TILE_PRESETS = {
+    '40': { w: 40, l: 40 },
+    '50': { w: 50, l: 50 },
+    '60': { w: 60, l: 60 },
   };
 
   const DEFAULT_COLORS = [
-    { name: 'Gris', hex: '#6b7280' },
-    { name: 'Negro', hex: '#1f2937' },
-    { name: 'Rojo', hex: '#dc2626' },
+    { name: 'Gris', hex: '#7a7a7a', role: 'fondo' },
+    { name: 'Negro', hex: '#1a1a1a', role: 'detalle' },
+    { name: 'Rojo', hex: '#c41e1e', role: 'acento' },
   ];
 
   function metersToCm(m) {
@@ -29,38 +46,76 @@
     const rows = Math.max(1, Math.ceil(metersToCm(roomLengthM) / tileLengthCm));
     const actualWidthM = (cols * tileWidthCm) / 100;
     const actualLengthM = (rows * tileLengthCm) / 100;
-    return { cols, rows, actualWidthM, actualLengthM, areaM2: roomWidthM * roomLengthM };
+    const areaM2 = roomWidthM * roomLengthM;
+    const coveredM2 = actualWidthM * actualLengthM;
+    return { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 };
+  }
+
+  function dimensionsFromArea(areaM2, aspectRatio = 1) {
+    const w = Math.sqrt(areaM2 * aspectRatio);
+    const l = areaM2 / w;
+    return { roomWidthM: w, roomLengthM: l };
+  }
+
+  /** Rejilla: módulo 3×3 — gris fondo, negro líneas, rojo en cruces */
+  function colorRejilla(col, row) {
+    const onH = row % 3 === 1;
+    const onV = col % 3 === 1;
+    if (onH && onV) return 2;
+    if (onH || onV) return 1;
+    return 0;
+  }
+
+  /** Trama: tejido 2×2 alternado — gris / negro / rojo */
+  function colorTrama(col, row) {
+    const bx = Math.floor(col / 2);
+    const by = Math.floor(row / 2);
+    if ((bx + by) % 2 === 0) return 0;
+    return (col + row) % 2 === 0 ? 1 : 2;
+  }
+
+  /** Moneda: puntos escalonados sobre fondo gris */
+  function colorMoneda(col, row) {
+    const period = 4;
+    const offset = row % 2 === 0 ? 1 : 3;
+    const nearDotCol = (col - offset + period * 100) % period === 0;
+    const nearDotRow = row % 2 === 0 ? row % period === 0 : row % period === 2;
+    if (nearDotCol && nearDotRow) return (Math.floor(col / period) + Math.floor(row / period)) % 2 === 0 ? 1 : 2;
+    if (nearDotCol || (row % period === 1 && col % 2 === row % 2)) return 0;
+    return 0;
   }
 
   function getColorIndex(pattern, col, row, cols, rows, options) {
     const { aisleWidth = 2, stripeWidth = 1 } = options;
 
     switch (pattern) {
+      case 'rejilla':
+        return colorRejilla(col, row);
+      case 'trama':
+        return colorTrama(col, row);
+      case 'moneda':
+        return colorMoneda(col, row);
       case 'solid':
         return 0;
-
       case 'border-center':
-        if (col === 0 || col === cols - 1 || row === 0 || row === rows - 1) return 0;
-        return 1;
-
+        if (col === 0 || col === cols - 1 || row === 0 || row === rows - 1) return 1;
+        return 0;
       case 'checkerboard':
-        return (col + row) % 2;
-
+        return (col + row) % 2 === 0 ? 0 : 1;
       case 'stripes-h':
-        return Math.floor(row / stripeWidth) % 2;
-
+        return Math.floor(row / stripeWidth) % 2 === 0 ? 0 : 1;
       case 'stripes-v':
-        return Math.floor(col / stripeWidth) % 2;
-
+        return Math.floor(col / stripeWidth) % 2 === 0 ? 0 : 1;
       case 'center-aisle': {
         const start = Math.floor((cols - aisleWidth) / 2);
-        const end = start + aisleWidth;
-        return col >= start && col < end ? 1 : 0;
+        return col >= start && col < start + aisleWidth ? 1 : 0;
       }
-
+      case 'transverse-aisle': {
+        const start = Math.floor((rows - aisleWidth) / 2);
+        return row >= start && row < start + aisleWidth ? 1 : 0;
+      }
       case 'custom':
         return 0;
-
       default:
         return 0;
     }
@@ -113,14 +168,13 @@
   }
 
   function colorsForPattern(pattern) {
-    switch (pattern) {
-      case 'solid':
-        return 1;
-      case 'custom':
-        return 3;
-      default:
-        return 2;
-    }
+    if (['rejilla', 'trama', 'moneda', 'custom'].includes(pattern)) return 3;
+    if (pattern === 'solid') return 1;
+    return 2;
+  }
+
+  function isFloorType(pattern) {
+    return pattern in FLOOR_TYPES;
   }
 
   function calculate(input) {
@@ -129,9 +183,9 @@
       roomLengthM = 0,
       tileWidthCm = 50,
       tileLengthCm = 50,
-      tilesPerBox = 20,
+      tilesPerBox = 4,
       sparePercent = 10,
-      pattern = 'solid',
+      pattern = 'rejilla',
       colors = DEFAULT_COLORS,
       aisleWidth = 2,
       stripeWidth = 1,
@@ -139,12 +193,12 @@
     } = input;
 
     const gridInfo = computeGrid(roomWidthM, roomLengthM, tileWidthCm, tileLengthCm);
-    const { cols, rows, actualWidthM, actualLengthM, areaM2 } = gridInfo;
+    const { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 } = gridInfo;
     const totalTiles = cols * rows;
     const numColors = colorsForPattern(pattern);
 
     const activeColors = colors.slice(0, numColors).map((c, i) => ({
-      name: c.name || `Color ${i + 1}`,
+      name: c.name || DEFAULT_COLORS[i]?.name || `Color ${i + 1}`,
       hex: c.hex || DEFAULT_COLORS[i]?.hex || '#888',
     }));
 
@@ -167,7 +221,7 @@
       tiles: baseCounts[i] || 0,
       tilesWithSpare: withSpare[i] || 0,
       boxes: boxes[i] || 0,
-      percent: totalTiles ? Math.round(((baseCounts[i] || 0) / totalTiles) * 100) : 0,
+      percent: totalTiles ? Math.round(((baseCounts[i] || 0) / totalTiles) * 1000) / 10 : 0,
     }));
 
     return {
@@ -177,6 +231,7 @@
       totalTilesWithSpare: withSpare.reduce((a, b) => a + b, 0),
       totalBoxes: boxes.reduce((a, b) => a + b, 0),
       areaM2,
+      coveredM2,
       actualWidthM,
       actualLengthM,
       grid,
@@ -185,15 +240,53 @@
       tilesPerBox,
       sparePercent,
       pattern,
+      floorType: isFloorType(pattern) ? pattern : null,
     };
+  }
+
+  function drawTileDetail(ctx, pattern, idx, x, y, w, h, colors) {
+    const pad = Math.max(1, Math.min(w, h) * 0.08);
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+
+    if (pattern === 'moneda' && idx > 0) {
+      const r = Math.min(w, h) * 0.32;
+      ctx.fillStyle = colors[idx]?.hex || '#888';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      return;
+    }
+
+    if (pattern === 'rejilla' && idx === 1) {
+      ctx.fillStyle = colors[idx]?.hex || '#888';
+      const thick = Math.max(1, Math.min(w, h) * 0.18);
+      if (w > h) ctx.fillRect(x + pad, y + h / 2 - thick / 2, w - pad * 2, thick);
+      else ctx.fillRect(x + w / 2 - thick / 2, y + pad, thick, h - pad * 2);
+    }
+
+    if (pattern === 'trama' && idx > 0) {
+      ctx.strokeStyle = colors[idx]?.hex || '#888';
+      ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.1);
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const off = pad + i * ((w - pad * 2) / 2);
+        ctx.moveTo(x + off, y + pad);
+        ctx.lineTo(x + off, y + h - pad);
+      }
+      ctx.stroke();
+    }
   }
 
   function drawFloorPlan(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
-    const { grid, colors, cols, rows } = result;
-    const padding = options.padding ?? 24;
-    const maxSize = options.maxSize ?? 480;
+    const { grid, colors, cols, rows, pattern } = result;
+    const padding = options.padding ?? 20;
+    const maxSize = options.maxSize ?? 520;
     const showGrid = options.showGrid !== false;
 
     const aspect = cols / rows;
@@ -212,7 +305,8 @@
     canvas.height = drawH + padding * 2;
 
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#1a1a2e';
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414';
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     for (let row = 0; row < rows; row++) {
@@ -225,26 +319,57 @@
         ctx.fillStyle = color;
         ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
 
+        if (isFloorType(pattern)) {
+          drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
+        }
+
         if (showGrid) {
-          ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+          ctx.strokeStyle = 'rgba(0,0,0,0.2)';
           ctx.lineWidth = 0.5;
           ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
         }
       }
     }
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.strokeStyle = 'rgba(255, 200, 0, 0.5)';
     ctx.lineWidth = 2;
     ctx.strokeRect(padding, padding, drawW, drawH);
 
     return canvas.toDataURL('image/png');
   }
 
+  function getPatternPreview(pattern, size = 48) {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+    const cells = 6;
+    const cell = size / cells;
+    const colors = DEFAULT_COLORS;
+
+    for (let row = 0; row < cells; row++) {
+      for (let col = 0; col < cells; col++) {
+        const idx = getColorIndex(pattern, col, row, cells, cells, { aisleWidth: 2, stripeWidth: 1 });
+        ctx.fillStyle = colors[idx]?.hex || '#888';
+        ctx.fillRect(col * cell, row * cell, cell, cell);
+        if (isFloorType(pattern)) {
+          drawTileDetail(ctx, pattern, idx, col * cell, row * cell, cell, cell, colors);
+        }
+      }
+    }
+    return c.toDataURL();
+  }
+
   global.TileCalc = {
+    FLOOR_TYPES,
     PATTERNS,
+    TILE_PRESETS,
     DEFAULT_COLORS,
     calculate,
     drawFloorPlan,
     computeGrid,
+    dimensionsFromArea,
+    getPatternPreview,
+    isFloorType,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
