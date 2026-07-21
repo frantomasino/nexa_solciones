@@ -292,9 +292,10 @@
       else ctx.fillRect(x + w / 2 - thick / 2, y + pad, thick, h - pad * 2);
     }
 
-    if (pattern === 'trama' && idx > 0) {
-      ctx.strokeStyle = colors[idx]?.hex || '#888';
-      ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.1);
+    if (pattern === 'trama') {
+      const lineColor = idx === 0 ? (colors[1]?.hex || '#444') : (colors[0]?.hex || '#aaa');
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.12);
       ctx.beginPath();
       for (let i = 0; i < 3; i++) {
         const off = pad + i * ((w - pad * 2) / 2);
@@ -341,13 +342,15 @@
   function drawFloorPlan(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
-    const { grid, colors, cols, rows, pattern } = result;
+    const { grid, colors, cols, rows, pattern, colorCount: planColorCount } = result;
     const layout = layoutMetrics(cols, rows, options);
     const { padding, drawW, drawH, cellW, cellH } = layout;
     const { ctx } = prepareCanvas(canvas, layout);
     const showGrid = options.showGrid !== false;
     const tilePhoto = options.floorTypeImage;
-    const usePhotoTiles = tilePhoto && isFloorType(pattern);
+    const numColors = planColorCount || colors.length;
+    const usePhotoTiles = tilePhoto && isFloorType(pattern) && numColors <= 1;
+    const photoAlpha = 0.82;
 
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414';
     ctx.fillStyle = bg;
@@ -358,21 +361,30 @@
         const idx = grid[row][col];
         const x = padding + col * cellW;
         const y = padding + row * cellH;
+        const cw = cellW - 1;
+        const ch = cellH - 1;
+
+        ctx.fillStyle = colors[idx]?.hex || '#888';
+        ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
 
         if (usePhotoTiles) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x + 0.5, y + 0.5, cw, ch);
+          ctx.clip();
+          ctx.globalAlpha = photoAlpha;
           drawImageCover(ctx, tilePhoto, x, y, cellW, cellH);
-        } else {
-          ctx.fillStyle = colors[idx]?.hex || '#888';
-          ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
-          if (isFloorType(pattern)) {
-            drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
-          }
+          ctx.restore();
+        }
+
+        if (isFloorType(pattern) && (!usePhotoTiles || numColors > 1)) {
+          drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
         }
 
         if (showGrid) {
-          ctx.strokeStyle = usePhotoTiles ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.18)';
+          ctx.strokeStyle = 'rgba(0,0,0,0.15)';
           ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
-          ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+          ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
         }
       }
     }
