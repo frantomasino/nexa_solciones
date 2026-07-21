@@ -50,6 +50,15 @@
     };
   }
 
+  function clearMeasureFields() {
+    ['#roomWidth', '#roomLength', '#areaInput', '#photoRoomWidth', '#photoRoomLength'].forEach((id) => {
+      const el = $(id);
+      if (el) el.value = '';
+    });
+    if ($('#areaFromDims')) $('#areaFromDims').textContent = '—';
+    if ($('#photoAreaFromDims')) $('#photoAreaFromDims').textContent = '—';
+  }
+
   function resetEditorForNew() {
     lastResult = null;
     logoImageData = null;
@@ -58,8 +67,14 @@
     colorCount = null;
     if ($('#logoFile')) $('#logoFile').value = '';
     if ($('#photoFile')) $('#photoFile').value = '';
-    measureSession?.resetAll();
+    clearMeasureFields();
+    measureSession?.clearImage();
+    setPhotoFileName('Ninguna foto');
+    updatePatternSelection();
+    setColorCount(null);
     setMeasureTab('manual');
+    updateCanvasPlaceholder();
+    renderResults(null);
   }
 
   function readForm() {
@@ -120,9 +135,31 @@
   function applyPhotoManualDims() {
     const w = parseFloat($('#photoRoomWidth')?.value) || 0;
     const l = parseFloat($('#photoRoomLength')?.value) || 0;
-    if (!w || !l) return;
+    measureSession?.resetContour();
+    if (!w || !l) {
+      if ($('#photoAreaFromDims')) $('#photoAreaFromDims').textContent = '—';
+      return;
+    }
     $('#roomWidth').value = w.toFixed(2);
     $('#roomLength').value = l.toFixed(2);
+    updateAreaFromDims();
+    debounce(recalculate);
+  }
+
+  function syncPhotoManualToMain() {
+    const pw = parseFloat($('#photoRoomWidth')?.value) || 0;
+    const pl = parseFloat($('#photoRoomLength')?.value) || 0;
+    if (!pw || !pl) return;
+    $('#roomWidth').value = pw.toFixed(2);
+    $('#roomLength').value = pl.toFixed(2);
+    updateAreaFromDims();
+  }
+
+  function applyPhotoMeasureDims(result) {
+    if (!result?.ready) return;
+    $('#roomWidth').value = result.widthM.toFixed(2);
+    $('#roomLength').value = result.lengthM.toFixed(2);
+    if ($('#areaInput')) $('#areaInput').value = result.areaM2.toFixed(2);
     updateAreaFromDims();
     debounce(recalculate);
   }
@@ -209,7 +246,12 @@
     updateLogoUI();
 
     updatePatternUI();
-    recalculate();
+    if (!data.id && !data.roomWidthM && !data.roomLengthM) {
+      updateCanvasPlaceholder();
+      renderResults(null);
+    } else {
+      recalculate();
+    }
   }
 
   function updateLogoUI() {
@@ -278,7 +320,9 @@
   function setMeasureTab(tab) {
     $$('.measure-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
     $$('.measure-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== tab));
-    if (tab === 'photo') {
+    if (tab === 'manual') {
+      syncPhotoManualToMain();
+    } else if (tab === 'photo') {
       syncDimsToPhotoPanel();
       requestAnimationFrame(() => {
         measureSession?.redraw();
@@ -700,10 +744,11 @@
     } else if (!data.ready) {
       status.textContent = `Paso 3: marcá el contorno del piso (${contourPts}/3 puntos mínimo).`;
     } else {
-      status.textContent = `Listo: ${data.areaM2.toFixed(2)} m² reales · rectángulo ${data.widthM.toFixed(2)} × ${data.lengthM.toFixed(2)} m para el plano.`;
+      status.textContent = `Medición lista: ${data.areaM2.toFixed(2)} m² · ${data.widthM.toFixed(2)} × ${data.lengthM.toFixed(2)} m. Tocá «Usar medidas de la foto» o cargá a mano abajo.`;
     }
 
     if (btnRef) btnRef.disabled = !data.scale;
+    $('#btnApplyPhotoMeasure')?.classList.toggle('hidden', !data.ready);
 
     $('#btnClearPhoto')?.classList.toggle('hidden', !hasImage);
     $('#measureCanvasEmpty')?.classList.toggle('hidden', hasImage);
@@ -723,16 +768,7 @@
   }
 
   function applyMeasureResult(result) {
-    if (!result?.ready) {
-      updateMeasureUI(result);
-      return;
-    }
-    $('#roomWidth').value = result.widthM.toFixed(2);
-    $('#roomLength').value = result.lengthM.toFixed(2);
-    if ($('#areaInput')) $('#areaInput').value = result.areaM2.toFixed(2);
-    updateAreaFromDims();
     updateMeasureUI(result);
-    debounce(recalculate);
   }
 
   function initMeasurePhoto() {
@@ -769,6 +805,10 @@
     $('#btnMeasureReset').addEventListener('click', () => {
       measureSession.resetAll();
       updateMeasureUI();
+    });
+
+    $('#btnApplyPhotoMeasure')?.addEventListener('click', () => {
+      applyPhotoMeasureDims(measureSession.getResult());
     });
 
     $('#photoRoomWidth')?.addEventListener('input', applyPhotoManualDims);
