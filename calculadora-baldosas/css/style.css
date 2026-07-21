@@ -1527,6 +1527,5 @@ a.dropdown-item:hover {
 }
 
 @media (max-width: 380px) {
-  .floor-type-grid { grid-template-columns: 1fr 1fr; }
   .pattern-grid { grid-template-columns: repeat(3, 1fr); }
 }
