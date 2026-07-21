@@ -386,6 +386,12 @@
       return hay.includes(q);
     });
   }
+  function syncInstallBannerState() {
+    const banner = $('#installBanner');
+    const open = banner && !banner.classList.contains('hidden');
+    document.body.classList.toggle('install-banner-open', !!open);
+  }
+
   function showView(view) {
     $('#viewDashboard').classList.toggle('hidden', view !== 'dashboard');
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
@@ -842,11 +848,14 @@
     const dismissed = localStorage.getItem(INSTALL_DISMISS_KEY) === '1';
     if (!dismissed) banner?.classList.remove('hidden');
 
+    syncInstallBannerState();
+
     btn?.addEventListener('click', openInstallModal);
     $('#btnInstallBanner')?.addEventListener('click', openInstallModal);
     $('#btnDismissInstall')?.addEventListener('click', () => {
       localStorage.setItem(INSTALL_DISMISS_KEY, '1');
       banner?.classList.add('hidden');
+      syncInstallBannerState();
     });
 
     $('#btnInstallNative')?.addEventListener('click', async () => {
