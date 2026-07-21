@@ -1,9 +1,10 @@
-const CACHE = 'nexa-v3';
+const CACHE = 'nexa-v4';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/core/tile-calc.js',
+  './js/core/plan-viewer.js',
   './js/core/photo-measure.js',
   './js/data/storage.js',
   './js/app/main.js',

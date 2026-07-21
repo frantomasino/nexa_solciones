@@ -285,8 +285,27 @@
           <div class="panel preview-panel">
             <h3>Plano del piso</h3>
             <div class="canvas-wrap canvas-wrap-plan" id="canvasPlaceholder">
-              <canvas id="floorCanvas" class="hidden"></canvas>
               <p id="canvasEmpty" class="canvas-empty">Cargá las medidas del ambiente para ver el plano y el cálculo.</p>
+              <div id="planViewer" class="plan-viewer hidden">
+                <div class="plan-toolbar" role="toolbar" aria-label="Controles del plano">
+                  <button type="button" id="planZoomOut" class="btn btn-sm btn-outline plan-tool-btn" title="Alejar">−</button>
+                  <span id="planZoomLabel" class="plan-zoom-label">100%</span>
+                  <button type="button" id="planZoomIn" class="btn btn-sm btn-outline plan-tool-btn" title="Acercar">+</button>
+                  <span class="plan-toolbar-sep" aria-hidden="true"></span>
+                  <button type="button" id="planRotateLeft" class="btn btn-sm btn-outline plan-tool-btn" title="Girar 15° izquierda">↺</button>
+                  <label class="plan-rotate-label">
+                    <span class="sr-only">Rotación</span>
+                    <input type="range" id="planRotation" min="0" max="360" value="0" step="1">
+                    <span id="planRotationValue" class="plan-rotate-value">0°</span>
+                  </label>
+                  <button type="button" id="planRotateRight" class="btn btn-sm btn-outline plan-tool-btn" title="Girar 15° derecha">↻</button>
+                  <button type="button" id="planResetView" class="btn btn-sm btn-outline plan-tool-btn" title="Centrar plano">Centrar</button>
+                </div>
+                <div id="planStage" class="plan-stage">
+                  <canvas id="floorCanvas"></canvas>
+                </div>
+                <p class="plan-viewer-hint">Arrastrá para mover · Rueda o +/− para zoom · Girá con el control o ↺ ↻</p>
+              </div>
             </div>
             <input type="hidden" id="photoThumbData">
 
@@ -400,6 +419,7 @@
   </dialog>
 
   <script src="js/core/tile-calc.js"></script>
+  <script src="js/core/plan-viewer.js"></script>
   <script src="js/core/photo-measure.js"></script>
   <script src="js/data/storage.js"></script>
   <script src="js/app/main.js"></script>

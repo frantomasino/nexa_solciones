@@ -15,6 +15,7 @@
   let logoImageData = null;
   let logoImageEl = null;
   let deferredInstallPrompt = null;
+  let planViewerControls = null;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -242,9 +243,11 @@
     lastResult = TileCalc.calculate(form);
     const canvas = $('#floorCanvas');
     const empty = $('#canvasEmpty');
+    const viewer = $('#planViewer');
     await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
-    canvas.classList.remove('hidden');
     empty.classList.add('hidden');
+    viewer.classList.remove('hidden');
+    requestAnimationFrame(() => planViewerControls?.fitView());
 
     $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
@@ -274,7 +277,7 @@
       $('#totalFinalLabel').textContent = '—';
       $('#totalBoxes').textContent = '—';
       $('#canvasEmpty').classList.remove('hidden');
-      $('#floorCanvas').classList.add('hidden');
+      $('#planViewer').classList.add('hidden');
       return;
     }
 
@@ -671,6 +674,27 @@
     $('#logoSpan')?.addEventListener('change', () => debounce(recalculate));
   }
 
+  function initPlanViewer() {
+    planViewerControls = PlanViewer.createPlanViewer($('#planStage'), $('#floorCanvas'), {
+      zoomIn: $('#planZoomIn'),
+      zoomOut: $('#planZoomOut'),
+      zoomLabel: $('#planZoomLabel'),
+      rotateLeft: $('#planRotateLeft'),
+      rotateRight: $('#planRotateRight'),
+      rotationRange: $('#planRotation'),
+      rotationValue: $('#planRotationValue'),
+      reset: $('#planResetView'),
+    });
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (lastResult) planViewerControls?.fitView();
+      }, 150);
+    });
+  }
+
   function initPWA() {
     const btn = $('#btnInstall');
     const modal = $('#installModal');
@@ -779,6 +803,7 @@
     initTheme();
     buildPatternGrids();
     bindEvents();
+    initPlanViewer();
     initMeasurePhoto();
     initUser();
     initLogo();

@@ -284,42 +284,59 @@
     }
   }
 
+  function layoutMetrics(cols, rows, options = {}) {
+    const padding = options.padding ?? 24;
+    const minCellPx = options.minCellPx ?? 40;
+    const maxDim = options.maxSize ?? 2048;
+    let drawW = cols * minCellPx;
+    let drawH = rows * minCellPx;
+    const limit = maxDim - padding * 2;
+    if (drawW > limit || drawH > limit) {
+      const s = limit / Math.max(drawW, drawH);
+      drawW *= s;
+      drawH *= s;
+    }
+    const pixelRatio = options.pixelRatio ?? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+    const supersample = options.supersample ?? 2;
+    const ratio = pixelRatio * supersample;
+    return { padding, drawW, drawH, cellW: drawW / cols, cellH: drawH / rows, ratio };
+  }
+
+  function prepareCanvas(canvas, layout) {
+    const { padding, drawW, drawH, ratio } = layout;
+    const logicalW = drawW + padding * 2;
+    const logicalH = drawH + padding * 2;
+    canvas.width = Math.round(logicalW * ratio);
+    canvas.height = Math.round(logicalH * ratio);
+    canvas.style.width = `${logicalW}px`;
+    canvas.style.height = `${logicalH}px`;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    if (ctx.imageSmoothingQuality) ctx.imageSmoothingQuality = 'high';
+    return { ctx, logicalW, logicalH };
+  }
+
   function drawFloorPlan(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
     const { grid, colors, cols, rows, pattern } = result;
-    const padding = options.padding ?? 20;
-    const maxSize = options.maxSize ?? 520;
+    const layout = layoutMetrics(cols, rows, options);
+    const { padding, drawW, drawH, cellW, cellH } = layout;
+    const { ctx } = prepareCanvas(canvas, layout);
     const showGrid = options.showGrid !== false;
 
-    const aspect = cols / rows;
-    let drawW, drawH;
-    if (aspect >= 1) {
-      drawW = maxSize;
-      drawH = maxSize / aspect;
-    } else {
-      drawH = maxSize;
-      drawW = maxSize * aspect;
-    }
-
-    const cellW = drawW / cols;
-    const cellH = drawH / rows;
-    canvas.width = drawW + padding * 2;
-    canvas.height = drawH + padding * 2;
-
-    const ctx = canvas.getContext('2d');
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414';
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, drawW + padding * 2, drawH + padding * 2);
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const idx = grid[row][col];
-        const color = colors[idx]?.hex || '#888';
         const x = padding + col * cellW;
         const y = padding + row * cellH;
 
-        ctx.fillStyle = color;
+        ctx.fillStyle = colors[idx]?.hex || '#888';
         ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
 
         if (isFloorType(pattern)) {
@@ -327,17 +344,22 @@
         }
 
         if (showGrid) {
-          ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+          ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
           ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
         }
       }
     }
 
-    ctx.strokeStyle = 'rgba(255, 200, 0, 0.5)';
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094';
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.55;
     ctx.lineWidth = 2;
     ctx.strokeRect(padding, padding, drawW, drawH);
+    ctx.globalAlpha = 1;
 
+    canvas.dataset.logicalWidth = String(drawW + padding * 2);
+    canvas.dataset.logicalHeight = String(drawH + padding * 2);
     return canvas;
   }
 
@@ -390,20 +412,14 @@
   async function drawFloorPlanAsync(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
-    const temp = drawFloorPlan(canvas, result, options);
-    if (!temp) return null;
+    drawFloorPlan(canvas, result, options);
+    if (!canvas) return null;
 
-    const { cols, rows, pattern } = result;
-    const padding = options.padding ?? 20;
-    const maxSize = options.maxSize ?? 520;
-    const aspect = cols / rows;
-    let drawW, drawH;
-    if (aspect >= 1) { drawW = maxSize; drawH = maxSize / aspect; }
-    else { drawH = maxSize; drawW = maxSize * aspect; }
-    const cellW = drawW / cols;
-    const cellH = drawH / rows;
-
+    const { cols, rows } = result;
+    const { padding, cellW, cellH } = layoutMetrics(cols, rows, options);
     const ctx = canvas.getContext('2d');
+    const ratio = layoutMetrics(cols, rows, options).ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
     if (options.logo?.enabled && options.logo.src) {
       try {
@@ -421,15 +437,10 @@
     drawFloorPlan(canvas, result, options);
     if (options.logo?.enabled && options.logo.image) {
       const { cols, rows } = result;
-      const padding = options.padding ?? 20;
-      const maxSize = options.maxSize ?? 520;
-      const aspect = cols / rows;
-      let drawW, drawH;
-      if (aspect >= 1) { drawW = maxSize; drawH = maxSize / aspect; }
-      else { drawH = maxSize; drawW = maxSize * aspect; }
-      const cellW = drawW / cols;
-      const cellH = drawH / rows;
-      drawLogoOnPlan(canvas.getContext('2d'), options, cols, rows, padding, cellW, cellH);
+      const { padding, cellW, cellH, ratio } = layoutMetrics(cols, rows, options);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      drawLogoOnPlan(ctx, options, cols, rows, padding, cellW, cellH);
     }
     return canvas.toDataURL('image/png');
   }
