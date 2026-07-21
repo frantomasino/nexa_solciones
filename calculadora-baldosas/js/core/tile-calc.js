@@ -346,6 +346,8 @@
     const { padding, drawW, drawH, cellW, cellH } = layout;
     const { ctx } = prepareCanvas(canvas, layout);
     const showGrid = options.showGrid !== false;
+    const tilePhoto = options.floorTypeImage;
+    const usePhotoTiles = tilePhoto && isFloorType(pattern);
 
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414';
     ctx.fillStyle = bg;
@@ -357,15 +359,18 @@
         const x = padding + col * cellW;
         const y = padding + row * cellH;
 
-        ctx.fillStyle = colors[idx]?.hex || '#888';
-        ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
-
-        if (isFloorType(pattern)) {
-          drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
+        if (usePhotoTiles) {
+          drawImageCover(ctx, tilePhoto, x, y, cellW, cellH);
+        } else {
+          ctx.fillStyle = colors[idx]?.hex || '#888';
+          ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+          if (isFloorType(pattern)) {
+            drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
+          }
         }
 
         if (showGrid) {
-          ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+          ctx.strokeStyle = usePhotoTiles ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.18)';
           ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
           ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
         }
@@ -421,6 +426,21 @@
     drawImageCover(ctx, logo.image, x + margin, y + margin, w - margin * 2, h - margin * 2);
   }
 
+  const floorTypeImageCache = {};
+
+  function loadFloorTypeImage(pattern) {
+    if (!isFloorType(pattern)) return Promise.resolve(null);
+    const src = FLOOR_TYPE_IMAGES[pattern];
+    if (!src) return Promise.resolve(null);
+    if (floorTypeImageCache[pattern]) return Promise.resolve(floorTypeImageCache[pattern]);
+    return loadImage(src)
+      .then((img) => {
+        floorTypeImageCache[pattern] = img;
+        return img;
+      })
+      .catch(() => null);
+  }
+
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -433,7 +453,14 @@
   async function drawFloorPlanAsync(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
-    drawFloorPlan(canvas, result, options);
+    const pattern = result.pattern;
+    let floorTypeImage = options.floorTypeImage;
+    if (!floorTypeImage && isFloorType(pattern)) {
+      floorTypeImage = await loadFloorTypeImage(pattern);
+    }
+
+    const drawOpts = { ...options, floorTypeImage };
+    drawFloorPlan(canvas, result, drawOpts);
     if (!canvas) return null;
 
     const { cols, rows } = result;
@@ -501,6 +528,7 @@
     drawFloorPlanAsync,
     drawFloorPlanSync,
     loadImage,
+    loadFloorTypeImage,
     computeGrid,
     dimensionsFromArea,
     getPatternPreview,
