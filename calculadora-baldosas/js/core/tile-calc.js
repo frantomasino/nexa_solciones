@@ -12,9 +12,9 @@
   };
 
   const FLOOR_TYPE_IMAGES = {
-    rejilla: 'images/piso-rejilla.svg',
-    trama: 'images/piso-trama.svg',
-    moneda: 'images/piso-moneda.svg',
+    rejilla: 'images/piso-rejilla.jpg',
+    trama: 'images/piso-trama.jpg',
+    moneda: 'images/piso-moneda.jpg',
   };
 
   const TILE_SIZE_CM = 40;
