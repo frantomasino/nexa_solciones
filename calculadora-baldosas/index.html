@@ -284,6 +284,7 @@
             <input type="hidden" id="tileLength" value="40">
 
             <p class="field-label">Tipo de piso</p>
+            <p id="floorTypeHint" class="hint">Elegí un tipo de piso</p>
             <div class="floor-type-grid" id="floorTypeGrid"></div>
 
             <p class="field-label">Colores</p>
@@ -291,9 +292,10 @@
             <div class="color-count-btns" id="colorCountBtns">
               <button type="button" class="color-count-btn" data-count="1">1 color</button>
               <button type="button" class="color-count-btn" data-count="2">2 colores</button>
-              <button type="button" class="color-count-btn active" data-count="3">3 colores</button>
+              <button type="button" class="color-count-btn" data-count="3">3 colores</button>
             </div>
-            <div class="colors-row">
+            <p id="colorSelectHint" class="hint">Elegí 1, 2 o 3 colores</p>
+            <div class="colors-row hidden">
               <div class="color-chip">
                 <input type="color" id="color1Hex" class="color-hex" value="#7a7a7a">
                 <input type="text" id="color1Name" class="color-name" value="Gris (fondo)">

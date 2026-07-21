@@ -10,8 +10,8 @@
   let measureSession = null;
   let debounceTimer = null;
   let lastResult = null;
-  let selectedPattern = 'rejilla';
-  let colorCount = 3;
+  let selectedPattern = null;
+  let colorCount = null;
   let logoImageData = null;
   let logoImageEl = null;
   let deferredInstallPrompt = null;
@@ -38,8 +38,8 @@
       tileLengthCm: TileCalc.TILE_SIZE_CM,
       tilesPerBox: 4,
       sparePercent: 10,
-      pattern: 'rejilla',
-      colorCount: 3,
+      pattern: null,
+      colorCount: null,
       colors: TileCalc.DEFAULT_COLORS.map((c) => ({ ...c })),
       measureMethod: 'manual',
       logoEnabled: false,
@@ -54,8 +54,8 @@
     lastResult = null;
     logoImageData = null;
     logoImageEl = null;
-    selectedPattern = 'rejilla';
-    colorCount = 3;
+    selectedPattern = null;
+    colorCount = null;
     if ($('#logoFile')) $('#logoFile').value = '';
     if ($('#photoFile')) $('#photoFile').value = '';
     measureSession?.resetAll();
@@ -136,6 +136,33 @@
     updateAreaFromDims();
   }
 
+  function resolvePattern(data) {
+    if (data?.pattern && TileCalc.FLOOR_TYPES[data.pattern]) return data.pattern;
+    return null;
+  }
+
+  function resolveColorCount(data) {
+    const n = data?.colorCount;
+    if (Number.isInteger(n) && n >= 1 && n <= 3) return n;
+    const fromBreakdown = data?.breakdown?.filter((r) => (r.tiles ?? 0) > 0).length;
+    if (fromBreakdown >= 1 && fromBreakdown <= 3) return fromBreakdown;
+    return null;
+  }
+
+  function updateCanvasPlaceholder() {
+    const empty = $('#canvasEmpty');
+    if (!empty) return;
+    if (!selectedPattern && !colorCount) {
+      empty.textContent = 'Elegí el tipo de piso y la cantidad de colores para ver el plano.';
+    } else if (!selectedPattern) {
+      empty.textContent = 'Elegí el tipo de piso: Rejilla, Trama o Moneda.';
+    } else {
+      empty.textContent = 'Elegí cuántos colores: 1, 2 o 3.';
+    }
+    empty.classList.remove('hidden');
+    $('#planViewer')?.classList.add('hidden');
+  }
+
   function fillForm(data) {
     $('#cliente').value = data.cliente || '';
     $('#referencia').value = data.referencia || '';
@@ -157,11 +184,8 @@
     $('#tilesPerBox').value = data.tilesPerBox ?? 4;
     $('#sparePercent').value = data.sparePercent ?? 10;
 
-    selectedPattern = data.pattern || 'rejilla';
-    if (!TileCalc.FLOOR_TYPES[selectedPattern]) selectedPattern = 'rejilla';
-    colorCount = data.colorCount ?? 3;
-    if (colorCount < 1 || colorCount > 3) colorCount = 3;
-    setColorCount(colorCount);
+    selectedPattern = resolvePattern(data);
+    setColorCount(resolveColorCount(data));
     updatePatternSelection();
 
     const colors = data.colors || TileCalc.NEXA_COLOR_CATALOG;
@@ -226,12 +250,27 @@
   }
 
   function setColorCount(count) {
-    colorCount = Math.min(3, Math.max(1, count));
+    if (count == null || count === '') {
+      colorCount = null;
+      $$('.color-count-btn').forEach((b) => b.classList.remove('active'));
+      updateColorUI();
+      return;
+    }
+    colorCount = Math.min(3, Math.max(1, parseInt(count, 10) || 1));
     $$('.color-count-btn').forEach((b) => b.classList.toggle('active', parseInt(b.dataset.count, 10) === colorCount));
     updateColorUI();
   }
 
   function updateColorUI() {
+    const hint = $('#colorSelectHint');
+    const row = $('.colors-row');
+    if (!colorCount) {
+      hint?.classList.remove('hidden');
+      row?.classList.add('hidden');
+      return;
+    }
+    hint?.classList.add('hidden');
+    row?.classList.remove('hidden');
     $('#color2Group').classList.toggle('hidden', colorCount < 2);
     $('#color3Group').classList.toggle('hidden', colorCount < 3);
   }
@@ -254,14 +293,20 @@
 
   function updatePatternSelection() {
     $$('.floor-type-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.pattern === selectedPattern);
+      btn.classList.toggle('active', !!selectedPattern && btn.dataset.pattern === selectedPattern);
     });
+    $('#floorTypeHint')?.classList.toggle('hidden', !!selectedPattern);
     updatePatternUI();
   }
 
   async function recalculate() {
     const form = readForm();
     if (form.roomWidthM <= 0 || form.roomLengthM <= 0) {
+      renderResults(null);
+      return;
+    }
+    if (!selectedPattern || !colorCount) {
+      updateCanvasPlaceholder();
       renderResults(null);
       return;
     }
@@ -917,7 +962,6 @@
 
   function init() {
     initTheme();
-    setColorCount(3);
     buildPatternGrids();
     bindEvents();
     initPlanViewer();
