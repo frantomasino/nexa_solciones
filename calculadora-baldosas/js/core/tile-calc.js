@@ -11,6 +11,14 @@
     moneda: 'Moneda',
   };
 
+  const FLOOR_TYPE_IMAGES = {
+    rejilla: 'images/piso-rejilla.svg',
+    trama: 'images/piso-trama.svg',
+    moneda: 'images/piso-moneda.svg',
+  };
+
+  const TILE_SIZE_CM = 40;
+
   const PATTERNS = {
     rejilla: 'Rejilla',
     trama: 'Trama',
@@ -26,16 +34,17 @@
   };
 
   const TILE_PRESETS = {
-    '40': { w: 40, l: 40 },
-    '50': { w: 50, l: 50 },
-    '60': { w: 60, l: 60 },
+    '40': { w: TILE_SIZE_CM, l: TILE_SIZE_CM },
   };
 
-  const DEFAULT_COLORS = [
+  /** Carta de colores estándar Nexa (actualizar cuando llegue la carta oficial). */
+  const NEXA_COLOR_CATALOG = [
     { name: 'Gris', hex: '#7a7a7a', role: 'fondo' },
     { name: 'Negro', hex: '#1a1a1a', role: 'detalle' },
     { name: 'Rojo', hex: '#c41e1e', role: 'acento' },
   ];
+
+  const DEFAULT_COLORS = NEXA_COLOR_CATALOG;
 
   function metersToCm(m) {
     return m * 100;
@@ -85,6 +94,12 @@
     return 0;
   }
 
+  function remapForColorCount(idx, colorCount) {
+    if (colorCount >= 3) return idx;
+    if (colorCount === 1) return 0;
+    return idx === 0 ? 0 : 1;
+  }
+
   function getColorIndex(pattern, col, row, cols, rows, options) {
     const { aisleWidth = 2, stripeWidth = 1 } = options;
 
@@ -122,11 +137,13 @@
   }
 
   function buildGrid(cols, rows, pattern, options) {
+    const colorCount = options.colorCount ?? 3;
     const grid = [];
     for (let row = 0; row < rows; row++) {
       const line = [];
       for (let col = 0; col < cols; col++) {
-        line.push(getColorIndex(pattern, col, row, cols, rows, options));
+        const raw = getColorIndex(pattern, col, row, cols, rows, options);
+        line.push(remapForColorCount(raw, colorCount));
       }
       grid.push(line);
     }
@@ -167,7 +184,8 @@
     return counts;
   }
 
-  function colorsForPattern(pattern) {
+  function colorsForPattern(pattern, colorCount) {
+    if (colorCount) return Math.min(3, Math.max(1, colorCount));
     if (['rejilla', 'trama', 'moneda', 'custom'].includes(pattern)) return 3;
     if (pattern === 'solid') return 1;
     return 2;
@@ -181,11 +199,12 @@
     const {
       roomWidthM = 0,
       roomLengthM = 0,
-      tileWidthCm = 50,
-      tileLengthCm = 50,
+      tileWidthCm = TILE_SIZE_CM,
+      tileLengthCm = TILE_SIZE_CM,
       tilesPerBox = 4,
       sparePercent = 10,
       pattern = 'rejilla',
+      colorCount: inputColorCount,
       colors = DEFAULT_COLORS,
       aisleWidth = 2,
       stripeWidth = 1,
@@ -195,7 +214,8 @@
     const gridInfo = computeGrid(roomWidthM, roomLengthM, tileWidthCm, tileLengthCm);
     const { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 } = gridInfo;
     const totalTiles = cols * rows;
-    const numColors = colorsForPattern(pattern);
+    const numColors = colorsForPattern(pattern, inputColorCount);
+    const gridOptions = { aisleWidth, stripeWidth, colorCount: numColors };
 
     const activeColors = colors.slice(0, numColors).map((c, i) => ({
       name: c.name || DEFAULT_COLORS[i]?.name || `Color ${i + 1}`,
@@ -207,9 +227,9 @@
 
     if (pattern === 'custom') {
       baseCounts = distributeCustom(totalTiles, customPercents);
-      grid = buildGrid(cols, rows, 'solid', { aisleWidth, stripeWidth });
+      grid = buildGrid(cols, rows, 'solid', gridOptions);
     } else {
-      grid = buildGrid(cols, rows, pattern, { aisleWidth, stripeWidth });
+      grid = buildGrid(cols, rows, pattern, gridOptions);
       baseCounts = countByColor(grid, numColors);
     }
 
@@ -243,6 +263,7 @@
       tilesPerBox,
       sparePercent,
       pattern,
+      colorCount: numColors,
       floorType: isFloorType(pattern) ? pattern : null,
     };
   }
@@ -469,8 +490,11 @@
 
   global.TileCalc = {
     FLOOR_TYPES,
+    FLOOR_TYPE_IMAGES,
     PATTERNS,
     TILE_PRESETS,
+    TILE_SIZE_CM,
+    NEXA_COLOR_CATALOG,
     DEFAULT_COLORS,
     calculate,
     drawFloorPlan,

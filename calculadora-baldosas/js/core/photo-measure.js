@@ -177,6 +177,7 @@
           refPoints.push(coord);
           if (refPoints.length === 2) {
             scale = computeScale(refLengthM, refPoints[0], refPoints[1]);
+            mode = 'contour';
           }
           redraw();
           notify();
@@ -235,8 +236,10 @@
       },
       setMode(m) {
         mode = m;
+        notify();
       },
       getMode: () => mode,
+      hasImage: () => !!(img || videoFrame),
       resetReference() {
         refPoints = [];
         scale = null;

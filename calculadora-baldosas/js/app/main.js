@@ -11,7 +11,7 @@
   let debounceTimer = null;
   let lastResult = null;
   let selectedPattern = 'rejilla';
-  let tileSizeMode = '50';
+  let colorCount = 3;
   let logoImageData = null;
   let logoImageEl = null;
   let deferredInstallPrompt = null;
@@ -34,11 +34,12 @@
       roomWidthM: 0,
       roomLengthM: 0,
       areaM2: 0,
-      tileWidthCm: 50,
-      tileLengthCm: 50,
+      tileWidthCm: TileCalc.TILE_SIZE_CM,
+      tileLengthCm: TileCalc.TILE_SIZE_CM,
       tilesPerBox: 4,
       sparePercent: 10,
       pattern: 'rejilla',
+      colorCount: 3,
       colors: TileCalc.DEFAULT_COLORS.map((c) => ({ ...c })),
       measureMethod: 'manual',
       logoEnabled: false,
@@ -54,7 +55,7 @@
     logoImageData = null;
     logoImageEl = null;
     selectedPattern = 'rejilla';
-    tileSizeMode = '50';
+    colorCount = 3;
     if ($('#logoFile')) $('#logoFile').value = '';
     if ($('#photoFile')) $('#photoFile').value = '';
     measureSession?.resetAll();
@@ -70,11 +71,12 @@
       roomWidthM: parseFloat($('#roomWidth').value) || 0,
       roomLengthM: parseFloat($('#roomLength').value) || 0,
       areaM2: parseFloat($('#areaInput')?.value) || 0,
-      tileWidthCm: parseFloat($('#tileWidth').value) || 50,
-      tileLengthCm: parseFloat($('#tileLength').value) || 50,
+      tileWidthCm: TileCalc.TILE_SIZE_CM,
+      tileLengthCm: TileCalc.TILE_SIZE_CM,
       tilesPerBox: parseInt($('#tilesPerBox').value, 10) || 4,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
+      colorCount,
       colors: [
         { name: $('#color1Name').value, hex: $('#color1Hex').value },
         { name: $('#color2Name').value, hex: $('#color2Hex').value },
@@ -123,26 +125,27 @@
     }
     updateAreaFromDims();
 
-    const tw = data.tileWidthCm ?? 50;
-    const preset = Object.keys(TileCalc.TILE_PRESETS).find(
-      (k) => TileCalc.TILE_PRESETS[k].w === tw && TileCalc.TILE_PRESETS[k].l === tw
-    );
-    setTileSize(preset || 'custom', tw, data.tileLengthCm ?? tw);
+    const tw = TileCalc.TILE_SIZE_CM;
+    $('#tileWidth').value = String(tw);
+    $('#tileLength').value = String(tw);
 
     $('#tilesPerBox').value = data.tilesPerBox ?? 4;
     $('#sparePercent').value = data.sparePercent ?? 10;
 
     selectedPattern = data.pattern || 'rejilla';
     if (!TileCalc.FLOOR_TYPES[selectedPattern]) selectedPattern = 'rejilla';
+    colorCount = data.colorCount ?? 3;
+    if (colorCount < 1 || colorCount > 3) colorCount = 3;
+    setColorCount(colorCount);
     updatePatternSelection();
 
-    const colors = data.colors || TileCalc.DEFAULT_COLORS;
-    $('#color1Name').value = colors[0]?.name || 'Gris (fondo)';
-    $('#color1Hex').value = colors[0]?.hex || '#7a7a7a';
-    $('#color2Name').value = colors[1]?.name || 'Negro';
-    $('#color2Hex').value = colors[1]?.hex || '#1a1a1a';
-    $('#color3Name').value = colors[2]?.name || 'Rojo';
-    $('#color3Hex').value = colors[2]?.hex || '#c41e1e';
+    const colors = data.colors || TileCalc.NEXA_COLOR_CATALOG;
+    $('#color1Name').value = colors[0]?.name || TileCalc.NEXA_COLOR_CATALOG[0].name;
+    $('#color1Hex').value = colors[0]?.hex || TileCalc.NEXA_COLOR_CATALOG[0].hex;
+    $('#color2Name').value = colors[1]?.name || TileCalc.NEXA_COLOR_CATALOG[1].name;
+    $('#color2Hex').value = colors[1]?.hex || TileCalc.NEXA_COLOR_CATALOG[1].hex;
+    $('#color3Name').value = colors[2]?.name || TileCalc.NEXA_COLOR_CATALOG[2].name;
+    $('#color3Hex').value = colors[2]?.hex || TileCalc.NEXA_COLOR_CATALOG[2].hex;
 
     $('#photoThumbData').value = data.photoThumb || '';
     setMeasureTab(data.measureMethod || 'manual');
@@ -197,33 +200,30 @@
     return opts;
   }
 
-  function setTileSize(mode, w, l) {
-    tileSizeMode = mode;
-    $$('.tile-size-btn').forEach((b) => b.classList.toggle('active', b.dataset.size === mode));
-    const customRow = $('#customSizeRow');
-    if (mode === 'custom') {
-      customRow.classList.remove('hidden');
-      $('#tileWidth').value = w ?? 50;
-      $('#tileLength').value = l ?? 50;
-    } else {
-      customRow.classList.add('hidden');
-      const p = TileCalc.TILE_PRESETS[mode];
-      if (p) {
-        $('#tileWidth').value = p.w;
-        $('#tileLength').value = p.l;
-      }
-    }
+  function setColorCount(count) {
+    colorCount = Math.min(3, Math.max(1, count));
+    $$('.color-count-btn').forEach((b) => b.classList.toggle('active', parseInt(b.dataset.count, 10) === colorCount));
+    updateColorUI();
+  }
+
+  function updateColorUI() {
+    $('#color2Group').classList.toggle('hidden', colorCount < 2);
+    $('#color3Group').classList.toggle('hidden', colorCount < 3);
   }
 
   function setMeasureTab(tab) {
     $$('.measure-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
     $$('.measure-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== tab));
+    if (tab === 'photo') {
+      requestAnimationFrame(() => {
+        measureSession?.redraw();
+        updateMeasureUI();
+      });
+    }
   }
 
   function updatePatternUI() {
-    const needs3 = ['rejilla', 'trama', 'moneda'].includes(selectedPattern);
-    $('#color2Group').classList.toggle('hidden', !needs3);
-    $('#color3Group').classList.toggle('hidden', !needs3);
+    updateColorUI();
   }
 
   function updatePatternSelection() {
@@ -574,9 +574,9 @@
     const floorGrid = $('#floorTypeGrid');
     floorGrid.innerHTML = Object.entries(TileCalc.FLOOR_TYPES)
       .map(([key, label]) => {
-        const preview = TileCalc.getPatternPreview(key);
+        const img = TileCalc.FLOOR_TYPE_IMAGES[key] || '';
         return `<button type="button" class="pattern-btn floor-type-btn${key === selectedPattern ? ' active' : ''}" data-pattern="${key}">
-          <img src="${preview}" alt="${label}" width="48" height="48">
+          <img src="${img}" alt="${label}" loading="lazy">
           <span>${label}</span>
         </button>`;
       }).join('');
@@ -590,29 +590,86 @@
     });
   }
 
+  function updateMeasureUI(result) {
+    const status = $('#measureStatus');
+    const step1 = $('#measureStep1');
+    const step2 = $('#measureStep2');
+    const step3 = $('#measureStep3');
+    const btnRef = $('#btnRefDone');
+    if (!measureSession || !status) return;
+
+    const data = result ?? measureSession.getResult();
+    const hasImage = measureSession.hasImage();
+    const mode = measureSession.getMode();
+    const refPts = data.refPoints?.length ?? 0;
+    const contourPts = data.contourPoints?.length ?? 0;
+
+    step1?.classList.toggle('done', hasImage);
+    step1?.classList.toggle('active', !hasImage);
+    step2?.classList.toggle('done', !!data.scale);
+    step2?.classList.toggle('active', hasImage && !data.scale);
+    step3?.classList.toggle('done', data.ready);
+    step3?.classList.toggle('active', !!data.scale && !data.ready);
+
+    if (!hasImage) {
+      status.textContent = 'Subí una foto del ambiente para empezar.';
+    } else if (!data.scale) {
+      status.textContent = `Paso 2: tocá ${2 - refPts} punto(s) en la foto sobre una medida conocida (ej. ancho de puerta).`;
+    } else if (mode === 'reference') {
+      status.textContent = 'Referencia lista. Tocá «Paso 2 → contorno» o seguí: ya podés marcar el perímetro.';
+    } else if (!data.ready) {
+      status.textContent = `Paso 3: marcá el contorno del piso (${contourPts}/3 puntos mínimo).`;
+    } else {
+      status.textContent = `Listo: ${data.areaM2.toFixed(2)} m² reales · rectángulo ${data.widthM.toFixed(2)} × ${data.lengthM.toFixed(2)} m para el plano.`;
+    }
+
+    if (btnRef) btnRef.disabled = !data.scale;
+  }
+
+  function applyMeasureResult(result) {
+    if (!result?.ready) {
+      updateMeasureUI(result);
+      return;
+    }
+    $('#roomWidth').value = result.widthM.toFixed(2);
+    $('#roomLength').value = result.lengthM.toFixed(2);
+    if ($('#areaInput')) $('#areaInput').value = result.areaM2.toFixed(2);
+    updateAreaFromDims();
+    updateMeasureUI(result);
+    debounce(recalculate);
+  }
+
   function initMeasurePhoto() {
     const canvas = $('#measureCanvas');
     measureSession = PhotoMeasure.createMeasureSession(canvas);
-    measureSession.setOnUpdate((result) => {
-      if (result.ready) {
-        $('#roomWidth').value = result.widthM.toFixed(2);
-        $('#roomLength').value = result.lengthM.toFixed(2);
-        updateAreaFromDims();
-        debounce(recalculate);
-      }
-    });
+    measureSession.setOnUpdate((result) => applyMeasureResult(result));
 
     $('#photoFile').addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       measureSession.setImage(await PhotoMeasure.loadImageFromFile(file));
       measureSession.resetAll();
+      updateMeasureUI();
     });
 
-    $('#refLength').addEventListener('input', () => measureSession.setRefLength(parseFloat($('#refLength').value) || 1));
-    $('#btnRefDone').addEventListener('click', () => measureSession.setMode('contour'));
-    $('#btnContourUndo').addEventListener('click', () => measureSession.undoContour());
-    $('#btnMeasureReset').addEventListener('click', () => measureSession.resetAll());
+    $('#refLength').addEventListener('input', () => {
+      measureSession.setRefLength(parseFloat($('#refLength').value) || 0.9);
+      updateMeasureUI();
+    });
+    $('#btnRefDone').addEventListener('click', () => {
+      if (!measureSession.getResult().scale) return;
+      measureSession.setMode('contour');
+      updateMeasureUI();
+    });
+    $('#btnContourUndo').addEventListener('click', () => {
+      measureSession.undoContour();
+      updateMeasureUI();
+    });
+    $('#btnMeasureReset').addEventListener('click', () => {
+      measureSession.resetAll();
+      $('#photoFile').value = '';
+      updateMeasureUI();
+    });
   }
 
   function initUser() {
@@ -764,16 +821,14 @@
     $('#roomWidth').addEventListener('input', () => { updateAreaFromDims(); debounce(recalculate); });
     $('#roomLength').addEventListener('input', () => { updateAreaFromDims(); debounce(recalculate); });
 
-    $$('.tile-size-btn').forEach((btn) => {
+    $$('.color-count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const size = btn.dataset.size;
-        if (size === 'custom') setTileSize('custom', parseFloat($('#tileWidth').value), parseFloat($('#tileLength').value));
-        else setTileSize(size);
+        setColorCount(parseInt(btn.dataset.count, 10));
         debounce(recalculate);
       });
     });
 
-    const inputs = '#cliente, #referencia, #link, #notas, #tileWidth, #tileLength, #tilesPerBox, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
+    const inputs = '#cliente, #referencia, #link, #notas, #tilesPerBox, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
     $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());
@@ -801,6 +856,7 @@
 
   function init() {
     initTheme();
+    setColorCount(3);
     buildPatternGrids();
     bindEvents();
     initPlanViewer();

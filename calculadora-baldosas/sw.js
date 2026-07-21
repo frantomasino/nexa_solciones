@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v4';
+const CACHE = 'nexa-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,9 @@ const ASSETS = [
   './icons/nexa-logo.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './images/piso-rejilla.svg',
+  './images/piso-trama.svg',
+  './images/piso-moneda.svg',
 ];
 
 self.addEventListener('install', (e) => {
