@@ -402,14 +402,36 @@
   </main>
 
   <div id="printArea" class="print-only">
-    <h1>Nexa Soluciones</h1>
-    <p><strong>Cliente:</strong> <span id="printCliente"></span></p>
-    <p><strong>Referencia:</strong> <span id="printReferencia"></span></p>
-    <p><strong>Medidas:</strong> <span id="printMedidas"></span></p>
-    <p><strong>Área:</strong> <span id="printArea2"></span></p>
-    <p><strong>Piso / Patrón:</strong> <span id="printPatron"></span></p>
-    <div id="printCanvasWrap"></div>
-    <table id="printTable"></table>
+    <header class="print-header">
+      <img src="icons/nexa-logo.png" alt="Nexa Soluciones" class="print-logo" width="140" height="46">
+      <div class="print-header-text">
+        <h1>Presupuesto de piso técnico</h1>
+        <p id="printDate" class="print-date"></p>
+      </div>
+    </header>
+
+    <section class="print-meta">
+      <div class="print-meta-grid">
+        <div class="print-meta-item"><span class="print-meta-label">Cliente</span><span id="printCliente" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Referencia</span><span id="printReferencia" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Medidas</span><span id="printMedidas" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Superficie</span><span id="printArea2" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Plano cubre</span><span id="printCubierto" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Grilla</span><span id="printGrilla" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Tipo de piso</span><span id="printPatron" class="print-meta-value"></span></div>
+        <div class="print-meta-item"><span class="print-meta-label">Colores</span><span id="printColores" class="print-meta-value"></span></div>
+      </div>
+      <p id="printNotas" class="print-notas hidden"></p>
+    </section>
+
+    <figure class="print-plan-wrap">
+      <img id="printPlanImg" class="print-plan-img" alt="Plano del piso">
+      <figcaption id="printPlanCaption" class="print-plan-caption"></figcaption>
+    </figure>
+
+    <table id="printTable" class="print-table"></table>
+    <p id="printTotal" class="print-total"></p>
+    <footer class="print-footer">Nexa Soluciones · Pisos encastrables de alto rendimiento · Baldosa 40×40 cm</footer>
   </div>
 
   <!-- Modal instalar app -->
