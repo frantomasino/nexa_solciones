@@ -198,21 +198,14 @@ img, video, canvas { max-width: 100%; display: block; }
   background: transparent;
 }
 
-.btn-install {
-  border-color: var(--accent);
-  color: var(--accent-text);
-  background: var(--accent);
+.btn-install-subtle {
+  opacity: 0.55;
+  font-size: 1rem;
+  padding: 0.35rem 0.45rem;
 }
 
-.btn-install:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  color: var(--accent-text);
-}
-
-.install-btn-icon {
-  font-size: 0.95rem;
-  line-height: 1;
+.btn-install-subtle:hover {
+  opacity: 1;
 }
 
 .install-banner {
@@ -1511,39 +1504,9 @@ a.dropdown-item:hover {
   #btnInstall {
     width: auto;
     min-height: 40px;
-    padding: 0.4rem 0.55rem;
+    padding: 0.35rem 0.45rem;
     order: 0;
   }
-
-  .install-btn-label { display: none; }
-
-  body.install-banner-open #btnInstall { display: none; }
-
-  body[data-view='editor'] #installBanner { display: none !important; }
-
-  .install-banner {
-    margin-bottom: 0.85rem;
-    padding: 0.75rem 2.5rem 0.75rem 0.85rem;
-    gap: 0.65rem;
-  }
-
-  .install-banner-icon { font-size: 1.25rem; }
-
-  .install-banner-text strong { font-size: 0.82rem; }
-  .install-banner-text span { font-size: 0.72rem; line-height: 1.35; }
-
-  #btnInstallBanner {
-    width: 100%;
-    min-height: 42px;
-    margin-top: 0.15rem;
-  }
-
-  .install-banner {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .install-banner-text { flex: 1 1 100%; padding-right: 0.5rem; }
 
   .btn-user {
     padding: 0.4rem 0.5rem;
