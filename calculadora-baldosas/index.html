@@ -184,15 +184,56 @@
                 <li id="measureStep3" class="measure-step">Marcá el contorno del piso (mínimo 3 puntos)</li>
               </ol>
               <p id="measureStatus" class="measure-status hint">Subí una foto para empezar.</p>
-              <label class="field"><span>Subir foto</span><input type="file" id="photoFile" accept="image/*"></label>
-              <label class="field field-inline"><span>Longitud referencia (m)</span><input type="number" id="refLength" min="0.01" step="0.01" value="0.9"></label>
-              <div class="canvas-wrap measure-canvas-wrap"><canvas id="measureCanvas"></canvas></div>
+
+              <div class="photo-upload-row">
+                <label class="field field-grow">
+                  <span>Subir foto</span>
+                  <div class="file-upload">
+                    <button type="button" class="btn btn-outline btn-sm" id="btnPickPhoto">Elegir foto</button>
+                    <input type="file" id="photoFile" accept="image/*" hidden>
+                    <span id="photoFileName" class="file-name">Ninguna foto</span>
+                  </div>
+                </label>
+                <button type="button" id="btnClearPhoto" class="btn btn-sm btn-ghost btn-danger-text hidden" title="Quitar la foto">Borrar foto</button>
+              </div>
+
+              <label class="field field-inline">
+                <span>Longitud referencia (m)</span>
+                <input type="number" id="refLength" min="0.01" step="0.01" value="0.9">
+                <small class="field-hint">Distancia real entre los 2 puntos amarillos</small>
+              </label>
+
+              <div class="canvas-wrap measure-canvas-wrap">
+                <canvas id="measureCanvas"></canvas>
+                <p id="measureCanvasEmpty" class="measure-canvas-empty">Sin foto — elegí una imagen o cargá medidas a mano abajo</p>
+              </div>
+
               <div class="btn-row">
                 <button type="button" id="btnRefDone" class="btn btn-sm btn-outline">Paso 2 → contorno</button>
                 <button type="button" id="btnContourUndo" class="btn btn-sm btn-ghost">Deshacer punto</button>
-                <button type="button" id="btnMeasureReset" class="btn btn-sm btn-ghost">Reiniciar</button>
+                <button type="button" id="btnMeasureReset" class="btn btn-sm btn-ghost">Reiniciar puntos</button>
               </div>
-              <p class="hint measure-photo-note">El <strong>plano</strong> dibuja una grilla rectangular con las medidas del contorno. No usa la foto como textura: la foto solo sirve para medir m².</p>
+
+              <div class="measure-manual-block">
+                <p class="field-label">O cargá medidas a mano</p>
+                <p class="hint">Si no querés marcar la foto, ingresá ancho y largo directo (también podés usar la pestaña Manual).</p>
+                <div class="field-row">
+                  <label class="field">
+                    <span>Ancho (m)</span>
+                    <input type="number" id="photoRoomWidth" min="0.1" step="0.01" placeholder="Ej: 5">
+                  </label>
+                  <label class="field">
+                    <span>Largo (m)</span>
+                    <input type="number" id="photoRoomLength" min="0.1" step="0.01" placeholder="Ej: 4.4">
+                  </label>
+                  <label class="field field-readonly">
+                    <span>Superficie</span>
+                    <output id="photoAreaFromDims">—</output>
+                  </label>
+                </div>
+              </div>
+
+              <p class="hint measure-photo-note">El <strong>plano</strong> dibuja una grilla rectangular con las medidas. La foto solo sirve para medir; no se usa como imagen del plano.</p>
             </div>
 
           </fieldset>

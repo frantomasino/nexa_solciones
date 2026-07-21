@@ -1103,8 +1103,49 @@ a.dropdown-item:hover {
   border-radius: var(--radius-sm);
 }
 
-.measure-canvas-wrap { min-height: 200px; }
+.measure-canvas-wrap { min-height: 200px; position: relative; }
+.measure-canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
 .measure-photo-note { margin-top: 0.5rem; font-size: 0.78rem; }
+
+.photo-upload-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.field-grow { flex: 1; min-width: 200px; }
+
+.btn-danger-text {
+  color: #c41e1e;
+  font-weight: 600;
+}
+
+.btn-danger-text:hover {
+  color: #fff;
+  background: #c41e1e;
+}
+
+.measure-manual-block {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.measure-manual-block .field-label { margin-bottom: 0.25rem; }
 
 /* Colors */
 .colors-row {

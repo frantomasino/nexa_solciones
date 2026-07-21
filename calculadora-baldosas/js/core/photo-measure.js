@@ -97,8 +97,12 @@
 
     function redraw() {
       const source = img || videoFrame;
-      if (!source) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!source) {
+        canvas.width = 0;
+        canvas.height = 0;
+        return;
+      }
       ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
 
       if (refPoints.length >= 1) {
@@ -257,6 +261,18 @@
         scale = null;
         mode = 'reference';
         redraw();
+        notify();
+      },
+      clearImage() {
+        img = null;
+        videoFrame = null;
+        refPoints = [];
+        contourPoints = [];
+        scale = null;
+        mode = 'reference';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = 0;
+        canvas.height = 0;
         notify();
       },
       undoContour() {

@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v5';
+const CACHE = 'nexa-v6';
 const ASSETS = [
   './',
   './index.html',

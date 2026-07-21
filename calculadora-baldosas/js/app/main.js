@@ -96,11 +96,35 @@
     const l = parseFloat($('#roomLength').value) || 0;
     if (!w || !l) {
       $('#areaFromDims').textContent = '—';
+      syncDimsToPhotoPanel();
       return;
     }
     const area = w * l;
     $('#areaFromDims').textContent = `${area.toFixed(2)} m²`;
     if ($('#areaInput')) $('#areaInput').value = area.toFixed(2);
+    syncDimsToPhotoPanel();
+  }
+
+  function syncDimsToPhotoPanel() {
+    const w = $('#roomWidth')?.value ?? '';
+    const l = $('#roomLength')?.value ?? '';
+    if ($('#photoRoomWidth')) $('#photoRoomWidth').value = w;
+    if ($('#photoRoomLength')) $('#photoRoomLength').value = l;
+    const pw = parseFloat(w) || 0;
+    const pl = parseFloat(l) || 0;
+    if ($('#photoAreaFromDims')) {
+      $('#photoAreaFromDims').textContent = pw && pl ? `${(pw * pl).toFixed(2)} m²` : '—';
+    }
+  }
+
+  function applyPhotoManualDims() {
+    const w = parseFloat($('#photoRoomWidth')?.value) || 0;
+    const l = parseFloat($('#photoRoomLength')?.value) || 0;
+    if (!w || !l) return;
+    $('#roomWidth').value = w.toFixed(2);
+    $('#roomLength').value = l.toFixed(2);
+    updateAreaFromDims();
+    debounce(recalculate);
   }
 
   function applyAreaInput() {
@@ -124,6 +148,7 @@
       $('#areaInput').value = area > 0 ? area.toFixed(2) : '';
     }
     updateAreaFromDims();
+    syncDimsToPhotoPanel();
 
     const tw = TileCalc.TILE_SIZE_CM;
     $('#tileWidth').value = String(tw);
@@ -215,6 +240,7 @@
     $$('.measure-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
     $$('.measure-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== tab));
     if (tab === 'photo') {
+      syncDimsToPhotoPanel();
       requestAnimationFrame(() => {
         measureSession?.redraw();
         updateMeasureUI();
@@ -624,6 +650,22 @@
     }
 
     if (btnRef) btnRef.disabled = !data.scale;
+
+    $('#btnClearPhoto')?.classList.toggle('hidden', !hasImage);
+    $('#measureCanvasEmpty')?.classList.toggle('hidden', hasImage);
+    measureSession.redraw();
+  }
+
+  function setPhotoFileName(name) {
+    const el = $('#photoFileName');
+    if (el) el.textContent = name || 'Ninguna foto';
+  }
+
+  function clearMeasurePhoto() {
+    measureSession?.clearImage();
+    $('#photoFile').value = '';
+    setPhotoFileName('Ninguna foto');
+    updateMeasureUI();
   }
 
   function applyMeasureResult(result) {
@@ -644,13 +686,18 @@
     measureSession = PhotoMeasure.createMeasureSession(canvas);
     measureSession.setOnUpdate((result) => applyMeasureResult(result));
 
+    $('#btnPickPhoto')?.addEventListener('click', () => $('#photoFile')?.click());
+
     $('#photoFile').addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       measureSession.setImage(await PhotoMeasure.loadImageFromFile(file));
       measureSession.resetAll();
+      setPhotoFileName(file.name);
       updateMeasureUI();
     });
+
+    $('#btnClearPhoto')?.addEventListener('click', clearMeasurePhoto);
 
     $('#refLength').addEventListener('input', () => {
       measureSession.setRefLength(parseFloat($('#refLength').value) || 0.9);
@@ -667,9 +714,14 @@
     });
     $('#btnMeasureReset').addEventListener('click', () => {
       measureSession.resetAll();
-      $('#photoFile').value = '';
       updateMeasureUI();
     });
+
+    $('#photoRoomWidth')?.addEventListener('input', applyPhotoManualDims);
+    $('#photoRoomLength')?.addEventListener('input', applyPhotoManualDims);
+
+    syncDimsToPhotoPanel();
+    updateMeasureUI();
   }
 
   function initUser() {
