@@ -1513,6 +1513,14 @@ a.dropdown-item:hover {
   .quick-stats { grid-template-columns: 1fr 1fr; gap: 0.35rem; }
   .qs-value { font-size: 1rem; }
 
+  .floor-type-grid { grid-template-columns: repeat(3, 1fr); gap: 0.35rem; }
+  .floor-type-btn {
+    padding: 0.5rem 0.3rem;
+    min-height: 44px;
+  }
+  .floor-type-btn span { font-size: 0.68rem; }
+  .floor-type-btn img { padding: 0.25rem; }
+
   .brand-title { font-size: 0.95rem; }
   .brand-logo { height: 24px; }
   .brand-stripe { height: 3px; }
