@@ -401,6 +401,31 @@ img, video, canvas { max-width: 100%; display: block; }
   flex-wrap: wrap;
 }
 
+.toolbar-export-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.list-export-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .menu-wrap { position: relative; }
 
 .dropdown-menu {
@@ -1535,6 +1560,8 @@ a.dropdown-item:hover {
   .list-toolbar { flex-direction: column; align-items: stretch; }
   .list-toolbar-right { flex-direction: column; width: 100%; }
   .list-toolbar-right .btn-primary { width: 100%; }
+  .toolbar-export-group { width: 100%; }
+  .toolbar-export-group .btn { flex: 1; min-width: 0; }
   .search-input { width: 100%; }
 
   .editor-topbar {

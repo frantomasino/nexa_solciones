@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v15';
+const CACHE = 'nexa-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   './js/core/plan-viewer.js',
   './js/core/photo-measure.js',
   './js/data/storage.js',
+  './js/core/export-excel.js',
   './js/app/main.js',
   './manifest.json',
   './icons/icon.svg',

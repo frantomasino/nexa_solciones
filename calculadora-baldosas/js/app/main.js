@@ -466,6 +466,7 @@
     $('#statBaldosas').textContent = totalBaldosas;
     $('#statLinks').textContent = totalLinks;
     $('#listCount').textContent = items.length;
+    $('#listExportHint')?.classList.toggle('hidden', !items.length);
 
     if (!items.length) {
       tbody.innerHTML = '';
@@ -518,6 +519,7 @@
           <td class="col-boxes">${boxes}</td>
           <td class="col-actions">
             <div class="row-actions">
+              <button type="button" class="btn-icon-action has-tip" data-action="excel" data-id="${p.id}" data-tip="Exportar a Excel" aria-label="Exportar a Excel" title="Exportar a Excel">↓</button>
               <button type="button" class="btn-icon-action has-tip" data-action="edit" data-id="${p.id}" data-tip="Editar presupuesto" aria-label="Editar presupuesto" title="Editar presupuesto">✎</button>
               <button type="button" class="btn-icon-action has-tip" data-action="dup" data-id="${p.id}" data-tip="Duplicar presupuesto" aria-label="Duplicar presupuesto" title="Duplicar presupuesto">⧉</button>
               <button type="button" class="btn-icon-action btn-icon-danger has-tip" data-action="del" data-id="${p.id}" data-tip="Eliminar presupuesto" aria-label="Eliminar presupuesto" title="Eliminar presupuesto">✕</button>
@@ -546,8 +548,15 @@
       ...form,
       id: currentId,
       areaM2: form.roomWidthM * form.roomLengthM,
+      totalTiles: lastResult?.totalTiles,
+      totalSpareTiles: lastResult?.totalSpareTiles,
       totalTilesWithSpare: lastResult?.totalTilesWithSpare,
       totalBoxes: lastResult?.totalBoxes,
+      cols: lastResult?.cols,
+      rows: lastResult?.rows,
+      coveredM2: lastResult?.coveredM2,
+      actualWidthM: lastResult?.actualWidthM,
+      actualLengthM: lastResult?.actualLengthM,
       canvasThumb: createThumb($('#floorCanvas')) || $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
       logoEnabled: form.logoEnabled,
@@ -912,13 +921,104 @@
     });
   }
 
+  function buildPresupuestoFromEditor() {
+    const form = readForm();
+    return {
+      ...form,
+      id: currentId,
+      areaM2: form.roomWidthM * form.roomLengthM,
+      totalTiles: lastResult?.totalTiles,
+      totalSpareTiles: lastResult?.totalSpareTiles,
+      totalTilesWithSpare: lastResult?.totalTilesWithSpare,
+      totalBoxes: lastResult?.totalBoxes,
+      cols: lastResult?.cols,
+      rows: lastResult?.rows,
+      coveredM2: lastResult?.coveredM2,
+      actualWidthM: lastResult?.actualWidthM,
+      actualLengthM: lastResult?.actualLengthM,
+      breakdown: lastResult?.breakdown,
+      createdBy: Storage.getCurrentUser().name,
+      updatedBy: Storage.getCurrentUser().name,
+      createdAt: currentId ? Storage.getById(currentId)?.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function exportCurrentToExcel() {
+    if (!lastResult) await recalculate();
+    if (!lastResult) {
+      alert('Completá las medidas y elegí patrón y colores antes de exportar.');
+      return;
+    }
+    const result = NexaExport.exportOne(buildPresupuestoFromEditor());
+    if (!result.ok) alert(result.error);
+  }
+
+  function exportAllToExcel() {
+    const items = Storage.getAll();
+    if (!items.length) {
+      alert('No hay presupuestos guardados para exportar.');
+      return;
+    }
+    const q = getSearchQuery();
+    const toExport = q ? filterItems(items) : items;
+    if (!toExport.length) {
+      alert('No hay presupuestos que coincidan con la búsqueda.');
+      return;
+    }
+    const result = NexaExport.exportPresupuestos(toExport);
+    if (!result.ok) alert(result.error);
+  }
+
+  function exportJsonBackup() {
+    const json = Storage.exportAll();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nexa-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  function importJsonBackup(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const merge = confirm(
+          '¿Combinar con los presupuestos actuales?\n\n'
+          + 'Aceptar = combinar (mantiene los existentes y agrega/actualiza)\n'
+          + 'Cancelar = reemplazar todo con el backup'
+        );
+        Storage.importAll(reader.result, merge);
+        renderDashboard();
+        alert('Backup restaurado correctamente.');
+      } catch (err) {
+        alert(`No se pudo importar el backup: ${err.message || err}`);
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function bindEvents() {
     $('#btnNew').addEventListener('click', () => openEditor(null));
     $('#btnNewEmpty')?.addEventListener('click', () => openEditor(null));
     $('#btnBack').addEventListener('click', () => showView('dashboard'));
     $('#btnSave').addEventListener('click', savePresupuesto);
     $('#btnShare').addEventListener('click', shareWhatsApp);
+    $('#btnExportExcel').addEventListener('click', exportCurrentToExcel);
     $('#btnPrint').addEventListener('click', printPresupuesto);
+    $('#btnExportAllExcel')?.addEventListener('click', exportAllToExcel);
+    $('#btnExportJson')?.addEventListener('click', exportJsonBackup);
+    $('#btnImportJson')?.addEventListener('click', () => $('#importJsonFile')?.click());
+    $('#importJsonFile')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) importJsonBackup(file);
+      e.target.value = '';
+    });
     $('#themeToggle').addEventListener('click', toggleTheme);
 
     $$('.measure-tab').forEach((tab) => tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab)));
@@ -944,6 +1044,11 @@
       if (btn) {
         const { id, action } = btn.dataset;
         if (action === 'edit') openEditor(id);
+        else if (action === 'excel') {
+          const p = Storage.getById(id);
+          const result = NexaExport.exportOne(p);
+          if (!result.ok) alert(result.error);
+        }
         else if (action === 'dup') { Storage.duplicate(id); renderDashboard(); }
         else if (action === 'del' && confirm('¿Borrar este presupuesto?')) { Storage.remove(id); renderDashboard(); }
         return;

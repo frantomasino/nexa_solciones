@@ -74,9 +74,16 @@
           </div>
           <div class="list-toolbar-right">
             <input type="search" id="searchPresupuestos" class="search-input" placeholder="Buscar cliente, referencia o patrón…">
+            <div class="toolbar-export-group">
+              <button type="button" id="btnExportAllExcel" class="btn btn-outline btn-sm" title="Descargar todos los presupuestos en Excel">↓ Excel (todos)</button>
+              <button type="button" id="btnExportJson" class="btn btn-outline btn-sm" title="Respaldo completo en JSON">↓ Backup</button>
+              <button type="button" id="btnImportJson" class="btn btn-outline btn-sm" title="Restaurar desde backup">↑ Restaurar</button>
+              <input type="file" id="importJsonFile" accept=".json,application/json" class="visually-hidden" aria-hidden="true">
+            </div>
             <button type="button" id="btnNew" class="btn btn-primary">+ Nuevo presupuesto</button>
           </div>
         </div>
+        <p class="list-export-hint hidden" id="listExportHint">Descargá un presupuesto con ↓ en cada fila, todos juntos con <strong>Excel (todos)</strong>, o hacé <strong>Backup</strong> para no perder datos.</p>
 
         <div id="dashboardEmpty" class="empty-state">
           <div class="empty-icon" aria-hidden="true">
@@ -115,6 +122,7 @@
         <h2 id="editorTitle" class="editor-title">Nuevo presupuesto</h2>
         <div class="editor-topbar-actions">
           <button type="button" id="btnShare" class="btn btn-outline btn-sm">Compartir</button>
+          <button type="button" id="btnExportExcel" class="btn btn-outline btn-sm" title="Descargar este presupuesto en Excel">Excel</button>
           <button type="button" id="btnPrint" class="btn btn-outline btn-sm">PDF</button>
           <button type="button" id="btnSave" class="btn btn-primary">Guardar</button>
         </div>
@@ -470,6 +478,7 @@
   <script src="js/core/plan-viewer.js"></script>
   <script src="js/core/photo-measure.js"></script>
   <script src="js/data/storage.js"></script>
+  <script src="js/core/export-excel.js"></script>
   <script src="js/app/main.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
