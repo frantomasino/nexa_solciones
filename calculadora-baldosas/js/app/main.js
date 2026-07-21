@@ -136,10 +136,10 @@
     const w = parseFloat($('#photoRoomWidth')?.value) || 0;
     const l = parseFloat($('#photoRoomLength')?.value) || 0;
     measureSession?.resetContour();
-    if (!w || !l) {
-      if ($('#photoAreaFromDims')) $('#photoAreaFromDims').textContent = '—';
-      return;
+    if ($('#photoAreaFromDims')) {
+      $('#photoAreaFromDims').textContent = w && l ? `${(w * l).toFixed(2)} m²` : '—';
     }
+    if (!w || !l) return;
     $('#roomWidth').value = w.toFixed(2);
     $('#roomLength').value = l.toFixed(2);
     updateAreaFromDims();
