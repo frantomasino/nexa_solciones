@@ -1011,7 +1011,17 @@ a.dropdown-item:hover {
 }
 
 .floor-type-btn img {
-  height: 88px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  padding: 0.35rem;
+  box-sizing: border-box;
+  display: block;
 }
 
 .pattern-btn span {
@@ -1490,7 +1500,6 @@ a.dropdown-item:hover {
   .budget-table .col-user { display: none; }
 
   .pattern-btn img, .pattern-btn canvas { height: 64px; }
-  .floor-type-btn img { height: 72px; }
 
   .field-row { flex-direction: column; }
   .btn, .btn-calc, .measure-tab, .tile-size-btn { min-height: 44px; }
