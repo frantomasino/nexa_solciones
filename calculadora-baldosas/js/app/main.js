@@ -466,6 +466,7 @@
     $('#statBaldosas').textContent = totalBaldosas;
     $('#statLinks').textContent = totalLinks;
     $('#listCount').textContent = items.length;
+    $('#listExportHint')?.classList.toggle('hidden', !items.length);
 
     if (!items.length) {
       tbody.innerHTML = '';
