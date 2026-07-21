@@ -257,6 +257,8 @@
       coveredM2,
       actualWidthM,
       actualLengthM,
+      roomWidthM,
+      roomLengthM,
       grid,
       colors: activeColors,
       breakdown,
@@ -306,13 +308,20 @@
     }
   }
 
+  function formatMetros(m) {
+    return `${Number(m || 0).toFixed(2).replace('.', ',')} m`;
+  }
+
   function layoutMetrics(cols, rows, options = {}) {
-    const padding = options.padding ?? 24;
+    const padTop = options.padTop ?? 36;
+    const padLeft = options.padLeft ?? 44;
+    const padRight = options.padRight ?? 20;
+    const padBottom = options.padBottom ?? 20;
     const minCellPx = options.minCellPx ?? 40;
     const maxDim = options.maxSize ?? 2048;
     let drawW = cols * minCellPx;
     let drawH = rows * minCellPx;
-    const limit = maxDim - padding * 2;
+    const limit = maxDim - padLeft - padRight;
     if (drawW > limit || drawH > limit) {
       const s = limit / Math.max(drawW, drawH);
       drawW *= s;
@@ -321,13 +330,23 @@
     const pixelRatio = options.pixelRatio ?? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
     const supersample = options.supersample ?? 2;
     const ratio = pixelRatio * supersample;
-    return { padding, drawW, drawH, cellW: drawW / cols, cellH: drawH / rows, ratio };
+    return {
+      padTop,
+      padLeft,
+      padRight,
+      padBottom,
+      drawW,
+      drawH,
+      cellW: drawW / cols,
+      cellH: drawH / rows,
+      ratio,
+    };
   }
 
   function prepareCanvas(canvas, layout) {
-    const { padding, drawW, drawH, ratio } = layout;
-    const logicalW = drawW + padding * 2;
-    const logicalH = drawH + padding * 2;
+    const { padTop, padLeft, padRight, padBottom, drawW, drawH, ratio } = layout;
+    const logicalW = drawW + padLeft + padRight;
+    const logicalH = drawH + padTop + padBottom;
     canvas.width = Math.round(logicalW * ratio);
     canvas.height = Math.round(logicalH * ratio);
     canvas.style.width = `${logicalW}px`;
@@ -339,28 +358,85 @@
     return { ctx, logicalW, logicalH };
   }
 
+  function drawPlanDimensions(ctx, layout, dims) {
+    const { padTop, padLeft, drawW, drawH } = layout;
+    const { widthM, lengthM, roomWidthM, roomLengthM } = dims;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094';
+    const fontSize = Math.max(10, Math.min(13, Math.min(drawW, drawH) * 0.04));
+    const tick = 5;
+
+    ctx.save();
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = accent;
+    ctx.lineWidth = 1.25;
+    ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+
+    const topY = padTop - 12;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, topY);
+    ctx.lineTo(padLeft + drawW, topY);
+    ctx.moveTo(padLeft, topY - tick);
+    ctx.lineTo(padLeft, topY + tick);
+    ctx.moveTo(padLeft + drawW, topY - tick);
+    ctx.lineTo(padLeft + drawW, topY + tick);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    let widthLabel = `Ancho ${formatMetros(widthM)}`;
+    if (roomWidthM && Math.abs(roomWidthM - widthM) > 0.04) {
+      widthLabel += ` (pedido ${formatMetros(roomWidthM)})`;
+    }
+    ctx.fillText(widthLabel, padLeft + drawW / 2, topY - 4);
+
+    const leftX = padLeft - 12;
+    ctx.beginPath();
+    ctx.moveTo(leftX, padTop);
+    ctx.lineTo(leftX, padTop + drawH);
+    ctx.moveTo(leftX - tick, padTop);
+    ctx.lineTo(leftX + tick, padTop);
+    ctx.moveTo(leftX - tick, padTop + drawH);
+    ctx.lineTo(leftX + tick, padTop + drawH);
+    ctx.stroke();
+
+    let lengthLabel = `Largo ${formatMetros(lengthM)}`;
+    if (roomLengthM && Math.abs(roomLengthM - lengthM) > 0.04) {
+      lengthLabel += ` (pedido ${formatMetros(roomLengthM)})`;
+    }
+
+    ctx.translate(leftX - 8, padTop + drawH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(lengthLabel, 0, 0);
+    ctx.restore();
+  }
+
   function drawFloorPlan(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
-    const { grid, colors, cols, rows, pattern, colorCount: planColorCount } = result;
+    const { grid, colors, cols, rows, pattern, colorCount: planColorCount, actualWidthM, actualLengthM } = result;
     const layout = layoutMetrics(cols, rows, options);
-    const { padding, drawW, drawH, cellW, cellH } = layout;
+    const { padTop, padLeft, padRight, padBottom, drawW, drawH, cellW, cellH } = layout;
     const { ctx } = prepareCanvas(canvas, layout);
     const showGrid = options.showGrid !== false;
+    const showDimensions = options.showDimensions !== false;
     const tilePhoto = options.floorTypeImage;
     const numColors = planColorCount || colors.length;
     const usePhotoTiles = tilePhoto && isFloorType(pattern) && numColors <= 1;
     const photoAlpha = 0.82;
+    const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
+    const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
 
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414';
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, drawW + padding * 2, drawH + padding * 2);
+    ctx.fillRect(0, 0, drawW + padLeft + padRight, drawH + padTop + padBottom);
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const idx = grid[row][col];
-        const x = padding + col * cellW;
-        const y = padding + row * cellH;
+        const x = padLeft + col * cellW;
+        const y = padTop + row * cellH;
         const cw = cellW - 1;
         const ch = cellH - 1;
 
@@ -393,11 +469,20 @@
     ctx.strokeStyle = accent;
     ctx.globalAlpha = 0.55;
     ctx.lineWidth = 2;
-    ctx.strokeRect(padding, padding, drawW, drawH);
+    ctx.strokeRect(padLeft, padTop, drawW, drawH);
     ctx.globalAlpha = 1;
 
-    canvas.dataset.logicalWidth = String(drawW + padding * 2);
-    canvas.dataset.logicalHeight = String(drawH + padding * 2);
+    if (showDimensions && actualWidthM && actualLengthM) {
+      drawPlanDimensions(ctx, layout, {
+        widthM: actualWidthM,
+        lengthM: actualLengthM,
+        roomWidthM,
+        roomLengthM,
+      });
+    }
+
+    canvas.dataset.logicalWidth = String(drawW + padLeft + padRight);
+    canvas.dataset.logicalHeight = String(drawH + padTop + padBottom);
     return canvas;
   }
 
@@ -415,15 +500,15 @@
     ctx.restore();
   }
 
-  function drawLogoOnPlan(ctx, options, cols, rows, padding, cellW, cellH) {
+  function drawLogoOnPlan(ctx, options, cols, rows, gridX, gridY, cellW, cellH) {
     const logo = options.logo;
     if (!logo?.enabled || !logo.image) return;
 
     const span = Math.min(logo.span || 1, cols, rows);
     const lc = logo.col ?? Math.floor((cols - span) / 2);
     const lr = logo.row ?? Math.floor((rows - span) / 2);
-    const x = padding + lc * cellW;
-    const y = padding + lr * cellH;
+    const x = gridX + lc * cellW;
+    const y = gridY + lr * cellH;
     const w = cellW * span;
     const h = cellH * span;
 
@@ -476,15 +561,15 @@
     if (!canvas) return null;
 
     const { cols, rows } = result;
-    const { padding, cellW, cellH } = layoutMetrics(cols, rows, options);
+    const layout = layoutMetrics(cols, rows, options);
+    const { padTop, padLeft, cellW, cellH, ratio } = layout;
     const ctx = canvas.getContext('2d');
-    const ratio = layoutMetrics(cols, rows, options).ratio;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
     if (options.logo?.enabled && options.logo.src) {
       try {
         const img = options.logo.image || await loadImage(options.logo.src);
-        drawLogoOnPlan(ctx, { ...options, logo: { ...options.logo, image: img } }, cols, rows, padding, cellW, cellH);
+        drawLogoOnPlan(ctx, { ...options, logo: { ...options.logo, image: img } }, cols, rows, padLeft, padTop, cellW, cellH);
       } catch {
         /* logo no cargó */
       }
@@ -497,10 +582,10 @@
     drawFloorPlan(canvas, result, options);
     if (options.logo?.enabled && options.logo.image) {
       const { cols, rows } = result;
-      const { padding, cellW, cellH, ratio } = layoutMetrics(cols, rows, options);
+      const { padTop, padLeft, cellW, cellH, ratio } = layoutMetrics(cols, rows, options);
       const ctx = canvas.getContext('2d');
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawLogoOnPlan(ctx, options, cols, rows, padding, cellW, cellH);
+      drawLogoOnPlan(ctx, options, cols, rows, padLeft, padTop, cellW, cellH);
     }
     return canvas.toDataURL('image/png');
   }
