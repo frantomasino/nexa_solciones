@@ -431,12 +431,6 @@
       return hay.includes(q);
     });
   }
-  function syncInstallBannerState() {
-    const banner = $('#installBanner');
-    const open = banner && !banner.classList.contains('hidden');
-    document.body.classList.toggle('install-banner-open', !!open);
-  }
-
   function showView(view) {
     $('#viewDashboard').classList.toggle('hidden', view !== 'dashboard');
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
@@ -867,22 +861,15 @@
   function initPWA() {
     const btn = $('#btnInstall');
     const modal = $('#installModal');
-    const banner = $('#installBanner');
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     const isFile = window.location.protocol === 'file:';
-    const INSTALL_DISMISS_KEY = 'calculadora_baldosas_install_dismissed';
 
     function openInstallModal() {
       modal?.showModal();
     }
 
-    function hideInstallUI() {
-      btn?.classList.add('hidden');
-      banner?.classList.add('hidden');
-    }
-
     if (isStandalone) {
-      hideInstallUI();
+      btn?.classList.add('hidden');
       return;
     }
 
@@ -899,18 +886,7 @@
       }
     }
 
-    const dismissed = localStorage.getItem(INSTALL_DISMISS_KEY) === '1';
-    if (!dismissed) banner?.classList.remove('hidden');
-
-    syncInstallBannerState();
-
     btn?.addEventListener('click', openInstallModal);
-    $('#btnInstallBanner')?.addEventListener('click', openInstallModal);
-    $('#btnDismissInstall')?.addEventListener('click', () => {
-      localStorage.setItem(INSTALL_DISMISS_KEY, '1');
-      banner?.classList.add('hidden');
-      syncInstallBannerState();
-    });
 
     $('#btnInstallNative')?.addEventListener('click', async () => {
       if (!deferredInstallPrompt) return;
@@ -970,39 +946,6 @@
     if (!result.ok) alert(result.error);
   }
 
-  function exportJsonBackup() {
-    const json = Storage.exportAll();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nexa-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 500);
-  }
-
-  function importJsonBackup(file) {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const merge = confirm(
-          '¿Combinar con los presupuestos actuales?\n\n'
-          + 'Aceptar = combinar (mantiene los existentes y agrega/actualiza)\n'
-          + 'Cancelar = reemplazar todo con el backup'
-        );
-        Storage.importAll(reader.result, merge);
-        renderDashboard();
-        alert('Backup restaurado correctamente.');
-      } catch (err) {
-        alert(`No se pudo importar el backup: ${err.message || err}`);
-      }
-    };
-    reader.readAsText(file);
-  }
-
   function bindEvents() {
     $('#btnNew').addEventListener('click', () => openEditor(null));
     $('#btnNewEmpty')?.addEventListener('click', () => openEditor(null));
@@ -1012,13 +955,6 @@
     $('#btnExportExcel').addEventListener('click', exportCurrentToExcel);
     $('#btnPrint').addEventListener('click', printPresupuesto);
     $('#btnExportAllExcel')?.addEventListener('click', exportAllToExcel);
-    $('#btnExportJson')?.addEventListener('click', exportJsonBackup);
-    $('#btnImportJson')?.addEventListener('click', () => $('#importJsonFile')?.click());
-    $('#importJsonFile')?.addEventListener('change', (e) => {
-      const file = e.target.files?.[0];
-      if (file) importJsonBackup(file);
-      e.target.value = '';
-    });
     $('#themeToggle').addEventListener('click', toggleTheme);
 
     $$('.measure-tab').forEach((tab) => tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab)));

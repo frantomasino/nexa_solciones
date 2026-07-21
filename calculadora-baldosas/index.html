@@ -37,10 +37,7 @@
           <span class="user-avatar">👤</span>
           <span id="userNameDisplay">Usuario</span>
         </button>
-        <button type="button" id="btnInstall" class="btn btn-install" aria-label="Instalar aplicación">
-          <span class="install-btn-icon" aria-hidden="true">⬇</span>
-          <span class="install-btn-label">Instalar app</span>
-        </button>
+        <button type="button" id="btnInstall" class="btn btn-ghost btn-icon btn-install-subtle" title="Instalar en el dispositivo" aria-label="Instalar en el dispositivo">📲</button>
         <button type="button" id="themeToggle" class="btn btn-icon" title="Cambiar tema">☀️</button>
       </nav>
     </div>
@@ -49,16 +46,6 @@
   <main class="app-main">
     <!-- Dashboard -->
     <section id="viewDashboard" class="view">
-      <div id="installBanner" class="install-banner hidden" role="region" aria-label="Instalar aplicación">
-        <div class="install-banner-icon" aria-hidden="true">📲</div>
-        <div class="install-banner-text">
-          <strong>Usala como app en el celular o la compu</strong>
-          <span>Tocá Instalar para agregarla a la pantalla de inicio</span>
-        </div>
-        <button type="button" id="btnInstallBanner" class="btn btn-primary btn-sm">Instalar</button>
-        <button type="button" id="btnDismissInstall" class="btn btn-icon install-banner-close" aria-label="Ocultar aviso">✕</button>
-      </div>
-
       <div class="stats-row" id="statsRow">
         <div class="stat-card"><span class="stat-value" id="statPresupuestos">0</span><span class="stat-label">Presupuestos</span></div>
         <div class="stat-card"><span class="stat-value" id="statM2">0</span><span class="stat-label">m² totales</span></div>
@@ -76,14 +63,11 @@
             <input type="search" id="searchPresupuestos" class="search-input" placeholder="Buscar cliente, referencia o patrón…">
             <div class="toolbar-export-group">
               <button type="button" id="btnExportAllExcel" class="btn btn-outline btn-sm" title="Descargar todos los presupuestos en Excel">↓ Excel (todos)</button>
-              <button type="button" id="btnExportJson" class="btn btn-outline btn-sm" title="Respaldo completo en JSON">↓ Backup</button>
-              <button type="button" id="btnImportJson" class="btn btn-outline btn-sm" title="Restaurar desde backup">↑ Restaurar</button>
-              <input type="file" id="importJsonFile" accept=".json,application/json" class="visually-hidden" aria-hidden="true">
             </div>
             <button type="button" id="btnNew" class="btn btn-primary">+ Nuevo presupuesto</button>
           </div>
         </div>
-        <p class="list-export-hint hidden" id="listExportHint">Descargá un presupuesto con ↓ en cada fila, todos juntos con <strong>Excel (todos)</strong>, o hacé <strong>Backup</strong> para no perder datos.</p>
+        <p class="list-export-hint hidden" id="listExportHint">Descargá un presupuesto con ↓ en cada fila o todos juntos con <strong>Excel (todos)</strong>.</p>
 
         <div id="dashboardEmpty" class="empty-state">
           <div class="empty-icon" aria-hidden="true">
