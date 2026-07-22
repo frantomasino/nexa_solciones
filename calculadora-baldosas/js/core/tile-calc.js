@@ -43,14 +43,18 @@
     '40': { w: TILE_SIZE_CM, l: TILE_SIZE_CM },
   };
 
-  /** Colores muestreados de producto real (fotos cliente jul 2026). */
+  /** Colores del producto real (fotos cliente jul 2026 — IMG_8141, 8142, 8145). */
   const NEXA_COLOR_CATALOG = [
-    { name: 'Beige arena', hex: '#C6B7A2', role: 'moneda' },
-    { name: 'Azul', hex: '#1E56A8', role: 'rejilla' },
-    { name: 'Negro', hex: '#2A2A2A', role: 'detalle' },
-    { name: 'Blanco', hex: '#F0F0F0', role: 'fondo' },
-    { name: 'Violeta', hex: '#4B4376', role: 'acento' },
-    { name: 'Gris', hex: '#8A8A8A', role: 'trama' },
+    { name: 'Negro', hex: '#252525' },
+    { name: 'Gris oscuro', hex: '#5C5F63' },
+    { name: 'Gris claro', hex: '#B8BCC2' },
+    { name: 'Blanco', hex: '#F0F0F0' },
+    { name: 'Naranja', hex: '#E14931' },
+    { name: 'Rojo', hex: '#E33641' },
+    { name: 'Verde bosque', hex: '#3D6B52' },
+    { name: 'Azul', hex: '#2B4BA8' },
+    { name: 'Verde lima', hex: '#79A943' },
+    { name: 'Beige arena', hex: '#C6B7A2' },
   ];
 
   const DEFAULT_COLORS = NEXA_COLOR_CATALOG;

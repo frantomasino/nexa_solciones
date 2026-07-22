@@ -18,6 +18,7 @@
   let planViewerControls = null;
   let excludedCells = new Set();
   let obstacleMode = false;
+  let activeColorSlot = 1;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -364,6 +365,39 @@
     return opts;
   }
 
+  function setActiveColorSlot(slot) {
+    activeColorSlot = Math.min(3, Math.max(1, slot));
+    $$('.color-chip').forEach((chip) => {
+      chip.classList.toggle('color-chip-active', parseInt(chip.dataset.slot, 10) === activeColorSlot);
+    });
+  }
+
+  function applyCatalogColor(color) {
+    const hexEl = $(`#color${activeColorSlot}Hex`);
+    const nameEl = $(`#color${activeColorSlot}Name`);
+    if (!hexEl || !nameEl) return;
+    hexEl.value = color.hex;
+    nameEl.value = color.name;
+    debounce(recalculate);
+  }
+
+  function buildColorPalette() {
+    const palette = $('#colorPalette');
+    if (!palette) return;
+    palette.innerHTML = TileCalc.NEXA_COLOR_CATALOG.map((color) => `
+      <button type="button" class="color-palette-btn" data-hex="${color.hex}" data-name="${escapeHtml(color.name)}" title="${escapeHtml(color.name)}">
+        <span class="color-palette-swatch" style="background:${color.hex}"></span>
+        <span>${escapeHtml(color.name)}</span>
+      </button>
+    `).join('');
+
+    palette.querySelectorAll('.color-palette-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyCatalogColor({ hex: btn.dataset.hex, name: btn.dataset.name });
+      });
+    });
+  }
+
   function setColorCount(count) {
     if (count == null || count === '') {
       colorCount = null;
@@ -379,15 +413,20 @@
   function updateColorUI() {
     const hint = $('#colorSelectHint');
     const row = $('.colors-row');
+    const palette = $('#colorPalette');
     if (!colorCount) {
       hint?.classList.remove('hidden');
       row?.classList.add('hidden');
+      palette?.classList.add('hidden');
       return;
     }
     hint?.classList.add('hidden');
     row?.classList.remove('hidden');
+    palette?.classList.remove('hidden');
     $('#color2Group').classList.toggle('hidden', colorCount < 2);
     $('#color3Group').classList.toggle('hidden', colorCount < 3);
+    if (activeColorSlot > colorCount) setActiveColorSlot(colorCount);
+    else setActiveColorSlot(activeColorSlot);
   }
 
   function setMeasureTab(tab) {
@@ -1163,6 +1202,14 @@
       });
     });
 
+    $$('.color-chip').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        if (e.target.matches('input')) return;
+        setActiveColorSlot(parseInt(chip.dataset.slot, 10));
+      });
+    });
+    setActiveColorSlot(1);
+
     const inputs = '#cliente, #referencia, #link, #notas, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
@@ -1197,6 +1244,7 @@
   function init() {
     initTheme();
     buildPatternGrids();
+    buildColorPalette();
     bindEvents();
     initPlanViewer();
     initMeasurePhoto();

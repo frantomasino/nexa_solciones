@@ -245,25 +245,26 @@
             <div class="floor-type-grid" id="floorTypeGrid"></div>
 
             <p class="field-label">Colores</p>
-            <p class="hint color-catalog-hint">Colores del producto real (beige, azul, negro, blanco, violeta, gris). Si el cliente pide otro, se fabrica bajo consulta.</p>
+            <p class="hint color-catalog-hint">Colores reales del producto (fotos del cliente). Tocá una muestra para asignarla al color activo, o ajustá nombre y tono a mano. Otros colores se fabrican bajo consulta.</p>
             <div class="color-count-btns" id="colorCountBtns">
               <button type="button" class="color-count-btn" data-count="1">1 color</button>
               <button type="button" class="color-count-btn" data-count="2">2 colores</button>
               <button type="button" class="color-count-btn" data-count="3">3 colores</button>
             </div>
             <p id="colorSelectHint" class="hint">Elegí 1, 2 o 3 colores</p>
+            <div class="color-palette hidden" id="colorPalette" aria-label="Muestras de color del producto"></div>
             <div class="colors-row hidden">
-              <div class="color-chip">
-                <input type="color" id="color1Hex" class="color-hex" value="#C6B7A2">
-                <input type="text" id="color1Name" class="color-name" value="Beige arena">
+              <div class="color-chip color-chip-active" data-slot="1" id="colorChip1">
+                <input type="color" id="color1Hex" class="color-hex" value="#252525">
+                <input type="text" id="color1Name" class="color-name" value="Negro">
               </div>
-              <div class="color-chip" id="color2Group">
-                <input type="color" id="color2Hex" class="color-hex" value="#1E56A8">
-                <input type="text" id="color2Name" class="color-name" value="Azul">
+              <div class="color-chip" data-slot="2" id="color2Group">
+                <input type="color" id="color2Hex" class="color-hex" value="#F0F0F0">
+                <input type="text" id="color2Name" class="color-name" value="Blanco">
               </div>
-              <div class="color-chip" id="color3Group">
-                <input type="color" id="color3Hex" class="color-hex" value="#2A2A2A">
-                <input type="text" id="color3Name" class="color-name" value="Negro">
+              <div class="color-chip" data-slot="3" id="color3Group">
+                <input type="color" id="color3Hex" class="color-hex" value="#2B4BA8">
+                <input type="text" id="color3Name" class="color-name" value="Azul">
               </div>
             </div>
 
