@@ -21,6 +21,7 @@
   let shapeMode = false;
   let roomPolygon = [];
   let shapeClosed = false;
+  let roomShapeType = 'rect';
   let activeColorSlot = 1;
   let planNeedsFitView = true;
   let paintMode = false;
@@ -88,6 +89,7 @@
     shapeMode = false;
     roomPolygon = [];
     shapeClosed = false;
+    roomShapeType = 'rect';
     planNeedsFitView = true;
     paintMode = false;
     customPaint = {};
@@ -107,6 +109,7 @@
     updateCanvasPlaceholder();
     renderResults(null);
     updateShapeStatus();
+    setShapeTypeUI('rect');
   }
 
   function readForm() {
@@ -124,6 +127,7 @@
       excludedCells: [...excludedCells],
       columnRects: columnRects.map((r) => ({ ...r })),
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
+      roomShapeType: shapeClosed ? roomShapeType : 'rect',
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
@@ -196,8 +200,56 @@
     $('#roomWidth').value = result.widthM.toFixed(2);
     $('#roomLength').value = result.lengthM.toFixed(2);
     if ($('#areaInput')) $('#areaInput').value = result.areaM2.toFixed(2);
+    const poly = TileCalc.contourPointsToPolygon(result.contourPoints, result.scale);
+    if (poly?.length >= 3) {
+      roomPolygon = poly;
+      shapeClosed = true;
+      roomShapeType = 'draw';
+      setShapeTypeUI('draw');
+    }
     updateAreaFromDims();
+    updateShapeStatus();
     debounce(recalculate);
+  }
+
+  function setShapeTypeUI(type) {
+    roomShapeType = type || 'rect';
+    $$('.shape-type-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.shape === roomShapeType);
+    });
+    $('#shapeOptionsL')?.classList.toggle('hidden', roomShapeType !== 'l');
+    $('#shapeOptionsCircle')?.classList.toggle('hidden', roomShapeType !== 'circle');
+    $('#shapeOptionsDraw')?.classList.toggle('hidden', roomShapeType !== 'draw');
+  }
+
+  function applyRectangleShape() {
+    roomPolygon = [];
+    shapeClosed = false;
+    roomShapeType = 'rect';
+    setShapeTypeUI('rect');
+    setPlanInteractionMode('none');
+    updateShapeStatus();
+    debounce(recalculate);
+  }
+
+  function applyCircleShape() {
+    const w = parseFloat($('#roomWidth').value) || 0;
+    const l = parseFloat($('#roomLength').value) || 0;
+    if (w <= 0 || l <= 0) {
+      alert('Primero ingresá ancho y largo del rectángulo que envuelve el círculo.');
+      $('#roomWidth').focus();
+      return;
+    }
+    const diameter = parseFloat($('#circleDiameter')?.value) || 0;
+    roomPolygon = TileCalc.createCirclePolygon(w, l, diameter);
+    shapeClosed = true;
+    roomShapeType = 'circle';
+    shapeMode = false;
+    setShapeTypeUI('circle');
+    setPlanInteractionMode('none');
+    updateShapeStatus();
+    debounce(recalculate);
+    setTimeout(() => $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
   }
 
   function applyAreaInput() {
@@ -266,7 +318,7 @@
   function updateShapeStatus() {
     const el = $('#shapeStatus');
     if (!el) return;
-    const showClear = roomPolygon.length > 0 || shapeClosed;
+    const showClear = shapeClosed && roomPolygon.length >= 3;
     $('#btnShapeClear')?.classList.toggle('hidden', !showClear);
     $('#btnShapeClose')?.classList.toggle('hidden', !shapeMode || roomPolygon.length < 3 || shapeClosed);
     $('#btnShapeUndo')?.classList.toggle('hidden', !shapeMode || roomPolygon.length === 0);
@@ -275,19 +327,21 @@
     $('#planShapeUndo')?.classList.toggle('hidden', !shapeMode || roomPolygon.length === 0);
     $('#planShapeClear')?.classList.toggle('hidden', !showClear);
 
-    if (!roomPolygon.length) {
-      el.textContent = 'Sin forma especial — se usa todo el rectángulo.';
+    if (!shapeClosed || !roomPolygon.length) {
+      el.textContent = 'Rectángulo completo — todo el plano lleva baldosas.';
       el.classList.remove('active');
       return;
     }
     el.classList.add('active');
+    const outside = lastResult?.polygonExcludedCount ?? 0;
+    const shapeLabel = roomShapeType === 'circle' ? 'Círculo'
+      : roomShapeType === 'l' ? 'Forma en L'
+      : roomShapeType === 'draw' ? 'Contorno dibujado'
+      : 'Forma personalizada';
     if (shapeMode) {
-      el.textContent = `Dibujando contorno: ${roomPolygon.length} punto(s). Tocá el plano de la derecha · mínimo 3 · luego «Cerrar forma».`;
-    } else if (shapeClosed) {
-      const outside = lastResult?.polygonExcludedCount ?? 0;
-      el.textContent = `Forma activa (${roomPolygon.length} vértices) · ${outside} baldosas fuera del contorno (marcadas con ✕ roja en el plano).`;
+      el.textContent = `Dibujando contorno: ${roomPolygon.length} punto(s) en el plano · mínimo 3 · luego «Cerrar forma».`;
     } else {
-      el.textContent = `Contorno abierto (${roomPolygon.length} puntos) — tocá «Cerrar forma» para aplicar.`;
+      el.textContent = `${shapeLabel} activo · ${outside} baldosas fuera del piso (gris en el plano).`;
     }
   }
 
@@ -303,7 +357,9 @@
     const cutL = parseFloat($('#lShapeCutLength')?.value) || l * 0.5;
     roomPolygon = createLShapePolygon(w, l, cutW, cutL);
     shapeClosed = true;
+    roomShapeType = 'l';
     shapeMode = false;
+    setShapeTypeUI('l');
     planNeedsFitView = true;
     setPlanInteractionMode('none');
     updateShapeStatus();
@@ -321,6 +377,8 @@
       return;
     }
     setPlanInteractionMode('shape');
+    roomShapeType = 'draw';
+    setShapeTypeUI('draw');
     updateShapeStatus();
     $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -551,18 +609,13 @@
   }
 
   function clearRoomShape() {
-    const hadShape = roomPolygon.length > 0;
-    roomPolygon = [];
-    shapeClosed = false;
-    updateShapeStatus();
-    updateColumnUI();
-    if (hadShape) debounce(recalculate);
-    else redrawPlan();
+    applyRectangleShape();
   }
 
   function closeRoomShape() {
     if (roomPolygon.length < 3) return;
     shapeClosed = true;
+    roomShapeType = 'draw';
     shapeMode = false;
     $('#planStage')?.classList.remove('shape-mode');
     $('#planShapeToggle')?.classList.remove('active');
@@ -597,6 +650,7 @@
     if (!pt) return;
     roomPolygon.push(pt);
     shapeClosed = false;
+    roomShapeType = 'draw';
     updateShapeStatus();
     updateColumnUI();
     redrawPlan();
@@ -666,6 +720,8 @@
     activePaintIndex = 0;
     roomPolygon = Array.isArray(data.roomPolygon) ? data.roomPolygon.map((p) => ({ xM: p.xM, yM: p.yM })) : [];
     shapeClosed = roomPolygon.length >= 3;
+    roomShapeType = data.roomShapeType || (shapeClosed ? 'draw' : 'rect');
+    setShapeTypeUI(roomShapeType);
     setPlanInteractionMode('none');
     updateShapeStatus();
 
@@ -744,6 +800,9 @@
     if (columnRects.length || columnPreview) {
       opts.columnRects = columnRects;
       if (columnPreview) opts.columnPreview = columnPreview;
+    }
+    if (lastResult?.polygonExcludedKeys?.length) {
+      opts.polygonCellKeys = new Set(lastResult.polygonExcludedKeys);
     }
     if (paintMode) {
       opts.paintNeutralMode = true;
@@ -1168,6 +1227,7 @@
       excludedCells: [...excludedCells],
       columnRects: columnRects.map((r) => ({ ...r })),
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
+      roomShapeType: shapeClosed ? roomShapeType : 'rect',
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       logoEnabled: form.logoEnabled && selectedPattern === 'trama',
       logoImage: form.logoEnabled ? logoImageData : null,
@@ -1616,6 +1676,18 @@
     $('#planShapeClear')?.addEventListener('click', clearRoomShape);
 
     $('#btnShapeL')?.addEventListener('click', () => applyLShapePreset());
+    $('#btnShapeCircle')?.addEventListener('click', () => applyCircleShape());
+    $$('.shape-type-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.shape;
+        if (type === 'rect') {
+          applyRectangleShape();
+          return;
+        }
+        setShapeTypeUI(type);
+        if (type === 'draw') startShapeDrawing();
+      });
+    });
     $('#btnShapeDraw')?.addEventListener('click', () => {
       if (shapeMode) setPlanInteractionMode('none');
       else startShapeDrawing();

@@ -109,6 +109,38 @@
     return excluded;
   }
 
+  function createCirclePolygon(widthM, lengthM, diameterM) {
+    const maxD = Math.min(widthM, lengthM) - 0.08;
+    const diameter = Math.min(maxD, Math.max(0.2, diameterM || maxD));
+    const radius = diameter / 2;
+    const cx = widthM / 2;
+    const cy = lengthM / 2;
+    const segments = 48;
+    const points = [];
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2 - Math.PI / 2;
+      points.push({
+        xM: cx + radius * Math.cos(angle),
+        yM: cy + radius * Math.sin(angle),
+      });
+    }
+    return points;
+  }
+
+  function contourPointsToPolygon(contourPoints, scaleMPerPx) {
+    if (!contourPoints?.length || !scaleMPerPx) return null;
+    let minX = Infinity;
+    let minY = Infinity;
+    for (const p of contourPoints) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+    }
+    return contourPoints.map((p) => ({
+      xM: (p.x - minX) * scaleMPerPx,
+      yM: (p.y - minY) * scaleMPerPx,
+    }));
+  }
+
   function mergeExclusions(manualExcluded, polygonExcluded, columnExcluded) {
     const set = parseExcludedCells(manualExcluded);
     if (polygonExcluded?.size) {
@@ -517,6 +549,7 @@
       excludedCount,
       roomPolygon: roomPolygon?.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       polygonExcludedCount: polygonExcluded.size,
+      polygonExcludedKeys: [...polygonExcluded],
       customPaint: hasCustomPaint(customPaint) ? { ...customPaint } : null,
       isCustomPainted: hasCustomPaint(customPaint),
       columnRects: columnRects.map((r) => ({ ...r })),
@@ -817,6 +850,8 @@
     const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
     const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
     const columnKeys = options.columnCellKeys || columnCellKeys(options.columnRects, cols, rows);
+    const polygonKeys = options.polygonCellKeys
+      || (result.polygonExcludedKeys ? new Set(result.polygonExcludedKeys) : null);
     const paintNeutralMode = options.paintNeutralMode === true;
     const customPaintMap = options.customPaint || {};
     const NEUTRAL_TILE = '#e2e2e2';
@@ -834,7 +869,9 @@
         const ch = cellH - 1;
 
         if (idx < 0) {
-          const isColumn = columnKeys.has(`${col},${row}`);
+          const key = `${col},${row}`;
+          const isColumn = columnKeys.has(key);
+          const isOutsideShape = polygonKeys?.has(key);
           if (assemblyMode) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
@@ -845,6 +882,15 @@
             }
           } else if (isColumn) {
             drawColumnBlock(ctx, x + 0.5, y + 0.5, cw, ch, '');
+          } else if (isOutsideShape) {
+            ctx.fillStyle = 'rgba(160, 160, 160, 0.12)';
+            ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+            if (showGrid) {
+              ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+              ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+              ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+            }
+            continue;
           } else {
             ctx.fillStyle = 'rgba(200, 60, 60, 0.18)';
             ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
@@ -1106,6 +1152,8 @@
     getColorsForFloorType,
     pointInPolygon,
     polygonExclusions,
+    createCirclePolygon,
+    contourPointsToPolygon,
     parseColumnRects,
     exclusionsFromColumns,
     columnCellKeys,

@@ -1159,6 +1159,38 @@ a.dropdown-item:hover {
   margin: 0 0 0.65rem;
 }
 
+.shape-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.shape-type-btn {
+  padding: 0.45rem 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.shape-type-btn.active {
+  border-color: var(--accent);
+  background: rgba(238, 125, 48, 0.1);
+  color: var(--accent);
+}
+
+.shape-options {
+  margin-bottom: 0.5rem;
+}
+
+.shape-actions-clear {
+  margin-top: 0.35rem;
+}
+
 .shape-actions {
   display: flex;
   flex-wrap: wrap;

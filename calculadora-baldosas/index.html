@@ -165,32 +165,55 @@
                   <span>O ingresá m² directo</span>
                   <input type="number" id="areaInput" min="0.1" step="0.01" placeholder="Ej: 22">
                 </label>
-                <p class="hint area-hint">Ingresá <strong>ancho y largo</strong> del rectángulo que envuelve todo el ambiente (aunque sea en L).</p>
+                <p class="hint area-hint">Ingresá <strong>ancho y largo del rectángulo que envuelve todo</strong> (aunque el piso sea circular, en L u otra forma).</p>
               </div>
 
               <div class="shape-panel" id="shapePanel">
-                <p class="field-label">Forma del ambiente (si no es rectángulo completo)</p>
-                <p class="hint shape-panel-hint">Para ambientes en <strong>L</strong> u otras formas: primero las medidas de arriba, después elegí una opción.</p>
-                <div class="field-row field-row-2">
-                  <label class="field">
-                    <span>Ancho brazo L (m)</span>
-                    <input type="number" id="lShapeCutWidth" min="0.1" step="0.01" placeholder="Ej: 3">
-                    <small class="field-hint">Hasta dónde llega el brazo horizontal</small>
-                  </label>
-                  <label class="field">
-                    <span>Alto recorte L (m)</span>
-                    <input type="number" id="lShapeCutLength" min="0.1" step="0.01" placeholder="Ej: 2">
-                    <small class="field-hint">Altura de la esquina que no lleva piso</small>
-                  </label>
+                <p class="field-label">Forma del piso</p>
+                <p class="hint shape-panel-hint">Primero cargá el <strong>rectángulo que envuelve todo</strong> el ambiente. Después elegí la forma real del piso:</p>
+                <div class="shape-type-grid" id="shapeTypeGrid">
+                  <button type="button" class="shape-type-btn active" data-shape="rect" title="Todo el rectángulo lleva piso">▭ Rectángulo</button>
+                  <button type="button" class="shape-type-btn" data-shape="l" title="Ambiente en L">↱ Forma en L</button>
+                  <button type="button" class="shape-type-btn" data-shape="circle" title="Piso circular u ovalado">○ Círculo</button>
+                  <button type="button" class="shape-type-btn" data-shape="draw" title="Cualquier forma: tocá vértices en el plano">✏ Dibujar</button>
                 </div>
-                <div class="shape-actions">
-                  <button type="button" id="btnShapeL" class="btn btn-outline btn-sm">↱ Forma en L</button>
-                  <button type="button" id="btnShapeDraw" class="btn btn-outline btn-sm">✏ Dibujar contorno</button>
-                  <button type="button" id="btnShapeClose" class="btn btn-primary btn-sm hidden">Cerrar forma</button>
-                  <button type="button" id="btnShapeUndo" class="btn btn-ghost btn-sm hidden">Deshacer punto</button>
-                  <button type="button" id="btnShapeClear" class="btn btn-ghost btn-sm btn-danger-text hidden">Quitar forma</button>
+
+                <div id="shapeOptionsL" class="shape-options hidden">
+                  <div class="field-row field-row-2">
+                    <label class="field">
+                      <span>Ancho brazo L (m)</span>
+                      <input type="number" id="lShapeCutWidth" min="0.1" step="0.01" placeholder="Ej: 3">
+                    </label>
+                    <label class="field">
+                      <span>Alto recorte L (m)</span>
+                      <input type="number" id="lShapeCutLength" min="0.1" step="0.01" placeholder="Ej: 2">
+                    </label>
+                  </div>
+                  <button type="button" id="btnShapeL" class="btn btn-primary btn-sm">Aplicar forma en L</button>
                 </div>
-                <p id="shapeStatus" class="shape-status hint">Sin forma especial — se usa todo el rectángulo.</p>
+
+                <div id="shapeOptionsCircle" class="shape-options hidden">
+                  <label class="field field-inline">
+                    <span>Diámetro del círculo (m)</span>
+                    <input type="number" id="circleDiameter" min="0.2" step="0.01" placeholder="Auto">
+                    <small class="field-hint">Si lo dejás vacío, usa el lado más chico del rectángulo</small>
+                  </label>
+                  <button type="button" id="btnShapeCircle" class="btn btn-primary btn-sm">Aplicar círculo</button>
+                </div>
+
+                <div id="shapeOptionsDraw" class="shape-options hidden">
+                  <p class="hint">Tocá <strong>✏ Forma</strong> en el plano de la derecha para marcar cada vértice. Mínimo 3 puntos, luego «Cerrar forma».</p>
+                  <div class="shape-actions">
+                    <button type="button" id="btnShapeDraw" class="btn btn-outline btn-sm">✏ Empezar en el plano</button>
+                    <button type="button" id="btnShapeClose" class="btn btn-primary btn-sm hidden">Cerrar forma</button>
+                    <button type="button" id="btnShapeUndo" class="btn btn-ghost btn-sm hidden">Deshacer punto</button>
+                  </div>
+                </div>
+
+                <div class="shape-actions shape-actions-clear">
+                  <button type="button" id="btnShapeClear" class="btn btn-ghost btn-sm btn-danger-text hidden">Volver a rectángulo completo</button>
+                </div>
+                <p id="shapeStatus" class="shape-status hint">Rectángulo completo — todo el plano lleva baldosas.</p>
               </div>
             </div>
 
@@ -251,7 +274,7 @@
                 </div>
               </div>
 
-              <p class="hint measure-photo-note">El <strong>plano</strong> dibuja una grilla rectangular con las medidas. La foto solo sirve para medir; no se usa como imagen del plano.</p>
+              <p class="hint measure-photo-note">La foto puede medir el contorno irregular. Al aplicar, el <strong>plano</strong> usará esa forma (no solo un rectángulo).</p>
             </div>
 
           </fieldset>
