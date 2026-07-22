@@ -559,12 +559,13 @@
 
   function undoShapePoint() {
     if (!roomPolygon.length) return;
+    const wasClosed = shapeClosed;
     roomPolygon.pop();
     shapeClosed = false;
-    planNeedsFitView = true;
     updateShapeStatus();
-    updateObstacleUI();
-    debounce(recalculate);
+    updateColumnUI();
+    if (wasClosed) debounce(recalculate);
+    else redrawPlan();
   }
 
   function addShapePoint(clientX, clientY) {
@@ -581,10 +582,9 @@
     if (!pt) return;
     roomPolygon.push(pt);
     shapeClosed = false;
-    planNeedsFitView = true;
     updateShapeStatus();
-    updateObstacleUI();
-    debounce(recalculate);
+    updateColumnUI();
+    redrawPlan();
   }
 
   function parseExcludedFromData(data) {
@@ -873,17 +873,18 @@
     }
 
     const info = TileCalc.FLOOR_TYPE_INFO?.[selectedPattern];
-    const label = TileCalc.FLOOR_TYPES[selectedPattern] || selectedPattern;
-    desc.textContent = info?.summary || `${label} · 40×40 cm`;
-    panel.classList.remove('hidden');
-
     const refs = info?.refs || [];
+    desc.textContent = '';
+    desc.classList.add('hidden');
+
     if (!refs.length) {
+      panel.classList.add('hidden');
       gallery.classList.add('hidden');
       gallery.innerHTML = '';
       return;
     }
 
+    panel.classList.remove('hidden');
     gallery.innerHTML = refs.map((ref) => `
       <figure class="floor-ref-card">
         <img src="${ref.src}" alt="${escapeHtml(ref.caption)}" loading="lazy">
