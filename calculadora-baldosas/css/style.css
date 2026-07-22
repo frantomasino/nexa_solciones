@@ -1405,8 +1405,52 @@ a.dropdown-item:hover {
 
 .plan-stage.obstacle-mode,
 .plan-stage.shape-mode,
-.plan-stage.paint-mode {
+.plan-stage.paint-mode,
+.plan-stage.column-mode {
   cursor: crosshair;
+}
+
+.column-toolbar {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 32, 148, 0.05);
+}
+
+.column-toolbar-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--nexa-blue, #002094);
+}
+
+.column-summary {
+  margin: 0 0 0.45rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.column-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.column-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-size: 0.74rem;
+}
+
+.column-remove-btn {
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  padding: 0.15rem 0.35rem;
 }
 
 .paint-toolbar {

@@ -68,7 +68,7 @@
     }
 
     function onPointerDown(e) {
-      if (stageEl.classList.contains('obstacle-mode') || stageEl.classList.contains('shape-mode') || stageEl.classList.contains('paint-mode')) return;
+      if (stageEl.classList.contains('obstacle-mode') || stageEl.classList.contains('shape-mode') || stageEl.classList.contains('paint-mode') || stageEl.classList.contains('column-mode')) return;
       if (e.button !== undefined && e.button !== 0) return;
       dragging = true;
       lastX = e.clientX;

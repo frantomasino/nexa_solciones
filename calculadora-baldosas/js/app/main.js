@@ -27,6 +27,11 @@
   let activePaintIndex = 0;
   let customPaint = {};
   let isPaintingDrag = false;
+  let columnRects = [];
+  let columnMode = false;
+  let columnDragStart = null;
+  let columnPreview = null;
+  let isColumnDragging = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -87,6 +92,11 @@
     paintMode = false;
     customPaint = {};
     activePaintIndex = 0;
+    columnRects = [];
+    columnMode = false;
+    columnDragStart = null;
+    columnPreview = null;
+    isColumnDragging = false;
     clearMeasureFields();
     measureSession?.clearImage();
     setPhotoFileName('Ninguna foto');
@@ -112,6 +122,7 @@
       tileLengthCm: TileCalc.TILE_SIZE_CM,
       tilesPerBox: selectedPattern ? TileCalc.tilesPerBoxForPattern(selectedPattern) : parseInt($('#tilesPerBox').value, 10) || 25,
       excludedCells: [...excludedCells],
+      columnRects: columnRects.map((r) => ({ ...r })),
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
@@ -314,8 +325,40 @@
     $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  function updateColumnUI() {
+    const n = columnRects.length;
+    const tiles = lastResult?.columnCellCount ?? columnRects.reduce((sum, r) => sum + TileCalc.columnRectSize(r).tiles, 0);
+    $('#planColumnToggle')?.classList.toggle('active', columnMode);
+    $('#planColumnClear')?.classList.toggle('hidden', n === 0);
+    const list = $('#columnList');
+    if (list) {
+      if (!n) {
+        list.innerHTML = '';
+        list.classList.add('hidden');
+      } else {
+        list.classList.remove('hidden');
+        list.innerHTML = columnRects.map((rect, i) => {
+          const size = TileCalc.columnRectSize(rect);
+          return `
+            <div class="column-list-item">
+              <span>Columna ${i + 1}: ${size.cols}×${size.rows} (${size.tiles} bald.)</span>
+              <button type="button" class="btn btn-sm btn-ghost column-remove-btn" data-col-idx="${i}" title="Quitar columna">✕</button>
+            </div>`;
+        }).join('');
+      }
+    }
+    const summary = $('#columnSummary');
+    if (summary) {
+      summary.textContent = n
+        ? `${n} columna(s) · ${tiles} baldosa(s) sin piso`
+        : 'Arrastrá en el plano para marcar el rectángulo de cada columna o pilar.';
+    }
+    updateObstacleUI();
+  }
+
   function updateObstacleUI() {
     const n = excludedCells.size;
+    const colN = columnRects.length;
     const polyN = shapeClosed && roomPolygon.length >= 3 ? (lastResult?.polygonExcludedCount ?? 0) : 0;
     $('#planObstacleClear')?.classList.toggle('hidden', n === 0);
     $('#planObstacleToggle')?.classList.toggle('active', obstacleMode);
@@ -329,14 +372,19 @@
         hint.textContent = shapeClosed
           ? `Forma cerrada: ${roomPolygon.length} vértices · ${polyN} baldosas fuera del contorno. Tocá Forma para editar.`
           : `Modo forma: tocá el plano para marcar vértices (${roomPolygon.length} puntos). Mínimo 3, luego «Cerrar forma».`;
+      } else if (columnMode) {
+        hint.textContent = `Modo columnas: arrastrá en el plano para dibujar cada pilar o columna (${colN} marcada(s)). Las baldosas alrededor siguen el diseño.`;
       } else if (obstacleMode) {
-        hint.textContent = `Modo obstáculos: tocá baldosas para marcar zonas sin piso (${n} marcadas).`;
+        hint.textContent = `Modo obstáculos: tocá baldosas sueltas para marcar zonas sin piso (${n} marcadas).`;
       } else if (paintMode) {
         hint.textContent = `Modo pintar: elegí un color abajo y tocá baldosas en el plano. Se van sumando en tiempo real.`;
-      } else if (shapeClosed) {
-        hint.textContent = `Forma irregular activa (${roomPolygon.length} vértices). Usá Forma u Obstáculos para ajustar.`;
+      } else if (shapeClosed || colN > 0) {
+        const parts = [];
+        if (shapeClosed) parts.push(`forma irregular (${roomPolygon.length} vértices)`);
+        if (colN > 0) parts.push(`${colN} columna(s)`);
+        hint.textContent = `Plano con ${parts.join(' y ')}. Usá las herramientas de arriba para ajustar.`;
       } else {
-        hint.textContent = 'Arrastrá para mover · Zoom +/− · <strong>Pintar</strong> para armar el diseño · Forma / Obstáculos';
+        hint.textContent = 'Arrastrá para mover · Zoom +/− · <strong>Columnas</strong> para pilares · <strong>Pintar</strong> para el diseño';
       }
     }
   }
@@ -345,15 +393,79 @@
     obstacleMode = mode === 'obstacle';
     shapeMode = mode === 'shape';
     paintMode = mode === 'paint';
+    columnMode = mode === 'column';
+    columnDragStart = null;
+    columnPreview = null;
+    isColumnDragging = false;
     $('#planStage')?.classList.toggle('obstacle-mode', obstacleMode);
     $('#planStage')?.classList.toggle('shape-mode', shapeMode);
     $('#planStage')?.classList.toggle('paint-mode', paintMode);
+    $('#planStage')?.classList.toggle('column-mode', columnMode);
     $('#btnShapeDraw')?.classList.toggle('active', shapeMode);
     $('#planPaintToggle')?.classList.toggle('active', paintMode);
     $('#paintToolbar')?.classList.toggle('hidden', !paintMode);
+    $('#columnToolbar')?.classList.toggle('hidden', !columnMode);
     updateShapeStatus();
     updatePaintUI();
-    updateObstacleUI();
+    updateColumnUI();
+  }
+
+  function clearColumnRects() {
+    columnRects = [];
+    columnDragStart = null;
+    columnPreview = null;
+    isColumnDragging = false;
+    updateColumnUI();
+    debounce(recalculate);
+  }
+
+  function removeColumnRect(index) {
+    if (index < 0 || index >= columnRects.length) return;
+    columnRects.splice(index, 1);
+    updateColumnUI();
+    debounce(recalculate);
+  }
+
+  function startColumnMode() {
+    if (!lastResult) {
+      alert('Primero cargá medidas, tipo de piso y colores para ver el plano.');
+      return;
+    }
+    setPlanInteractionMode('column');
+    $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function updateColumnPreview(endCol, endRow) {
+    if (!columnDragStart) return;
+    columnPreview = TileCalc.normalizeColumnRect(
+      columnDragStart.col,
+      columnDragStart.row,
+      endCol,
+      endRow
+    );
+    redrawPlan();
+  }
+
+  function finishColumnDrag(endCol, endRow) {
+    if (!columnDragStart) return;
+    const rect = TileCalc.normalizeColumnRect(
+      columnDragStart.col,
+      columnDragStart.row,
+      endCol,
+      endRow
+    );
+    columnRects.push({ id: `col-${Date.now()}`, ...rect });
+    columnDragStart = null;
+    columnPreview = null;
+    isColumnDragging = false;
+    updateColumnUI();
+    debounce(recalculate);
+  }
+
+  async function redrawPlan() {
+    if (!lastResult) return;
+    const canvas = $('#floorCanvas');
+    await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(readForm()));
   }
 
   function paintCell(col, row, colorIndex) {
@@ -398,6 +510,7 @@
   }
 
   function updatePaintUI() {
+    const n = colorCount || 1;
     if (paintMode || TileCalc.hasCustomPaint(customPaint)) buildPaintBrushes();
     updatePaintCounts();
     const tally = $('#paintLiveTally');
@@ -533,15 +646,13 @@
     $('#sparePercent').value = data.sparePercent ?? 10;
 
     excludedCells = parseExcludedFromData(data.excludedCells);
-    obstacleMode = false;
-    shapeMode = false;
-    paintMode = false;
+    columnRects = TileCalc.parseColumnRects(data.columnRects);
     customPaint = TileCalc.parseCustomPaint(data.customPaint);
     activePaintIndex = 0;
     roomPolygon = Array.isArray(data.roomPolygon) ? data.roomPolygon.map((p) => ({ xM: p.xM, yM: p.yM })) : [];
     shapeClosed = roomPolygon.length >= 3;
+    setPlanInteractionMode('none');
     updateShapeStatus();
-    updateObstacleUI();
 
     selectedPattern = resolvePattern(data);
     setColorCount(resolveColorCount(data));
@@ -614,6 +725,10 @@
     if (roomPolygon.length) {
       opts.roomPolygon = roomPolygon;
       opts.roomPolygonClosed = shapeClosed;
+    }
+    if (columnRects.length || columnPreview) {
+      opts.columnRects = columnRects;
+      if (columnPreview) opts.columnPreview = columnPreview;
     }
     return opts;
   }
@@ -822,7 +937,7 @@
     renderResults(lastResult, form);
     updateShapeStatus();
     updatePaintUI();
-    updateObstacleUI();
+    updateColumnUI();
   }
 
   function renderResults(result, form) {
@@ -879,13 +994,16 @@
     $('#gridHint').textContent = extraM2 > 0.05
       ? `El plano usa baldosas enteras: ${result.cols} de ancho × ${result.rows} de largo (${result.actualWidthM.toFixed(2)} m × ${result.actualLengthM.toFixed(2)} m). Por eso cubre ${result.coveredM2.toFixed(1)} m² en vez de ${result.areaM2.toFixed(1)} m².`
       : `Plano: ${result.cols} baldosas de ancho × ${result.rows} de largo.`;
+    if (result.columnCellCount > 0) {
+      $('#gridHint').textContent += ` · ${result.columnRects?.length || columnRects.length} columna(s) (${result.columnCellCount} bald. sin piso).`;
+    }
     if (result.excludedCount > 0) {
-      $('#gridHint').textContent += ` · ${result.excludedCount} baldosa(s) fuera del contorno o obstáculo.`;
+      $('#gridHint').textContent += ` · ${result.excludedCount} baldosa(s) fuera del contorno u obstáculo.`;
     }
     if (result.isCustomPainted) {
       $('#gridHint').textContent += ' · Diseño pintado a mano en el plano.';
     }
-    updateObstacleUI();
+    updateColumnUI();
     $('#subtotalNetas').textContent = result.totalTiles;
     $('#subtotalRepuesto').textContent = `+${result.totalSpareTiles ?? 0}`;
     $('#subtotalComprar').textContent = result.totalTilesWithSpare;
@@ -1062,6 +1180,7 @@
       canvasThumb: createThumb($('#floorCanvas')) || $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
       excludedCells: [...excludedCells],
+      columnRects: columnRects.map((r) => ({ ...r })),
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       logoEnabled: form.logoEnabled && selectedPattern === 'trama',
@@ -1175,6 +1294,9 @@
       planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
         roomWidthM: form.roomWidthM,
         roomLengthM: form.roomLengthM,
+        columnRects,
+        roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon : null,
+        roomPolygonClosed: shapeClosed,
       });
       planImg.classList.remove('hidden');
       $('#printPlanCaption').textContent =
@@ -1541,6 +1663,17 @@
     });
     $('#planObstacleClear')?.addEventListener('click', clearExcludedCells);
 
+    $('#planColumnToggle')?.addEventListener('click', () => {
+      if (columnMode) setPlanInteractionMode('none');
+      else startColumnMode();
+    });
+    $('#planColumnClear')?.addEventListener('click', clearColumnRects);
+    $('#columnList')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.column-remove-btn');
+      if (!btn) return;
+      removeColumnRect(parseInt(btn.dataset.colIdx, 10));
+    });
+
     $('#planShapeToggle')?.addEventListener('click', () => {
       if (shapeMode) setPlanInteractionMode('none');
       else startShapeDrawing();
@@ -1568,6 +1701,16 @@
         if (cell) paintCell(cell.col, cell.row, activePaintIndex);
         return;
       }
+      if (columnMode && lastResult) {
+        const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
+        if (cell) {
+          columnDragStart = { col: cell.col, row: cell.row };
+          columnPreview = TileCalc.normalizeColumnRect(cell.col, cell.row, cell.col, cell.row);
+          isColumnDragging = true;
+          redrawPlan();
+        }
+        return;
+      }
       if (!obstacleMode || !lastResult) return;
       const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
       if (cell) toggleExcludedCell(cell.col, cell.row);
@@ -1586,21 +1729,40 @@
     });
 
     $('#planStage')?.addEventListener('pointerdown', (e) => {
-      if (!shapeMode && !obstacleMode && !paintMode) return;
-      if (e.target.closest('.plan-toolbar') || e.target.closest('.paint-toolbar')) return;
+      if (!shapeMode && !obstacleMode && !paintMode && !columnMode) return;
+      if (e.target.closest('.plan-toolbar') || e.target.closest('.paint-toolbar') || e.target.closest('.column-toolbar')) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       isPaintingDrag = paintMode;
       handlePlanPointer(e.clientX, e.clientY);
     });
     $('#planStage')?.addEventListener('pointermove', (e) => {
+      if (isColumnDragging && columnMode && lastResult) {
+        e.preventDefault();
+        const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
+        if (cell) updateColumnPreview(cell.col, cell.row);
+        return;
+      }
       if (!isPaintingDrag || !paintMode || !lastResult) return;
       e.preventDefault();
       handlePlanPointer(e.clientX, e.clientY);
     });
-    window.addEventListener('pointerup', () => { isPaintingDrag = false; });
+    window.addEventListener('pointerup', (e) => {
+      if (isColumnDragging && columnMode && lastResult) {
+        const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
+        if (cell && columnDragStart) finishColumnDrag(cell.col, cell.row);
+        else {
+          columnDragStart = null;
+          columnPreview = null;
+          isColumnDragging = false;
+          redrawPlan();
+        }
+      }
+      isPaintingDrag = false;
+    });
     $('#roomWidth').addEventListener('input', () => {
       excludedCells.clear();
+      columnRects = [];
       customPaint = {};
       clearRoomShape();
       updateAreaFromDims();
@@ -1608,6 +1770,7 @@
     });
     $('#roomLength').addEventListener('input', () => {
       excludedCells.clear();
+      columnRects = [];
       customPaint = {};
       clearRoomShape();
       updateAreaFromDims();

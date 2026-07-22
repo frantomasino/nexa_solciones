@@ -382,9 +382,16 @@
                   <button type="button" id="planShapeClose" class="btn btn-sm btn-outline plan-tool-btn hidden" title="Cerrar el contorno">Cerrar forma</button>
                   <button type="button" id="planShapeUndo" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar último punto">Deshacer</button>
                   <button type="button" id="planShapeClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Borrar forma dibujada">Limpiar forma</button>
-                  <button type="button" id="planObstacleToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Marcar baldosas a esquivar (columnas, piletas, etc.)">Obstáculos</button>
+                  <button type="button" id="planColumnToggle" class="btn btn-sm btn-outline plan-tool-btn plan-tool-highlight" title="Marcar columnas o pilares (arrastrá un rectángulo en el plano)">▣ Columnas</button>
+                  <button type="button" id="planColumnClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar todas las columnas">Limpiar columnas</button>
+                  <button type="button" id="planObstacleToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Marcar baldosas sueltas sin piso (piletas, desagües, etc.)">Obstáculos</button>
                   <button type="button" id="planObstacleClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar todos los obstáculos">Limpiar</button>
                   <button type="button" id="planPaintToggle" class="btn btn-sm btn-outline plan-tool-btn plan-tool-highlight" title="Pintar baldosas por color en el plano">🎨 Pintar</button>
+                </div>
+                <div id="columnToolbar" class="column-toolbar hidden">
+                  <p class="column-toolbar-title">Columnas / pilares — arrastrá en el plano el rectángulo de cada uno</p>
+                  <p id="columnSummary" class="column-summary">Arrastrá en el plano para marcar el rectángulo de cada columna o pilar.</p>
+                  <div id="columnList" class="column-list hidden"></div>
                 </div>
                 <div id="paintToolbar" class="paint-toolbar hidden">
                   <p class="paint-toolbar-title">Pintar baldosas — elegí color y tocá el plano (arrastrá para pintar varias)</p>
@@ -395,7 +402,7 @@
                 <div id="planStage" class="plan-stage">
                   <canvas id="floorCanvas"></canvas>
                 </div>
-                <p class="plan-viewer-hint" id="planViewerHint">Arrastrá para mover · Zoom con +/− · <strong>Forma</strong> para ambientes en L o irregulares · <strong>Obstáculos</strong> para columnas</p>
+                <p class="plan-viewer-hint" id="planViewerHint">Arrastrá para mover · Zoom con +/− · <strong>Columnas</strong> para pilares · <strong>Pintar</strong> para el diseño</p>
               </div>
             </div>
             <input type="hidden" id="photoThumbData">

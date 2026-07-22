@@ -128,12 +128,69 @@
     return excluded;
   }
 
-  function mergeExclusions(manualExcluded, polygonExcluded) {
+  function mergeExclusions(manualExcluded, polygonExcluded, columnExcluded) {
     const set = parseExcludedCells(manualExcluded);
     if (polygonExcluded?.size) {
       for (const key of polygonExcluded) set.add(key);
     }
+    if (columnExcluded?.size) {
+      for (const key of columnExcluded) set.add(key);
+    }
     return set;
+  }
+
+  function normalizeColumnRect(col0, row0, col1, row1) {
+    return {
+      col0: Math.min(col0, col1),
+      row0: Math.min(row0, row1),
+      col1: Math.max(col0, col1),
+      row1: Math.max(row0, row1),
+    };
+  }
+
+  function parseColumnRects(data) {
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((item, i) => {
+        if (!item) return null;
+        const col0 = parseInt(item.col0, 10);
+        const row0 = parseInt(item.row0, 10);
+        const col1 = parseInt(item.col1, 10);
+        const row1 = parseInt(item.row1, 10);
+        if ([col0, row0, col1, row1].some((n) => Number.isNaN(n))) return null;
+        const rect = normalizeColumnRect(col0, row0, col1, row1);
+        return { id: item.id || `col-${i}`, ...rect };
+      })
+      .filter(Boolean);
+  }
+
+  function exclusionsFromColumns(columnRects, cols, rows) {
+    const excluded = new Set();
+    if (!columnRects?.length || !cols || !rows) return excluded;
+    for (const rect of columnRects) {
+      const c0 = Math.max(0, rect.col0);
+      const r0 = Math.max(0, rect.row0);
+      const c1 = Math.min(cols - 1, rect.col1);
+      const r1 = Math.min(rows - 1, rect.row1);
+      for (let row = r0; row <= r1; row++) {
+        for (let col = c0; col <= c1; col++) {
+          excluded.add(`${col},${row}`);
+        }
+      }
+    }
+    return excluded;
+  }
+
+  function columnCellKeys(columnRects, cols, rows) {
+    return exclusionsFromColumns(columnRects, cols, rows);
+  }
+
+  function columnRectSize(rect) {
+    return {
+      cols: rect.col1 - rect.col0 + 1,
+      rows: rect.row1 - rect.row0 + 1,
+      tiles: (rect.col1 - rect.col0 + 1) * (rect.row1 - rect.row0 + 1),
+    };
   }
 
   function metersFromCanvasPoint(canvas, clientX, clientY, cols, rows, actualWidthM, actualLengthM) {
@@ -388,13 +445,16 @@
       excludedCells = [],
       roomPolygon = null,
       customPaint: inputCustomPaint = null,
+      columnRects: inputColumnRects = null,
     } = input;
 
     const tilesPerBox = inputTilesPerBox ?? tilesPerBoxForPattern(pattern);
     const gridInfo = computeGrid(roomWidthM, roomLengthM, tileWidthCm, tileLengthCm);
     const { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 } = gridInfo;
     const polygonExcluded = polygonExclusions(cols, rows, actualWidthM, actualLengthM, roomPolygon);
-    const excludedSet = mergeExclusions(excludedCells, polygonExcluded);
+    const columnRects = parseColumnRects(inputColumnRects);
+    const columnExcluded = exclusionsFromColumns(columnRects, cols, rows);
+    const excludedSet = mergeExclusions(excludedCells, polygonExcluded, columnExcluded);
     const customPaint = parseCustomPaint(inputCustomPaint);
     const numColors = colorsForPattern(pattern, inputColorCount);
     const gridOptions = { aisleWidth, stripeWidth, colorCount: numColors };
@@ -462,6 +522,8 @@
       polygonExcludedCount: polygonExcluded.size,
       customPaint: hasCustomPaint(customPaint) ? { ...customPaint } : null,
       isCustomPainted: hasCustomPaint(customPaint),
+      columnRects: columnRects.map((r) => ({ ...r })),
+      columnCellCount: columnExcluded.size,
     };
   }
 
@@ -656,6 +718,56 @@
     ctx.restore();
   }
 
+  function drawColumnBlock(ctx, x, y, w, h, label) {
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.03);
+    const step = Math.max(4, Math.min(w, h) * 0.22);
+    for (let py = y + step; py < y + h; py += step) {
+      ctx.beginPath();
+      ctx.moveTo(x + 2, py);
+      ctx.lineTo(x + w - 2, py);
+      ctx.stroke();
+    }
+    for (let px = x + step; px < x + w; px += step) {
+      ctx.beginPath();
+      ctx.moveTo(px, y + 2);
+      ctx.lineTo(px, y + h - 2);
+      ctx.stroke();
+    }
+    if (label && w > 18 && h > 14) {
+      ctx.fillStyle = '#666';
+      ctx.font = `600 ${Math.max(7, Math.min(10, Math.min(w, h) * 0.28))}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + w / 2, y + h / 2);
+    }
+  }
+
+  function drawColumnsOverlay(ctx, layout, columnRects, columnPreview, cols, rows) {
+    const { padLeft, padTop, cellW, cellH } = layout;
+    const drawRect = (rect, alpha, label) => {
+      const c0 = Math.max(0, rect.col0);
+      const r0 = Math.max(0, rect.row0);
+      const c1 = Math.min(cols - 1, rect.col1);
+      const r1 = Math.min(rows - 1, rect.row1);
+      const x = padLeft + c0 * cellW;
+      const y = padTop + r0 * cellH;
+      const w = (c1 - c0 + 1) * cellW;
+      const h = (r1 - r0 + 1) * cellH;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      drawColumnBlock(ctx, x, y, w, h, label);
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      ctx.restore();
+    };
+    (columnRects || []).forEach((rect, i) => drawRect(rect, 0.95, `COL ${i + 1}`));
+    if (columnPreview) drawRect(columnPreview, 0.55, 'Nueva');
+  }
+
   function drawFloorPlan(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
@@ -672,6 +784,7 @@
     const photoAlpha = 0.82;
     const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
     const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
+    const columnKeys = options.columnCellKeys || columnCellKeys(options.columnRects, cols, rows);
 
     const bg = assemblyMode ? '#ffffff' : (getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414');
     ctx.fillStyle = bg;
@@ -686,16 +799,21 @@
         const ch = cellH - 1;
 
         if (idx < 0) {
-          ctx.fillStyle = 'rgba(200, 60, 60, 0.18)';
-          ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
-          ctx.strokeStyle = 'rgba(200, 60, 60, 0.55)';
-          ctx.lineWidth = Math.max(1, Math.min(cellW, cellH) * 0.06);
-          ctx.beginPath();
-          ctx.moveTo(x + 4, y + 4);
-          ctx.lineTo(x + cw - 2, y + ch - 2);
-          ctx.moveTo(x + cw - 2, y + 4);
-          ctx.lineTo(x + 4, y + ch - 2);
-          ctx.stroke();
+          const isColumn = columnKeys.has(`${col},${row}`);
+          if (isColumn) {
+            drawColumnBlock(ctx, x + 0.5, y + 0.5, cw, ch, '');
+          } else {
+            ctx.fillStyle = 'rgba(200, 60, 60, 0.18)';
+            ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+            ctx.strokeStyle = 'rgba(200, 60, 60, 0.55)';
+            ctx.lineWidth = Math.max(1, Math.min(cellW, cellH) * 0.06);
+            ctx.beginPath();
+            ctx.moveTo(x + 4, y + 4);
+            ctx.lineTo(x + cw - 2, y + ch - 2);
+            ctx.moveTo(x + cw - 2, y + 4);
+            ctx.lineTo(x + 4, y + ch - 2);
+            ctx.stroke();
+          }
           if (showGrid) {
             ctx.strokeStyle = 'rgba(0,0,0,0.12)';
             ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
@@ -757,6 +875,10 @@
         actualLengthM,
         options.roomPolygonClosed !== false
       );
+    }
+
+    if (options.columnRects?.length || options.columnPreview) {
+      drawColumnsOverlay(ctx, layout, options.columnRects, options.columnPreview, cols, rows);
     }
 
     canvas.dataset.logicalWidth = String(drawW + padLeft + padRight);
@@ -918,6 +1040,11 @@
     getColorsForFloorType,
     pointInPolygon,
     polygonExclusions,
+    parseColumnRects,
+    exclusionsFromColumns,
+    columnCellKeys,
+    columnRectSize,
+    normalizeColumnRect,
     parseCustomPaint,
     applyCustomPaint,
     hasCustomPaint,
