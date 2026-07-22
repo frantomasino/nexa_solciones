@@ -17,6 +17,9 @@ const ASSETS = [
   './images/piso-rejilla.jpg',
   './images/piso-trama.jpg',
   './images/piso-moneda.jpg',
+  './images/reference/IMG_8141_3d33.jpg',
+  './images/reference/IMG_8142_b669.jpg',
+  './images/reference/IMG_8145_6306.jpg',
 ];
 
 self.addEventListener('install', (e) => {

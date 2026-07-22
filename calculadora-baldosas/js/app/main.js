@@ -76,7 +76,8 @@
     setPhotoFileName('Ninguna foto');
     updateLogoPanel();
     updateTilesPerBoxUI();
-    setMeasureTab('manual');
+    updatePatternSelection();
+    setColorCount(null);
     updateCanvasPlaceholder();
     renderResults(null);
   }
