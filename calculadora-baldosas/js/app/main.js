@@ -27,9 +27,13 @@
   let paintMode = false;
   let activePaintIndex = 0;
   let customPaint = {};
+  let splitCells = {};
   let isPaintingDrag = false;
   let columnRects = [];
   let columnMode = false;
+  let halfPaintMode = false;
+  let halfColumnMode = false;
+  let activeHalfSide = 'L';
   let columnDragStart = null;
   let columnPreview = null;
   let isColumnDragging = false;
@@ -93,7 +97,11 @@
     planNeedsFitView = true;
     paintMode = false;
     customPaint = {};
+    splitCells = {};
     activePaintIndex = 0;
+    halfPaintMode = false;
+    halfColumnMode = false;
+    activeHalfSide = 'L';
     columnRects = [];
     columnMode = false;
     columnDragStart = null;
@@ -129,6 +137,7 @@
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       roomShapeType: shapeClosed ? roomShapeType : 'rect',
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
+      splitCells: TileCalc.hasSplitCells(splitCells) ? JSON.parse(JSON.stringify(splitCells)) : null,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
       colorCount,
@@ -385,9 +394,12 @@
 
   function updateColumnUI() {
     const n = columnRects.length;
+    const splitN = Object.values(splitCells).filter((e) => e.columnHalf).length;
     const tiles = lastResult?.columnCellCount ?? columnRects.reduce((sum, r) => sum + TileCalc.columnRectSize(r).tiles, 0);
     $('#planColumnToggle')?.classList.toggle('active', columnMode);
     $('#planColumnClear')?.classList.toggle('hidden', n === 0);
+    $('#columnHalfToggle')?.classList.toggle('active', halfColumnMode);
+    $('#columnHalfSides')?.classList.toggle('hidden', !halfColumnMode);
     const list = $('#columnList');
     if (list) {
       if (!n) {
@@ -408,7 +420,7 @@
     const summary = $('#columnSummary');
     if (summary) {
       summary.textContent = n
-        ? `${n} columna(s) · ${tiles} baldosa(s) sin piso`
+        ? `${n} columna(s) · ${tiles} baldosa(s) sin piso${splitN ? ` · ${splitN} media(s) baldosa(s) en borde` : ''}`
         : 'Arrastrá en el plano para marcar el rectángulo de cada columna o pilar.';
     }
     updateObstacleUI();
@@ -471,6 +483,9 @@
 
   function clearColumnRects() {
     columnRects = [];
+    splitCells = Object.fromEntries(
+      Object.entries(splitCells).filter(([, entry]) => !entry?.columnHalf)
+    );
     columnDragStart = null;
     columnPreview = null;
     isColumnDragging = false;
@@ -529,14 +544,78 @@
 
   function paintCell(col, row, colorIndex) {
     const key = `${col},${row}`;
-    if (lastResult?.grid?.[row]?.[col] < 0) return;
+    const hasSplitColumn = !!splitCells[key]?.columnHalf;
+    if (lastResult?.grid?.[row]?.[col] < 0 && !hasSplitColumn) return;
+    if (halfPaintMode) {
+      paintHalfCell(col, row, colorIndex);
+      return;
+    }
+    delete splitCells[key];
     customPaint[key] = colorIndex;
     updatePaintUI();
     debounce(recalculate);
   }
 
+  function paintHalfCell(col, row, colorIndex) {
+    const key = `${col},${row}`;
+    const hasSplitColumn = !!splitCells[key]?.columnHalf;
+    if (lastResult?.grid?.[row]?.[col] < 0 && !hasSplitColumn) return;
+    let paintHalf = activeHalfSide;
+    if (hasSplitColumn) paintHalf = TileCalc.oppositeHalf(splitCells[key].columnHalf);
+    const entry = splitCells[key] || {};
+    if (entry.paintHalf === paintHalf && entry.colorIndex === colorIndex) {
+      delete entry.paintHalf;
+      delete entry.colorIndex;
+      if (!entry.columnHalf) delete splitCells[key];
+      else splitCells[key] = entry;
+    } else {
+      splitCells[key] = {
+        ...entry,
+        paintHalf,
+        colorIndex,
+      };
+    }
+    delete customPaint[key];
+    updatePaintUI();
+    debounce(recalculate);
+  }
+
+  function toggleHalfColumn(col, row) {
+    if (!lastResult) return;
+    const key = `${col},${row}`;
+    const colKeys = TileCalc.columnCellKeys(columnRects, lastResult.cols, lastResult.rows);
+    if (!colKeys.has(key)) {
+      alert('Primero marcá la columna arrastrando un rectángulo. Después tocá una celda del borde para dejar media baldosa al lado.');
+      return;
+    }
+    const entry = splitCells[key] || {};
+    if (entry.columnHalf === activeHalfSide) {
+      delete entry.columnHalf;
+      if (!entry.paintHalf) delete splitCells[key];
+      else splitCells[key] = entry;
+    } else {
+      entry.columnHalf = activeHalfSide;
+      if (entry.paintHalf) entry.paintHalf = TileCalc.oppositeHalf(activeHalfSide);
+      splitCells[key] = entry;
+      delete customPaint[key];
+    }
+    updateColumnUI();
+    debounce(recalculate);
+  }
+
+  function setActiveHalfSide(side) {
+    if (!['L', 'R', 'T', 'B'].includes(side)) return;
+    activeHalfSide = side;
+    $$('.half-side-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.half === side);
+    });
+  }
+
   function clearCustomPaint() {
     customPaint = {};
+    splitCells = Object.fromEntries(
+      Object.entries(splitCells).filter(([, entry]) => entry?.columnHalf)
+    );
     updatePaintUI();
     debounce(recalculate);
   }
@@ -561,22 +640,24 @@
 
   function updatePaintCounts() {
     const n = colorCount || 1;
-    const counts = TileCalc.countByCustomPaint(customPaint, n);
+    const counts = TileCalc.countByCustomPaint(customPaint, n, splitCells);
     for (let i = 0; i < 3; i++) {
       const el = $(`#paintCount${i}`);
       if (!el) continue;
-      el.textContent = i < n ? String(counts[i] ?? 0) : '—';
+      el.textContent = i < n ? TileCalc.formatTileCount(counts[i] ?? 0) : '—';
     }
   }
 
   function updatePaintUI() {
     const n = colorCount || 1;
-    if (paintMode || TileCalc.hasCustomPaint(customPaint)) buildPaintBrushes();
+    if (paintMode || TileCalc.hasPaintData(customPaint, splitCells)) buildPaintBrushes();
     updatePaintCounts();
+    $('#paintHalfToggle')?.classList.toggle('active', halfPaintMode);
+    $('#paintHalfSides')?.classList.toggle('hidden', !halfPaintMode);
     const tally = $('#paintLiveTally');
     if (tally) {
-      const counts = TileCalc.countByCustomPaint(customPaint, n);
-      const painted = counts.reduce((a, b) => a + b, 0);
+      const counts = TileCalc.countByCustomPaint(customPaint, n, splitCells);
+      const painted = TileCalc.sumPaintCounts(counts);
       if (painted > 0) {
         const colors = [
           { name: $('#color1Name')?.value },
@@ -585,13 +666,15 @@
         ];
         tally.textContent = counts
           .slice(0, n)
-          .map((c, i) => `${colors[i]?.name || `Color ${i + 1}`}: ${c}`)
+          .map((c, i) => `${colors[i]?.name || `Color ${i + 1}`}: ${TileCalc.formatTileCount(c)}`)
           .join(' · ');
+      } else if (halfPaintMode) {
+        tally.textContent = 'Elegí color y lado (◧◨◤◥). Tocá el plano para media baldosa.';
       } else {
         tally.textContent = 'Elegí un color y tocá las baldosas en el plano.';
       }
     }
-    $('#planPaintClear')?.classList.toggle('hidden', !TileCalc.hasCustomPaint(customPaint));
+    $('#planPaintClear')?.classList.toggle('hidden', !TileCalc.hasPaintData(customPaint, splitCells));
   }
 
   function startPaintMode() {
@@ -717,6 +800,7 @@
     excludedCells = parseExcludedFromData(data.excludedCells);
     columnRects = TileCalc.parseColumnRects(data.columnRects);
     customPaint = TileCalc.parseCustomPaint(data.customPaint);
+    splitCells = TileCalc.parseSplitCells(data.splitCells);
     activePaintIndex = 0;
     roomPolygon = Array.isArray(data.roomPolygon) ? data.roomPolygon.map((p) => ({ xM: p.xM, yM: p.yM })) : [];
     shapeClosed = roomPolygon.length >= 3;
@@ -807,9 +891,10 @@
     if (paintMode || columnMode || obstacleMode) {
       opts.paintNeutralMode = true;
       opts.customPaint = customPaint;
-    } else if (TileCalc.hasCustomPaint(customPaint)) {
+    } else if (TileCalc.hasPaintData(customPaint, splitCells)) {
       opts.customPaint = customPaint;
     }
+    if (TileCalc.hasSplitCells(splitCells)) opts.splitCells = splitCells;
     return opts;
   }
 
@@ -1015,23 +1100,24 @@
 
     empty.classList.add('hidden');
     const sparePct = form?.sparePercent ?? result.sparePercent ?? 10;
+    const fmt = TileCalc.formatTileCount;
     tbody.innerHTML = result.breakdown
       .map(
         (row) => `
       <tr>
         <td><span class="color-swatch" style="background:${row.hex}"></span>${escapeHtml(row.name)}</td>
-        <td>${row.tiles}</td>
-        <td class="col-spare">+${row.spareTiles ?? (row.tilesWithSpare - row.tiles)}</td>
-        <td><strong>${row.tilesWithSpare}</strong></td>
+        <td>${fmt(row.tiles)}</td>
+        <td class="col-spare">+${fmt(row.spareTiles ?? (row.tilesWithSpare - row.tiles))}</td>
+        <td><strong>${fmt(row.tilesWithSpare)}</strong></td>
         <td>${row.percent}%</td>
         <td>${row.boxes}</td>
       </tr>`
       )
       .join('');
 
-    $('#statNetas').textContent = result.totalTiles;
-    $('#statRepuesto').textContent = `+${result.totalSpareTiles ?? 0} (${sparePct}%)`;
-    $('#statComprar').textContent = result.totalTilesWithSpare;
+    $('#statNetas').textContent = fmt(result.totalTiles);
+    $('#statRepuesto').textContent = `+${fmt(result.totalSpareTiles ?? 0)} (${sparePct}%)`;
+    $('#statComprar').textContent = fmt(result.totalTilesWithSpare);
     $('#statAreaPedida').textContent = `${result.areaM2.toFixed(1)} m²`;
     $('#statCubierto').textContent = `${result.coveredM2.toFixed(1)} m²`;
     $('#statGrilla').textContent = `${result.cols} × ${result.rows} baldosas`;
@@ -1042,6 +1128,9 @@
     if (result.columnCellCount > 0) {
       $('#gridHint').textContent += ` · ${result.columnRects?.length || columnRects.length} columna(s) (${result.columnCellCount} bald. sin piso).`;
     }
+    if (result.splitColumnCellCount > 0) {
+      $('#gridHint').textContent += ` · ${result.splitColumnCellCount} media(s) baldosa(s) junto a columna.`;
+    }
     if (result.excludedCount > 0) {
       $('#gridHint').textContent += ` · ${result.excludedCount} baldosa(s) fuera del contorno u obstáculo.`;
     }
@@ -1049,14 +1138,14 @@
       $('#gridHint').textContent += ' · Diseño pintado a mano en el plano.';
     }
     updateColumnUI();
-    $('#subtotalNetas').textContent = result.totalTiles;
-    $('#subtotalRepuesto').textContent = `+${result.totalSpareTiles ?? 0}`;
-    $('#subtotalComprar').textContent = result.totalTilesWithSpare;
+    $('#subtotalNetas').textContent = fmt(result.totalTiles);
+    $('#subtotalRepuesto').textContent = `+${fmt(result.totalSpareTiles ?? 0)}`;
+    $('#subtotalComprar').textContent = fmt(result.totalTilesWithSpare);
     $('#subtotalCajas').textContent = result.totalBoxes;
-    $('#totalNetasLabel').textContent = result.totalTiles;
-    $('#totalRepuestoLabel').textContent = result.totalSpareTiles ?? 0;
+    $('#totalNetasLabel').textContent = fmt(result.totalTiles);
+    $('#totalRepuestoLabel').textContent = fmt(result.totalSpareTiles ?? 0);
     $('#totalSparePct').textContent = sparePct;
-    $('#totalFinalLabel').textContent = result.totalTilesWithSpare;
+    $('#totalFinalLabel').textContent = fmt(result.totalTilesWithSpare);
     $('#totalBoxes').textContent = result.totalBoxes;
   }
 
@@ -1229,6 +1318,7 @@
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       roomShapeType: shapeClosed ? roomShapeType : 'rect',
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
+      splitCells: TileCalc.hasSplitCells(splitCells) ? JSON.parse(JSON.stringify(splitCells)) : null,
       logoEnabled: form.logoEnabled && selectedPattern === 'trama',
       logoImage: form.logoEnabled ? logoImageData : null,
       logoTileBg: form.logoTileBg,
@@ -1331,6 +1421,7 @@
     planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
       columnRects,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
+      splitCells: TileCalc.hasSplitCells(splitCells) ? splitCells : null,
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon : null,
       roomPolygonClosed: shapeClosed,
       manualObstacleKeys: buildManualObstacleKeys(),
@@ -1341,13 +1432,13 @@
     planImg.classList.remove('hidden');
 
     const legend = $('#printLegend');
-    const legendCounts = TileCalc.hasCustomPaint(customPaint)
-      ? TileCalc.countByCustomPaint(customPaint, form.colorCount || 1)
+    const legendCounts = TileCalc.hasPaintData(customPaint, splitCells)
+      ? TileCalc.countByCustomPaint(customPaint, form.colorCount || 1, splitCells)
       : lastResult.breakdown.map((r) => r.tiles);
     legend.innerHTML = lastResult.breakdown.map((r, i) => `
       <span class="print-legend-item">
         <span class="print-swatch" style="background:${r.hex}"></span>
-        ${escapeHtml(r.name)}: <strong>${legendCounts[i] ?? 0}</strong>
+        ${escapeHtml(r.name)}: <strong>${TileCalc.formatTileCount(legendCounts[i] ?? 0)}</strong>
       </span>
     `).join('');
 
@@ -1733,12 +1824,15 @@
       }
       if (columnMode && lastResult) {
         const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
-        if (cell) {
-          columnDragStart = { col: cell.col, row: cell.row };
-          columnPreview = TileCalc.normalizeColumnRect(cell.col, cell.row, cell.col, cell.row);
-          isColumnDragging = true;
-          redrawPlan();
+        if (!cell) return;
+        if (halfColumnMode) {
+          toggleHalfColumn(cell.col, cell.row);
+          return;
         }
+        columnDragStart = { col: cell.col, row: cell.row };
+        columnPreview = TileCalc.normalizeColumnRect(cell.col, cell.row, cell.col, cell.row);
+        isColumnDragging = true;
+        redrawPlan();
         return;
       }
       if (!obstacleMode || !lastResult) return;
@@ -1751,6 +1845,17 @@
       else startPaintMode();
     });
     $('#planPaintClear')?.addEventListener('click', clearCustomPaint);
+    $('#paintHalfToggle')?.addEventListener('click', () => {
+      halfPaintMode = !halfPaintMode;
+      updatePaintUI();
+    });
+    $('#columnHalfToggle')?.addEventListener('click', () => {
+      halfColumnMode = !halfColumnMode;
+      updateColumnUI();
+    });
+    $$('.half-side-btn').forEach((btn) => {
+      btn.addEventListener('click', () => setActiveHalfSide(btn.dataset.half));
+    });
     $('#paintBrushes')?.addEventListener('click', (e) => {
       const btn = e.target.closest('.paint-brush-btn');
       if (!btn) return;
@@ -1794,6 +1899,7 @@
       excludedCells.clear();
       columnRects = [];
       customPaint = {};
+      splitCells = {};
       clearRoomShape();
       updateAreaFromDims();
       debounce(recalculate);
@@ -1802,6 +1908,7 @@
       excludedCells.clear();
       columnRects = [];
       customPaint = {};
+      splitCells = {};
       clearRoomShape();
       updateAreaFromDims();
       debounce(recalculate);
@@ -1859,6 +1966,7 @@
     buildPatternGrids();
     buildColorPalette([]);
     setShapeTypeUI('rect');
+    setActiveHalfSide('L');
     updateShapeStatus();
     bindEvents();
     initPlanViewer();

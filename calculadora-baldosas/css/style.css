@@ -1498,6 +1498,48 @@ a.dropdown-item:hover {
   color: var(--accent);
 }
 
+.half-tile-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.half-tile-toggle.active {
+  border-color: var(--nexa-blue, #002094);
+  background: rgba(0, 32, 148, 0.1);
+}
+
+.half-side-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.half-side-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-right: 0.15rem;
+}
+
+.half-side-btn {
+  min-width: 2.6rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.7rem;
+}
+
+.half-side-btn.active {
+  border-color: var(--accent);
+  background: rgba(238, 125, 48, 0.12);
+}
+
+.column-toolbar .half-side-btn.active {
+  border-color: var(--nexa-blue, #002094);
+  background: rgba(0, 32, 148, 0.1);
+}
+
 .paint-brushes {
   display: flex;
   flex-wrap: wrap;
