@@ -1752,10 +1752,6 @@ a.dropdown-item:hover {
     margin: 8mm;
   }
 
-  .print-only.print-landscape {
-    page: auto;
-  }
-
   @page print-landscape-page {
     size: A4 landscape;
     margin: 8mm;
