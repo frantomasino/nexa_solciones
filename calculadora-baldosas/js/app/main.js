@@ -1338,8 +1338,20 @@
       </span>
     `).join('');
 
-    window.print();
-    document.title = 'Nexa Soluciones';
+    const landscape = lastResult.cols >= lastResult.rows;
+    $('#printArea')?.classList.toggle('print-landscape', landscape);
+
+    const doPrint = () => {
+      window.print();
+      document.title = 'Nexa Soluciones';
+    };
+
+    if (planImg.complete && planImg.naturalWidth > 0) {
+      doPrint();
+    } else {
+      planImg.onload = doPrint;
+      planImg.onerror = doPrint;
+    }
   }
 
   function buildPatternGrids() {

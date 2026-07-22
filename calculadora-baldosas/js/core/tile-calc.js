@@ -1120,7 +1120,18 @@
     return c.toDataURL();
   }
 
+  function assemblyPrintMetrics(cols, rows) {
+    const targetPx = 3000;
+    const pad = 64;
+    const cell = Math.floor((targetPx - pad) / Math.max(cols, rows, 1));
+    const minCellPx = Math.max(56, Math.min(150, cell));
+    const maxSize = Math.max(4500, cols * minCellPx + pad * 2, rows * minCellPx + pad * 2);
+    return { minCellPx, maxSize };
+  }
+
   function renderAssemblyPlanImage(result, options = {}) {
+    const { cols, rows } = result;
+    const printMetrics = assemblyPrintMetrics(cols, rows);
     const canvas = document.createElement('canvas');
     drawFloorPlan(canvas, result, {
       ...options,
@@ -1130,8 +1141,8 @@
       padLeft: 8,
       padRight: 52,
       padBottom: 52,
-      minCellPx: options.minCellPx ?? 44,
-      maxSize: options.maxSize ?? 3200,
+      minCellPx: options.minCellPx ?? printMetrics.minCellPx,
+      maxSize: options.maxSize ?? printMetrics.maxSize,
       showGrid: true,
       showDimensions: true,
       supersample: 2,
