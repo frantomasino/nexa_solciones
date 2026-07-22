@@ -141,7 +141,7 @@
       ['Tipo de piso', patternLabel(p)],
       ['Colores', formatColors(p)],
       ['Baldosa', '40×40 cm'],
-      ['Baldosas por caja', p.tilesPerBox ?? 4],
+      ['Baldosas por caja', p.tilesPerBox ?? (global.TileCalc?.tilesPerBoxForPattern?.(p.pattern) ?? 25)],
       ['Repuesto cortes', `${p.sparePercent ?? 10}%`],
       ['Baldosas netas', t.netas],
       ['Repuesto', t.repuesto],

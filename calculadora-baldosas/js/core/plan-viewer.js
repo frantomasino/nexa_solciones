@@ -68,6 +68,7 @@
     }
 
     function onPointerDown(e) {
+      if (stageEl.classList.contains('obstacle-mode')) return;
       if (e.button !== undefined && e.button !== 0) return;
       dragging = true;
       lastX = e.clientX;

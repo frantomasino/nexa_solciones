@@ -16,6 +16,8 @@
   let logoImageEl = null;
   let deferredInstallPrompt = null;
   let planViewerControls = null;
+  let excludedCells = new Set();
+  let obstacleMode = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -36,7 +38,7 @@
       areaM2: 0,
       tileWidthCm: TileCalc.TILE_SIZE_CM,
       tileLengthCm: TileCalc.TILE_SIZE_CM,
-      tilesPerBox: 4,
+      tilesPerBox: TileCalc.tilesPerBoxForPattern(null),
       sparePercent: 10,
       pattern: null,
       colorCount: null,
@@ -67,11 +69,13 @@
     colorCount = null;
     if ($('#logoFile')) $('#logoFile').value = '';
     if ($('#photoFile')) $('#photoFile').value = '';
+    excludedCells = new Set();
+    obstacleMode = false;
     clearMeasureFields();
     measureSession?.clearImage();
     setPhotoFileName('Ninguna foto');
-    updatePatternSelection();
-    setColorCount(null);
+    updateLogoPanel();
+    updateTilesPerBoxUI();
     setMeasureTab('manual');
     updateCanvasPlaceholder();
     renderResults(null);
@@ -88,7 +92,8 @@
       areaM2: parseFloat($('#areaInput')?.value) || 0,
       tileWidthCm: TileCalc.TILE_SIZE_CM,
       tileLengthCm: TileCalc.TILE_SIZE_CM,
-      tilesPerBox: parseInt($('#tilesPerBox').value, 10) || 4,
+      tilesPerBox: selectedPattern ? TileCalc.tilesPerBoxForPattern(selectedPattern) : parseInt($('#tilesPerBox').value, 10) || 25,
+      excludedCells: [...excludedCells],
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
       colorCount,
@@ -167,10 +172,72 @@
   function applyAreaInput() {
     const area = parseFloat($('#areaInput').value);
     if (!area || area <= 0) return;
-    const dims = TileCalc.dimensionsFromArea(area);
-    $('#roomWidth').value = dims.roomWidthM.toFixed(2);
-    $('#roomLength').value = dims.roomLengthM.toFixed(2);
-    updateAreaFromDims();
+    const w = parseFloat($('#roomWidth').value) || 0;
+    const l = parseFloat($('#roomLength').value) || 0;
+    if (w > 0 && l > 0) return;
+    $('#areaFromDims').textContent = `${area.toFixed(2)} m² (ingresá ancho y largo)`;
+  }
+
+  function updateTilesPerBoxUI() {
+    const perBox = selectedPattern ? TileCalc.tilesPerBoxForPattern(selectedPattern) : null;
+    const display = $('#tilesPerBoxDisplay');
+    const hidden = $('#tilesPerBox');
+    if (!display || !hidden) return;
+    if (!perBox) {
+      display.textContent = '—';
+      return;
+    }
+    display.textContent = `${perBox} u.`;
+    hidden.value = String(perBox);
+  }
+
+  function updateLogoPanel() {
+    const isTrama = selectedPattern === 'trama';
+    $('#logoPanel')?.classList.toggle('hidden', !isTrama);
+    if (!isTrama && $('#logoEnabled')?.checked) {
+      $('#logoEnabled').checked = false;
+      setLogoPreview(null);
+    }
+    updateLogoUI();
+  }
+
+  function excludedKey(col, row) {
+    return `${col},${row}`;
+  }
+
+  function toggleExcludedCell(col, row) {
+    const key = excludedKey(col, row);
+    if (excludedCells.has(key)) excludedCells.delete(key);
+    else excludedCells.add(key);
+    updateObstacleUI();
+    debounce(recalculate);
+  }
+
+  function clearExcludedCells() {
+    excludedCells.clear();
+    updateObstacleUI();
+    debounce(recalculate);
+  }
+
+  function updateObstacleUI() {
+    const n = excludedCells.size;
+    $('#planObstacleClear')?.classList.toggle('hidden', n === 0);
+    $('#planObstacleToggle')?.classList.toggle('active', obstacleMode);
+    const hint = $('#planViewerHint');
+    if (hint && lastResult) {
+      hint.textContent = obstacleMode
+        ? `Modo obstáculos: tocá baldosas para marcar zonas sin piso (${n} marcadas).`
+        : 'Arrastrá para mover · Rueda o +/− para zoom · Usá Obstáculos para esquivar columnas o piletas.';
+    }
+  }
+
+  function parseExcludedFromData(data) {
+    const set = new Set();
+    for (const item of data || []) {
+      if (typeof item === 'string' && item.includes(',')) set.add(item);
+      else if (Array.isArray(item) && item.length === 2) set.add(`${item[0]},${item[1]}`);
+    }
+    return set;
   }
 
   function resolvePattern(data) {
@@ -218,8 +285,13 @@
     $('#tileWidth').value = String(tw);
     $('#tileLength').value = String(tw);
 
-    $('#tilesPerBox').value = data.tilesPerBox ?? 4;
+    $('#tilesPerBox').value = data.tilesPerBox ?? TileCalc.tilesPerBoxForPattern(data.pattern);
+    updateTilesPerBoxUI();
     $('#sparePercent').value = data.sparePercent ?? 10;
+
+    excludedCells = parseExcludedFromData(data.excludedCells);
+    obstacleMode = false;
+    updateObstacleUI();
 
     selectedPattern = resolvePattern(data);
     setColorCount(resolveColorCount(data));
@@ -255,7 +327,7 @@
   }
 
   function updateLogoUI() {
-    const on = $('#logoEnabled')?.checked;
+    const on = $('#logoEnabled')?.checked && selectedPattern === 'trama';
     $('#logoOptions')?.classList.toggle('hidden', !on);
   }
 
@@ -279,7 +351,7 @@
 
   function getDrawOptions(form) {
     const opts = {};
-    if (form?.logoEnabled && logoImageData) {
+    if (form?.logoEnabled && selectedPattern === 'trama' && logoImageData) {
       opts.logo = {
         enabled: true,
         src: logoImageData,
@@ -340,6 +412,8 @@
       btn.classList.toggle('active', !!selectedPattern && btn.dataset.pattern === selectedPattern);
     });
     $('#floorTypeHint')?.classList.toggle('hidden', !!selectedPattern);
+    updateTilesPerBoxUI();
+    updateLogoPanel();
     updatePatternUI();
   }
 
@@ -422,6 +496,10 @@
     $('#gridHint').textContent = extraM2 > 0.05
       ? `El plano usa baldosas enteras: ${result.cols} de ancho × ${result.rows} de largo (${result.actualWidthM.toFixed(2)} m × ${result.actualLengthM.toFixed(2)} m). Por eso cubre ${result.coveredM2.toFixed(1)} m² en vez de ${result.areaM2.toFixed(1)} m².`
       : `Plano: ${result.cols} baldosas de ancho × ${result.rows} de largo.`;
+    if (result.excludedCount > 0) {
+      $('#gridHint').textContent += ` · ${result.excludedCount} baldosa(s) marcadas como obstáculo (sin contar).`;
+    }
+    updateObstacleUI();
     $('#subtotalNetas').textContent = result.totalTiles;
     $('#subtotalRepuesto').textContent = `+${result.totalSpareTiles ?? 0}`;
     $('#subtotalComprar').textContent = result.totalTilesWithSpare;
@@ -597,7 +675,8 @@
       actualLengthM: lastResult?.actualLengthM,
       canvasThumb: createThumb($('#floorCanvas')) || $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
-      logoEnabled: form.logoEnabled,
+      excludedCells: [...excludedCells],
+      logoEnabled: form.logoEnabled && selectedPattern === 'trama',
       logoImage: form.logoEnabled ? logoImageData : null,
       logoTileBg: form.logoTileBg,
       logoSpan: form.logoSpan,
@@ -1050,9 +1129,31 @@
 
     $$('.measure-tab').forEach((tab) => tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab)));
 
-    $('#areaInput')?.addEventListener('input', () => { applyAreaInput(); debounce(recalculate); });
-    $('#roomWidth').addEventListener('input', () => { updateAreaFromDims(); debounce(recalculate); });
-    $('#roomLength').addEventListener('input', () => { updateAreaFromDims(); debounce(recalculate); });
+    $('#areaInput')?.addEventListener('input', applyAreaInput);
+
+    $('#planObstacleToggle')?.addEventListener('click', () => {
+      obstacleMode = !obstacleMode;
+      $('#planStage')?.classList.toggle('obstacle-mode', obstacleMode);
+      updateObstacleUI();
+    });
+    $('#planObstacleClear')?.addEventListener('click', clearExcludedCells);
+
+    $('#planStage')?.addEventListener('click', (e) => {
+      if (!obstacleMode || !lastResult) return;
+      if (e.target.closest('.plan-toolbar')) return;
+      const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
+      if (cell) toggleExcludedCell(cell.col, cell.row);
+    });
+    $('#roomWidth').addEventListener('input', () => {
+      excludedCells.clear();
+      updateAreaFromDims();
+      debounce(recalculate);
+    });
+    $('#roomLength').addEventListener('input', () => {
+      excludedCells.clear();
+      updateAreaFromDims();
+      debounce(recalculate);
+    });
 
     $$('.color-count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1061,7 +1162,7 @@
       });
     });
 
-    const inputs = '#cliente, #referencia, #link, #notas, #tilesPerBox, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
+    const inputs = '#cliente, #referencia, #link, #notas, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
     $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());

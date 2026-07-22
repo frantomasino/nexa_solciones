@@ -165,7 +165,7 @@
                   <span>O ingresá m² directo</span>
                   <input type="number" id="areaInput" min="0.1" step="0.01" placeholder="Ej: 22">
                 </label>
-                <p class="hint area-hint">El m² arma un cuadrado. Después podés cambiar <strong>ancho</strong> y <strong>largo</strong> para modificar cuántas baldosas entran (ej. 10×12 en vez de 12×12).</p>
+                <p class="hint area-hint">Ingresá <strong>ancho y largo</strong> del ambiente (no tiene que ser cuadrado). El m² es solo referencia. Si hay columnas o zonas sin piso, marcá <strong>obstáculos</strong> en el plano.</p>
               </div>
             </div>
 
@@ -231,9 +231,48 @@
 
           </fieldset>
 
-          <!-- Logo en plano -->
+          <!-- Baldosa y patrón -->
           <fieldset class="panel">
-            <legend>Logo en el plano (opcional)</legend>
+            <legend>Baldosa y patrón</legend>
+
+            <p class="field-label">Tamaño de baldosa</p>
+            <p class="tile-size-fixed">40×40 cm <span class="tile-size-badge">única medida</span></p>
+            <input type="hidden" id="tileWidth" value="40">
+            <input type="hidden" id="tileLength" value="40">
+
+            <p class="field-label">Tipo de piso</p>
+            <p id="floorTypeHint" class="hint">Elegí un tipo de piso</p>
+            <div class="floor-type-grid" id="floorTypeGrid"></div>
+
+            <p class="field-label">Colores</p>
+            <p class="hint color-catalog-hint">Colores del producto real (beige, azul, negro, blanco, violeta, gris). Si el cliente pide otro, se fabrica bajo consulta.</p>
+            <div class="color-count-btns" id="colorCountBtns">
+              <button type="button" class="color-count-btn" data-count="1">1 color</button>
+              <button type="button" class="color-count-btn" data-count="2">2 colores</button>
+              <button type="button" class="color-count-btn" data-count="3">3 colores</button>
+            </div>
+            <p id="colorSelectHint" class="hint">Elegí 1, 2 o 3 colores</p>
+            <div class="colors-row hidden">
+              <div class="color-chip">
+                <input type="color" id="color1Hex" class="color-hex" value="#C6B7A2">
+                <input type="text" id="color1Name" class="color-name" value="Beige arena">
+              </div>
+              <div class="color-chip" id="color2Group">
+                <input type="color" id="color2Hex" class="color-hex" value="#1E56A8">
+                <input type="text" id="color2Name" class="color-name" value="Azul">
+              </div>
+              <div class="color-chip" id="color3Group">
+                <input type="color" id="color3Hex" class="color-hex" value="#2A2A2A">
+                <input type="text" id="color3Name" class="color-name" value="Negro">
+              </div>
+            </div>
+
+          </fieldset>
+
+          <!-- Logo en plano (solo Trama) -->
+          <fieldset class="panel hidden" id="logoPanel">
+            <legend>Logo en el plano — solo Trama</legend>
+            <p class="hint">El logo del cliente solo aplica al piso tipo <strong>Trama</strong> (baldosa lisa con logo en el centro).</p>
             <label class="checkbox-row">
               <input type="checkbox" id="logoEnabled">
               <span>Incluir logo del cliente en el centro del piso</span>
@@ -267,51 +306,15 @@
             </div>
           </fieldset>
 
-          <!-- Baldosa y patrón -->
-          <fieldset class="panel">
-            <legend>Baldosa y patrón</legend>
-
-            <p class="field-label">Tamaño de baldosa</p>
-            <p class="tile-size-fixed">40×40 cm <span class="tile-size-badge">única medida</span></p>
-            <input type="hidden" id="tileWidth" value="40">
-            <input type="hidden" id="tileLength" value="40">
-
-            <p class="field-label">Tipo de piso</p>
-            <p id="floorTypeHint" class="hint">Elegí un tipo de piso</p>
-            <div class="floor-type-grid" id="floorTypeGrid"></div>
-
-            <p class="field-label">Colores</p>
-            <p class="hint color-catalog-hint">Carta estándar Nexa. Si el cliente pide otro color, se puede fabricar bajo consulta.</p>
-            <div class="color-count-btns" id="colorCountBtns">
-              <button type="button" class="color-count-btn" data-count="1">1 color</button>
-              <button type="button" class="color-count-btn" data-count="2">2 colores</button>
-              <button type="button" class="color-count-btn" data-count="3">3 colores</button>
-            </div>
-            <p id="colorSelectHint" class="hint">Elegí 1, 2 o 3 colores</p>
-            <div class="colors-row hidden">
-              <div class="color-chip">
-                <input type="color" id="color1Hex" class="color-hex" value="#7a7a7a">
-                <input type="text" id="color1Name" class="color-name" value="Gris (fondo)">
-              </div>
-              <div class="color-chip" id="color2Group">
-                <input type="color" id="color2Hex" class="color-hex" value="#1a1a1a">
-                <input type="text" id="color2Name" class="color-name" value="Negro">
-              </div>
-              <div class="color-chip" id="color3Group">
-                <input type="color" id="color3Hex" class="color-hex" value="#c41e1e">
-                <input type="text" id="color3Name" class="color-name" value="Rojo">
-              </div>
-            </div>
-
-          </fieldset>
-
           <!-- Compra -->
           <fieldset class="panel panel-compra">
             <legend>Compra</legend>
             <div class="field-row">
               <label class="field">
                 <span>Baldosas por caja</span>
-                <input type="number" id="tilesPerBox" min="1" value="4">
+                <output id="tilesPerBoxDisplay" class="tiles-per-box-display">—</output>
+                <input type="hidden" id="tilesPerBox" value="25">
+                <small class="field-hint" id="tilesPerBoxHint">Rejilla: 8 u. · Trama y Moneda: 25 u. (según tipo de piso)</small>
               </label>
               <label class="field">
                 <span>% extra para cortes</span>
@@ -341,11 +344,14 @@
                   </label>
                   <button type="button" id="planRotateRight" class="btn btn-sm btn-outline plan-tool-btn" title="Girar 15° derecha">↻</button>
                   <button type="button" id="planResetView" class="btn btn-sm btn-outline plan-tool-btn" title="Centrar plano">Centrar</button>
+                  <span class="plan-toolbar-sep" aria-hidden="true"></span>
+                  <button type="button" id="planObstacleToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Marcar baldosas a esquivar (columnas, piletas, etc.)">Obstáculos</button>
+                  <button type="button" id="planObstacleClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar todos los obstáculos">Limpiar</button>
                 </div>
                 <div id="planStage" class="plan-stage">
                   <canvas id="floorCanvas"></canvas>
                 </div>
-                <p class="plan-viewer-hint">Arrastrá para mover · Rueda o +/− para zoom · Girá con el control o ↺ ↻</p>
+                <p class="plan-viewer-hint" id="planViewerHint">Arrastrá para mover · Rueda o +/− para zoom · Girá con el control o ↺ ↻</p>
               </div>
             </div>
             <input type="hidden" id="photoThumbData">

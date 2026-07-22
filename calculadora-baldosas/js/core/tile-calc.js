@@ -19,6 +19,12 @@
 
   const TILE_SIZE_CM = 40;
 
+  const TILES_PER_BOX_BY_PATTERN = {
+    rejilla: 8,
+    trama: 25,
+    moneda: 25,
+  };
+
   const PATTERNS = {
     rejilla: 'Rejilla',
     trama: 'Trama',
@@ -37,11 +43,14 @@
     '40': { w: TILE_SIZE_CM, l: TILE_SIZE_CM },
   };
 
-  /** Carta de colores estándar Nexa (actualizar cuando llegue la carta oficial). */
+  /** Colores muestreados de producto real (fotos cliente jul 2026). */
   const NEXA_COLOR_CATALOG = [
-    { name: 'Gris', hex: '#7a7a7a', role: 'fondo' },
-    { name: 'Negro', hex: '#1a1a1a', role: 'detalle' },
-    { name: 'Rojo', hex: '#c41e1e', role: 'acento' },
+    { name: 'Beige arena', hex: '#C6B7A2', role: 'moneda' },
+    { name: 'Azul', hex: '#1E56A8', role: 'rejilla' },
+    { name: 'Negro', hex: '#2A2A2A', role: 'detalle' },
+    { name: 'Blanco', hex: '#F0F0F0', role: 'fondo' },
+    { name: 'Violeta', hex: '#4B4376', role: 'acento' },
+    { name: 'Gris', hex: '#8A8A8A', role: 'trama' },
   ];
 
   const DEFAULT_COLORS = NEXA_COLOR_CATALOG;
@@ -150,11 +159,46 @@
     return grid;
   }
 
+  function tilesPerBoxForPattern(pattern) {
+    if (pattern && TILES_PER_BOX_BY_PATTERN[pattern]) return TILES_PER_BOX_BY_PATTERN[pattern];
+    return 25;
+  }
+
+  function parseExcludedCells(excluded) {
+    if (!excluded) return new Set();
+    const set = new Set();
+    for (const item of excluded) {
+      if (typeof item === 'string' && item.includes(',')) {
+        set.add(item);
+      } else if (Array.isArray(item) && item.length === 2) {
+        set.add(`${item[0]},${item[1]}`);
+      }
+    }
+    return set;
+  }
+
+  function applyExclusions(grid, cols, rows, excludedSet) {
+    if (!excludedSet?.size) return grid;
+    return grid.map((row, r) => row.map((cell, c) => (
+      excludedSet.has(`${c},${r}`) ? -1 : cell
+    )));
+  }
+
+  function countActiveTiles(grid) {
+    let n = 0;
+    for (const row of grid) {
+      for (const idx of row) {
+        if (idx >= 0) n++;
+      }
+    }
+    return n;
+  }
+
   function countByColor(grid, colorCount) {
     const counts = Array(colorCount).fill(0);
     for (const row of grid) {
       for (const idx of row) {
-        if (idx < colorCount) counts[idx]++;
+        if (idx >= 0 && idx < colorCount) counts[idx]++;
       }
     }
     return counts;
@@ -201,7 +245,7 @@
       roomLengthM = 0,
       tileWidthCm = TILE_SIZE_CM,
       tileLengthCm = TILE_SIZE_CM,
-      tilesPerBox = 4,
+      tilesPerBox: inputTilesPerBox,
       sparePercent = 10,
       pattern = 'rejilla',
       colorCount: inputColorCount,
@@ -209,11 +253,13 @@
       aisleWidth = 2,
       stripeWidth = 1,
       customPercents = [50, 30, 20],
+      excludedCells = [],
     } = input;
 
+    const tilesPerBox = inputTilesPerBox ?? tilesPerBoxForPattern(pattern);
+    const excludedSet = parseExcludedCells(excludedCells);
     const gridInfo = computeGrid(roomWidthM, roomLengthM, tileWidthCm, tileLengthCm);
     const { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 } = gridInfo;
-    const totalTiles = cols * rows;
     const numColors = colorsForPattern(pattern, inputColorCount);
     const gridOptions = { aisleWidth, stripeWidth, colorCount: numColors };
 
@@ -226,12 +272,18 @@
     let grid;
 
     if (pattern === 'custom') {
-      baseCounts = distributeCustom(totalTiles, customPercents);
       grid = buildGrid(cols, rows, 'solid', gridOptions);
+      grid = applyExclusions(grid, cols, rows, excludedSet);
+      const activeTotal = countActiveTiles(grid);
+      baseCounts = distributeCustom(activeTotal, customPercents);
     } else {
       grid = buildGrid(cols, rows, pattern, gridOptions);
+      grid = applyExclusions(grid, cols, rows, excludedSet);
       baseCounts = countByColor(grid, numColors);
     }
+
+    const totalTiles = countActiveTiles(grid);
+    const excludedCount = cols * rows - totalTiles;
 
     const withSpare = applySpare(baseCounts, sparePercent);
     const spareCounts = baseCounts.map((c, i) => (withSpare[i] || 0) - c);
@@ -267,7 +319,24 @@
       pattern,
       colorCount: numColors,
       floorType: isFloorType(pattern) ? pattern : null,
+      excludedCells: [...excludedSet],
+      excludedCount,
     };
+  }
+
+  function cellFromPoint(canvas, clientX, clientY, cols, rows) {
+    if (!canvas || !cols || !rows) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const logicalW = parseFloat(canvas.dataset.logicalWidth) || rect.width;
+    const logicalH = parseFloat(canvas.dataset.logicalHeight) || rect.height;
+    const px = ((clientX - rect.left) / rect.width) * logicalW;
+    const py = ((clientY - rect.top) / rect.height) * logicalH;
+    const { padLeft, padTop, cellW, cellH } = layoutMetrics(cols, rows);
+    const col = Math.floor((px - padLeft) / cellW);
+    const row = Math.floor((py - padTop) / cellH);
+    if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+    return { col, row };
   }
 
   function drawTileDetail(ctx, pattern, idx, x, y, w, h, colors) {
@@ -439,6 +508,25 @@
         const y = padTop + row * cellH;
         const cw = cellW - 1;
         const ch = cellH - 1;
+
+        if (idx < 0) {
+          ctx.fillStyle = 'rgba(200, 60, 60, 0.18)';
+          ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+          ctx.strokeStyle = 'rgba(200, 60, 60, 0.55)';
+          ctx.lineWidth = Math.max(1, Math.min(cellW, cellH) * 0.06);
+          ctx.beginPath();
+          ctx.moveTo(x + 4, y + 4);
+          ctx.lineTo(x + cw - 2, y + ch - 2);
+          ctx.moveTo(x + cw - 2, y + 4);
+          ctx.lineTo(x + 4, y + ch - 2);
+          ctx.stroke();
+          if (showGrid) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+            ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+          }
+          continue;
+        }
 
         ctx.fillStyle = colors[idx]?.hex || '#888';
         ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
@@ -618,6 +706,7 @@
     PATTERNS,
     TILE_PRESETS,
     TILE_SIZE_CM,
+    TILES_PER_BOX_BY_PATTERN,
     NEXA_COLOR_CATALOG,
     DEFAULT_COLORS,
     calculate,
@@ -630,5 +719,8 @@
     dimensionsFromArea,
     getPatternPreview,
     isFloorType,
+    tilesPerBoxForPattern,
+    cellFromPoint,
+    layoutMetrics,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
