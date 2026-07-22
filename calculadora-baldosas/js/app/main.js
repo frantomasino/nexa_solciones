@@ -804,7 +804,7 @@
     if (lastResult?.polygonExcludedKeys?.length) {
       opts.polygonCellKeys = new Set(lastResult.polygonExcludedKeys);
     }
-    if (paintMode || columnMode) {
+    if (paintMode || columnMode || obstacleMode) {
       opts.paintNeutralMode = true;
       opts.customPaint = customPaint;
     } else if (TileCalc.hasCustomPaint(customPaint)) {
