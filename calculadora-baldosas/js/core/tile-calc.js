@@ -386,14 +386,72 @@
     return customPaint && Object.keys(customPaint).length > 0;
   }
 
-  function countByCustomPaint(customPaint, colorCount) {
+  const HALF_SIDES = ['L', 'R', 'T', 'B'];
+  const HALF_OPPOSITE = { L: 'R', R: 'L', T: 'B', B: 'T' };
+
+  function oppositeHalf(half) {
+    return HALF_OPPOSITE[half] || half;
+  }
+
+  function parseSplitCells(data) {
+    const map = {};
+    if (!data || typeof data !== 'object') return map;
+    for (const [key, val] of Object.entries(data)) {
+      if (!key.includes(',') || !val) continue;
+      const entry = {
+        columnHalf: HALF_SIDES.includes(val.columnHalf) ? val.columnHalf : null,
+        paintHalf: HALF_SIDES.includes(val.paintHalf) ? val.paintHalf : null,
+        colorIndex: Number.isInteger(val.colorIndex) ? val.colorIndex : null,
+      };
+      if (entry.columnHalf || entry.paintHalf) map[key] = entry;
+    }
+    return map;
+  }
+
+  function hasSplitCells(splitCells) {
+    return splitCells && Object.keys(splitCells).length > 0;
+  }
+
+  function hasPaintData(customPaint, splitCells) {
+    return hasCustomPaint(customPaint) || hasSplitCells(splitCells);
+  }
+
+  function adjustColumnExclusions(columnExcluded, splitCells) {
+    const adjusted = new Set(columnExcluded);
+    if (!splitCells) return adjusted;
+    for (const [key, entry] of Object.entries(splitCells)) {
+      if (entry?.columnHalf) adjusted.delete(key);
+    }
+    return adjusted;
+  }
+
+  function countByCustomPaint(customPaint, colorCount, splitCells = null) {
     const counts = Array(colorCount).fill(0);
-    if (!customPaint) return counts;
-    for (const idx of Object.values(customPaint)) {
-      const i = parseInt(idx, 10);
-      if (!Number.isNaN(i) && i >= 0 && i < colorCount) counts[i]++;
+    const split = splitCells || {};
+    if (customPaint) {
+      for (const [key, idx] of Object.entries(customPaint)) {
+        if (split[key]?.paintHalf) continue;
+        const i = parseInt(idx, 10);
+        if (!Number.isNaN(i) && i >= 0 && i < colorCount) counts[i] += 1;
+      }
+    }
+    for (const entry of Object.values(split)) {
+      if (!entry?.paintHalf || entry.colorIndex == null) continue;
+      const i = entry.colorIndex;
+      if (i >= 0 && i < colorCount) counts[i] += 0.5;
     }
     return counts;
+  }
+
+  function formatTileCount(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0';
+    if (Math.abs(n - Math.round(n)) < 0.001) return String(Math.round(n));
+    return n.toFixed(1).replace(/\.0$/, '');
+  }
+
+  function sumPaintCounts(counts) {
+    return counts.reduce((sum, n) => sum + n, 0);
   }
 
   function countActiveTiles(grid) {
@@ -469,6 +527,7 @@
       roomPolygon = null,
       customPaint: inputCustomPaint = null,
       columnRects: inputColumnRects = null,
+      splitCells: inputSplitCells = null,
     } = input;
 
     const tilesPerBox = inputTilesPerBox ?? tilesPerBoxForPattern(pattern);
@@ -477,7 +536,9 @@
     const polygonExcluded = polygonExclusions(cols, rows, actualWidthM, actualLengthM, roomPolygon);
     const columnRects = parseColumnRects(inputColumnRects);
     const columnExcluded = exclusionsFromColumns(columnRects, cols, rows);
-    const excludedSet = mergeExclusions(excludedCells, polygonExcluded, columnExcluded);
+    const splitCells = parseSplitCells(inputSplitCells);
+    const columnExcludedAdjusted = adjustColumnExclusions(columnExcluded, splitCells);
+    const excludedSet = mergeExclusions(excludedCells, polygonExcluded, columnExcludedAdjusted);
     const customPaint = parseCustomPaint(inputCustomPaint);
     const numColors = colorsForPattern(pattern, inputColorCount);
     const gridOptions = { aisleWidth, stripeWidth, colorCount: numColors };
@@ -499,15 +560,15 @@
       grid = buildGrid(cols, rows, pattern, gridOptions);
       grid = applyCustomPaint(grid, customPaint);
       grid = applyExclusions(grid, cols, rows, excludedSet);
-      if (hasCustomPaint(customPaint)) {
-        baseCounts = countByCustomPaint(customPaint, numColors);
+      if (hasPaintData(customPaint, splitCells)) {
+        baseCounts = countByCustomPaint(customPaint, numColors, splitCells);
       } else {
         baseCounts = countByColor(grid, numColors);
       }
     }
 
-    const totalTiles = hasCustomPaint(customPaint)
-      ? baseCounts.reduce((a, b) => a + b, 0)
+    const totalTiles = hasPaintData(customPaint, splitCells)
+      ? sumPaintCounts(baseCounts)
       : countActiveTiles(grid);
     const excludedCount = cols * rows - totalTiles;
 
@@ -551,9 +612,11 @@
       polygonExcludedCount: polygonExcluded.size,
       polygonExcludedKeys: [...polygonExcluded],
       customPaint: hasCustomPaint(customPaint) ? { ...customPaint } : null,
-      isCustomPainted: hasCustomPaint(customPaint),
+      isCustomPainted: hasPaintData(customPaint, splitCells),
+      splitCells: hasSplitCells(splitCells) ? { ...splitCells } : null,
       columnRects: columnRects.map((r) => ({ ...r })),
       columnCellCount: columnExcluded.size,
+      splitColumnCellCount: Object.values(splitCells).filter((e) => e.columnHalf).length,
     };
   }
 
@@ -857,9 +920,79 @@
     }
   }
 
-  function drawColumnsOverlay(ctx, layout, columnRects, columnPreview, cols, rows) {
+  function halfRectBounds(x, y, w, h, half) {
+    switch (half) {
+      case 'L':
+        return { x, y, w: w / 2, h };
+      case 'R':
+        return { x: x + w / 2, y, w: w / 2, h };
+      case 'T':
+        return { x, y, w, h: h / 2 };
+      case 'B':
+        return { x, y: y + h / 2, w, h: h / 2 };
+      default:
+        return { x, y, w, h };
+    }
+  }
+
+  function drawSplitDivider(ctx, x, y, w, h, half, assemblyMode) {
+    ctx.save();
+    ctx.strokeStyle = assemblyMode ? '#111' : 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = assemblyMode ? Math.max(1.5, Math.min(w, h) * 0.06) : Math.max(1, Math.min(w, h) * 0.05);
+    ctx.setLineDash(assemblyMode ? [4, 3] : []);
+    ctx.beginPath();
+    if (half === 'L' || half === 'R') {
+      const mid = x + w / 2;
+      ctx.moveTo(mid, y + 1);
+      ctx.lineTo(mid, y + h - 1);
+    } else {
+      const mid = y + h / 2;
+      ctx.moveTo(x + 1, mid);
+      ctx.lineTo(x + w - 1, mid);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSplitCell(ctx, x, y, cw, ch, split, colors, options = {}) {
+    const assemblyMode = options.assemblyMode === true;
+    const paintNeutralMode = options.paintNeutralMode === true;
+    const baseIdx = options.baseColorIndex ?? 0;
+    const baseColor = options.baseColorHex || colors[baseIdx]?.hex || '#e2e2e2';
+    const neutral = assemblyMode ? '#ffffff' : '#e2e2e2';
+    const hasPaintData = options.hasPaintData === true;
+
+    ctx.fillStyle = (paintNeutralMode || (assemblyMode && hasPaintData)) ? neutral : baseColor;
+    ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+
+    if (split.columnHalf) {
+      const colBounds = halfRectBounds(x + 0.5, y + 0.5, cw, ch, split.columnHalf);
+      const colLabel = assemblyMode && colBounds.w > 14 && colBounds.h > 12 ? 'COL' : (assemblyMode ? '½' : '');
+      drawColumnBlock(ctx, colBounds.x, colBounds.y, colBounds.w, colBounds.h, colLabel);
+    }
+
+    if (split.paintHalf && split.colorIndex != null) {
+      const paintBounds = halfRectBounds(x + 0.5, y + 0.5, cw, ch, split.paintHalf);
+      const paintColor = colors[split.colorIndex]?.hex || '#888';
+      ctx.fillStyle = paintColor;
+      ctx.fillRect(paintBounds.x, paintBounds.y, paintBounds.w, paintBounds.h);
+      if (assemblyMode && paintBounds.w > 12 && paintBounds.h > 10) {
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.font = `700 ${Math.max(7, Math.min(9, Math.min(paintBounds.w, paintBounds.h) * 0.32))}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('½', paintBounds.x + paintBounds.w / 2, paintBounds.y + paintBounds.h / 2);
+      }
+    }
+
+    const dividerHalf = split.columnHalf || split.paintHalf;
+    if (dividerHalf) drawSplitDivider(ctx, x + 0.5, y + 0.5, cw, ch, dividerHalf, assemblyMode);
+  }
+
+  function drawColumnsOverlay(ctx, layout, columnRects, columnPreview, cols, rows, splitCells) {
     const { padLeft, padTop, cellW, cellH } = layout;
-    const drawRect = (rect, alpha, label) => {
+    const split = splitCells || {};
+    const drawCellsInRect = (rect, alpha, labelPrefix) => {
       const c0 = Math.max(0, rect.col0);
       const r0 = Math.max(0, rect.row0);
       const c1 = Math.min(cols - 1, rect.col1);
@@ -870,14 +1003,23 @@
       const h = (r1 - r0 + 1) * cellH;
       ctx.save();
       ctx.globalAlpha = alpha;
-      drawColumnBlock(ctx, x, y, w, h, label);
+      for (let row = r0; row <= r1; row++) {
+        for (let col = c0; col <= c1; col++) {
+          const key = `${col},${row}`;
+          if (split[key]?.columnHalf) continue;
+          const cx = padLeft + col * cellW;
+          const cy = padTop + row * cellH;
+          const label = labelPrefix && cellW > 18 && cellH > 14 ? labelPrefix : '';
+          drawColumnBlock(ctx, cx, cy, cellW, cellH, label);
+        }
+      }
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 2;
       ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
       ctx.restore();
     };
-    (columnRects || []).forEach((rect, i) => drawRect(rect, 0.95, `COL ${i + 1}`));
-    if (columnPreview) drawRect(columnPreview, 0.55, 'Nueva');
+    (columnRects || []).forEach((rect, i) => drawCellsInRect(rect, 0.95, `COL ${i + 1}`));
+    if (columnPreview) drawCellsInRect(columnPreview, 0.55, 'Nueva');
   }
 
   function drawFloorPlan(canvas, result, options = {}) {
@@ -904,7 +1046,9 @@
       ? options.manualObstacleKeys
       : new Set(options.manualObstacleKeys || []);
     const customPaintMap = options.customPaint || {};
+    const splitCellsMap = options.splitCells || result.splitCells || {};
     const NEUTRAL_TILE = '#e2e2e2';
+    const hasPaintData = Object.keys(customPaintMap).length > 0 || hasSplitCells(splitCellsMap);
 
     const bg = assemblyMode ? '#ffffff' : (getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414');
     ctx.fillStyle = bg;
@@ -967,9 +1111,27 @@
         }
 
         const cellKey = `${col},${row}`;
+        const split = splitCellsMap[cellKey];
+        if (split && (split.columnHalf || split.paintHalf)) {
+          drawSplitCell(ctx, x, y, cw, ch, split, colors, {
+            assemblyMode,
+            paintNeutralMode,
+            baseColorIndex: idx,
+            baseColorHex: colors[idx]?.hex,
+            hasPaintData,
+          });
+          if (showGrid) {
+            ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = assemblyMode
+              ? Math.max(1, Math.min(cellW, cellH) * 0.04)
+              : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+            ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+          }
+          continue;
+        }
+
         const paintedIdx = customPaintMap[cellKey];
         const isPainted = paintedIdx !== undefined;
-        const hasPaintData = Object.keys(customPaintMap).length > 0;
         const useNeutral = !isPainted && (paintNeutralMode || (assemblyMode && hasPaintData));
         const colorIdx = isPainted ? paintedIdx : idx;
 
@@ -1047,7 +1209,7 @@
     }
 
     if (!assemblyMode && (options.columnRects?.length || options.columnPreview)) {
-      drawColumnsOverlay(ctx, layout, options.columnRects, options.columnPreview, cols, rows);
+      drawColumnsOverlay(ctx, layout, options.columnRects, options.columnPreview, cols, rows, splitCellsMap);
     }
 
     canvas.dataset.logicalWidth = String(drawW + padLeft + padRight);
@@ -1198,6 +1360,7 @@
       ...options,
       assemblyMode: true,
       customPaint: options.customPaint || result.customPaint || null,
+      splitCells: options.splitCells || result.splitCells || null,
       padTop: 8,
       padLeft: 8,
       padRight: 52,
@@ -1235,6 +1398,13 @@
     parseCustomPaint,
     applyCustomPaint,
     hasCustomPaint,
+    hasPaintData,
+    parseSplitCells,
+    hasSplitCells,
+    oppositeHalf,
+    formatTileCount,
+    sumPaintCounts,
+    adjustColumnExclusions,
     renderAssemblyPlanImage,
     calculate,
     drawFloorPlan,
