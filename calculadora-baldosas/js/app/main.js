@@ -408,6 +408,7 @@
     updateShapeStatus();
     updatePaintUI();
     updateColumnUI();
+    if (lastResult) redrawPlan();
   }
 
   function clearColumnRects() {
@@ -502,10 +503,11 @@
 
   function updatePaintCounts() {
     const n = colorCount || 1;
+    const counts = TileCalc.countByCustomPaint(customPaint, n);
     for (let i = 0; i < 3; i++) {
       const el = $(`#paintCount${i}`);
       if (!el) continue;
-      el.textContent = i < n ? String(lastResult?.breakdown?.[i]?.tiles ?? 0) : '—';
+      el.textContent = i < n ? String(counts[i] ?? 0) : '—';
     }
   }
 
@@ -514,11 +516,22 @@
     if (paintMode || TileCalc.hasCustomPaint(customPaint)) buildPaintBrushes();
     updatePaintCounts();
     const tally = $('#paintLiveTally');
-    if (tally && lastResult?.breakdown) {
-      tally.textContent = lastResult.breakdown
-        .slice(0, n)
-        .map((r) => `${r.name}: ${r.tiles}`)
-        .join(' · ');
+    if (tally) {
+      const counts = TileCalc.countByCustomPaint(customPaint, n);
+      const painted = counts.reduce((a, b) => a + b, 0);
+      if (painted > 0) {
+        const colors = [
+          { name: $('#color1Name')?.value },
+          { name: $('#color2Name')?.value },
+          { name: $('#color3Name')?.value },
+        ];
+        tally.textContent = counts
+          .slice(0, n)
+          .map((c, i) => `${colors[i]?.name || `Color ${i + 1}`}: ${c}`)
+          .join(' · ');
+      } else {
+        tally.textContent = 'Elegí un color y tocá las baldosas en el plano.';
+      }
     }
     $('#planPaintClear')?.classList.toggle('hidden', !TileCalc.hasCustomPaint(customPaint));
   }
@@ -533,6 +546,7 @@
       return;
     }
     setPlanInteractionMode('paint');
+    redrawPlan();
     $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -730,6 +744,12 @@
     if (columnRects.length || columnPreview) {
       opts.columnRects = columnRects;
       if (columnPreview) opts.columnPreview = columnPreview;
+    }
+    if (paintMode) {
+      opts.paintNeutralMode = true;
+      opts.customPaint = customPaint;
+    } else if (TileCalc.hasCustomPaint(customPaint)) {
+      opts.customPaint = customPaint;
     }
     return opts;
   }
@@ -1241,43 +1261,22 @@
     const planImg = $('#printPlanImg');
     planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
       columnRects,
+      customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon : null,
       roomPolygonClosed: shapeClosed,
     });
     planImg.classList.remove('hidden');
 
     const legend = $('#printLegend');
-    legend.innerHTML = lastResult.breakdown.map((r) => `
+    const legendCounts = TileCalc.hasCustomPaint(customPaint)
+      ? TileCalc.countByCustomPaint(customPaint, form.colorCount || 1)
+      : lastResult.breakdown.map((r) => r.tiles);
+    legend.innerHTML = lastResult.breakdown.map((r, i) => `
       <span class="print-legend-item">
         <span class="print-swatch" style="background:${r.hex}"></span>
-        ${escapeHtml(r.name)}: <strong>${r.tiles}</strong>
+        ${escapeHtml(r.name)}: <strong>${legendCounts[i] ?? 0}</strong>
       </span>
     `).join('');
-
-    $('#printTable').innerHTML = `
-      <thead><tr><th>Color</th><th>Netas</th><th>Repuesto</th><th>A comprar</th><th>Cajas</th></tr></thead>
-      <tbody>${lastResult.breakdown.map((r) => {
-        const spare = r.spareTiles ?? (r.tilesWithSpare - r.tiles);
-        return `<tr>
-          <td><span class="print-swatch" style="background:${r.hex}"></span>${escapeHtml(r.name)}</td>
-          <td>${r.tiles}</td>
-          <td>+${spare}</td>
-          <td><strong>${r.tilesWithSpare}</strong></td>
-          <td>${r.boxes}</td>
-        </tr>`;
-      }).join('')}</tbody>
-      <tfoot>
-        <tr>
-          <td>Total</td>
-          <td>${lastResult.totalTiles}</td>
-          <td>+${lastResult.totalSpareTiles ?? 0}</td>
-          <td>${lastResult.totalTilesWithSpare}</td>
-          <td>${lastResult.totalBoxes}</td>
-        </tr>
-      </tfoot>`;
-
-    $('#printTotal').textContent =
-      `${lastResult.totalTiles} baldosas + ${lastResult.totalSpareTiles ?? 0} repuesto (${form.sparePercent}%) = ${lastResult.totalTilesWithSpare} a comprar`;
 
     window.print();
     document.title = 'Nexa Soluciones';

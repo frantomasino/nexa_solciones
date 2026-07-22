@@ -354,6 +354,16 @@
     return customPaint && Object.keys(customPaint).length > 0;
   }
 
+  function countByCustomPaint(customPaint, colorCount) {
+    const counts = Array(colorCount).fill(0);
+    if (!customPaint) return counts;
+    for (const idx of Object.values(customPaint)) {
+      const i = parseInt(idx, 10);
+      if (!Number.isNaN(i) && i >= 0 && i < colorCount) counts[i]++;
+    }
+    return counts;
+  }
+
   function countActiveTiles(grid) {
     let n = 0;
     for (const row of grid) {
@@ -457,10 +467,16 @@
       grid = buildGrid(cols, rows, pattern, gridOptions);
       grid = applyCustomPaint(grid, customPaint);
       grid = applyExclusions(grid, cols, rows, excludedSet);
-      baseCounts = countByColor(grid, numColors);
+      if (hasCustomPaint(customPaint)) {
+        baseCounts = countByCustomPaint(customPaint, numColors);
+      } else {
+        baseCounts = countByColor(grid, numColors);
+      }
     }
 
-    const totalTiles = countActiveTiles(grid);
+    const totalTiles = hasCustomPaint(customPaint)
+      ? baseCounts.reduce((a, b) => a + b, 0)
+      : countActiveTiles(grid);
     const excludedCount = cols * rows - totalTiles;
 
     const withSpare = applySpare(baseCounts, sparePercent);
@@ -801,6 +817,9 @@
     const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
     const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
     const columnKeys = options.columnCellKeys || columnCellKeys(options.columnRects, cols, rows);
+    const paintNeutralMode = options.paintNeutralMode === true;
+    const customPaintMap = options.customPaint || {};
+    const NEUTRAL_TILE = '#e2e2e2';
 
     const bg = assemblyMode ? '#ffffff' : (getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414');
     ctx.fillStyle = bg;
@@ -848,25 +867,37 @@
           continue;
         }
 
-        ctx.fillStyle = colors[idx]?.hex || '#888';
-        ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+        const cellKey = `${col},${row}`;
+        const paintedIdx = customPaintMap[cellKey];
+        const isPainted = paintedIdx !== undefined;
+        const hasPaintData = Object.keys(customPaintMap).length > 0;
+        const useNeutral = !isPainted && (paintNeutralMode || (assemblyMode && hasPaintData));
+        const colorIdx = isPainted ? paintedIdx : idx;
 
-        if (usePhotoTiles) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(x + 0.5, y + 0.5, cw, ch);
-          ctx.clip();
-          ctx.globalAlpha = photoAlpha;
-          drawImageCover(ctx, tilePhoto, x, y, cellW, cellH);
-          ctx.restore();
-        }
+        if (useNeutral) {
+          ctx.fillStyle = assemblyMode ? '#ffffff' : NEUTRAL_TILE;
+          ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+        } else {
+          ctx.fillStyle = colors[colorIdx]?.hex || '#888';
+          ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
 
-        if (!assemblyMode && isFloorType(pattern) && (!usePhotoTiles || numColors > 1)) {
-          drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
+          if (usePhotoTiles) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x + 0.5, y + 0.5, cw, ch);
+            ctx.clip();
+            ctx.globalAlpha = photoAlpha;
+            drawImageCover(ctx, tilePhoto, x, y, cellW, cellH);
+            ctx.restore();
+          }
+
+          if (!assemblyMode && !paintNeutralMode && isFloorType(pattern) && (!usePhotoTiles || numColors > 1)) {
+            drawTileDetail(ctx, pattern, colorIdx, x, y, cellW, cellH, colors);
+          }
         }
 
         if (showGrid) {
-          ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.15)';
+          ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)';
           ctx.lineWidth = assemblyMode
             ? Math.max(1, Math.min(cellW, cellH) * 0.04)
             : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
@@ -1048,6 +1079,7 @@
     drawFloorPlan(canvas, result, {
       ...options,
       assemblyMode: true,
+      customPaint: options.customPaint || result.customPaint || null,
       padTop: 8,
       padLeft: 8,
       padRight: 52,
@@ -1079,6 +1111,7 @@
     columnCellKeys,
     columnRectSize,
     normalizeColumnRect,
+    countByCustomPaint,
     parseCustomPaint,
     applyCustomPaint,
     hasCustomPaint,
