@@ -1303,6 +1303,15 @@
     return `${Number(m || 0).toFixed(2).replace('.', ',')} m`;
   }
 
+  function buildManualObstacleKeys() {
+    const manual = new Set(excludedCells);
+    if (!lastResult) return manual;
+    const colKeys = TileCalc.columnCellKeys(columnRects, lastResult.cols, lastResult.rows);
+    for (const k of colKeys) manual.delete(k);
+    for (const k of lastResult.polygonExcludedKeys || []) manual.delete(k);
+    return manual;
+  }
+
   function printPresupuesto() {
     if (!lastResult) { alert('Calculá el piso primero.'); return; }
     const form = readForm();
@@ -1324,6 +1333,10 @@
       customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon : null,
       roomPolygonClosed: shapeClosed,
+      manualObstacleKeys: buildManualObstacleKeys(),
+      polygonCellKeys: lastResult.polygonExcludedKeys?.length
+        ? new Set(lastResult.polygonExcludedKeys)
+        : null,
     });
     planImg.classList.remove('hidden');
 
