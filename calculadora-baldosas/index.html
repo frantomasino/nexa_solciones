@@ -268,6 +268,10 @@
             <p class="field-label">Tipo de piso</p>
             <p id="floorTypeHint" class="hint">Elegí un tipo de piso</p>
             <div class="floor-type-grid" id="floorTypeGrid"></div>
+            <div id="floorTypeDetail" class="floor-type-detail hidden" aria-live="polite">
+              <p id="floorTypeDesc" class="floor-type-desc"></p>
+              <div id="floorTypeRefGallery" class="floor-ref-gallery hidden"></div>
+            </div>
 
             <p class="field-label">Colores</p>
             <p class="hint color-catalog-hint">Elegí primero el tipo de piso para ver los colores disponibles.</p>
@@ -280,14 +284,17 @@
             <div class="color-palette hidden" id="colorPalette" aria-label="Muestras de color del producto"></div>
             <div class="colors-row hidden">
               <div class="color-chip color-chip-active" data-slot="1" id="colorChip1">
+                <span class="color-slot-label">Color 1</span>
                 <input type="color" id="color1Hex" class="color-hex" value="#5B9BD5">
                 <input type="text" id="color1Name" class="color-name" value="Azul claro">
               </div>
               <div class="color-chip" data-slot="2" id="color2Group">
+                <span class="color-slot-label">Color 2</span>
                 <input type="color" id="color2Hex" class="color-hex" value="#F0F0F0">
                 <input type="text" id="color2Name" class="color-name" value="Blanco">
               </div>
               <div class="color-chip" data-slot="3" id="color3Group">
+                <span class="color-slot-label">Color 3</span>
                 <input type="color" id="color3Hex" class="color-hex" value="#1E3A7A">
                 <input type="text" id="color3Name" class="color-name" value="Azul oscuro">
               </div>

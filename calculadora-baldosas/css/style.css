@@ -1068,6 +1068,63 @@ a.dropdown-item:hover {
 .floor-type-btn { padding: 0.65rem 0.5rem; }
 .floor-type-btn span { font-size: 0.75rem; font-weight: 600; }
 
+.floor-type-detail {
+  margin: 0.5rem 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 32, 148, 0.04);
+}
+
+.floor-type-desc {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.floor-ref-gallery {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.floor-ref-card {
+  flex: 0 0 auto;
+  width: 7.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-input);
+}
+
+.floor-ref-card img {
+  display: block;
+  width: 100%;
+  height: 5rem;
+  object-fit: cover;
+}
+
+.floor-ref-card span {
+  display: block;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.color-slot-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+
 .tile-size-fixed {
   margin: 0 0 0.75rem;
   font-family: var(--font-display);
@@ -1148,9 +1205,9 @@ a.dropdown-item:hover {
   transition: border-color var(--transition), transform var(--transition);
 }
 
-.color-palette-btn:hover {
+.color-palette-btn.is-selected {
   border-color: var(--accent);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(238, 125, 48, 0.25);
 }
 
 .color-palette-swatch {

@@ -554,6 +554,7 @@
     $$('.color-chip').forEach((chip) => {
       chip.classList.toggle('color-chip-active', parseInt(chip.dataset.slot, 10) === activeColorSlot);
     });
+    highlightPaletteSelection($(`#color${activeColorSlot}Hex`)?.value);
   }
 
   function applyCatalogColor(color) {
@@ -562,7 +563,14 @@
     if (!hexEl || !nameEl) return;
     hexEl.value = color.hex;
     nameEl.value = color.name;
+    highlightPaletteSelection(color.hex);
     debounce(recalculate);
+  }
+
+  function highlightPaletteSelection(hex) {
+    $$('.color-palette-btn').forEach((btn) => {
+      btn.classList.toggle('is-selected', btn.dataset.hex?.toLowerCase() === hex?.toLowerCase());
+    });
   }
 
   function buildColorPalette(catalog) {
@@ -650,11 +658,46 @@
     updateColorUI();
   }
 
+  function updateFloorTypeDetail() {
+    const panel = $('#floorTypeDetail');
+    const desc = $('#floorTypeDesc');
+    const gallery = $('#floorTypeRefGallery');
+    if (!panel || !desc || !gallery) return;
+
+    if (!selectedPattern) {
+      panel.classList.add('hidden');
+      gallery.classList.add('hidden');
+      gallery.innerHTML = '';
+      return;
+    }
+
+    const info = TileCalc.FLOOR_TYPE_INFO?.[selectedPattern];
+    const label = TileCalc.FLOOR_TYPES[selectedPattern] || selectedPattern;
+    desc.textContent = info?.summary || `${label} · 40×40 cm`;
+    panel.classList.remove('hidden');
+
+    const refs = info?.refs || [];
+    if (!refs.length) {
+      gallery.classList.add('hidden');
+      gallery.innerHTML = '';
+      return;
+    }
+
+    gallery.innerHTML = refs.map((ref) => `
+      <figure class="floor-ref-card">
+        <img src="${ref.src}" alt="${escapeHtml(ref.caption)}" loading="lazy">
+        <span>${escapeHtml(ref.caption)}</span>
+      </figure>
+    `).join('');
+    gallery.classList.remove('hidden');
+  }
+
   function updatePatternSelection() {
     $$('.floor-type-btn').forEach((btn) => {
       btn.classList.toggle('active', !!selectedPattern && btn.dataset.pattern === selectedPattern);
     });
     $('#floorTypeHint')?.classList.toggle('hidden', !!selectedPattern);
+    updateFloorTypeDetail();
     updateTilesPerBoxUI();
     updateLogoPanel();
     updatePatternUI();

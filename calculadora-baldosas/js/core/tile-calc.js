@@ -17,6 +17,25 @@
     moneda: 'images/piso-moneda.jpg',
   };
 
+  const FLOOR_TYPE_INFO = {
+    rejilla: {
+      summary: 'Rejilla abierta con drenaje · 8 baldosas por caja',
+      refs: [
+        { src: 'images/reference/IMG_8142_b669.jpg', caption: 'Negro, grises y blanco' },
+        { src: 'images/reference/IMG_8141_3d33.jpg', caption: 'Naranja, verde, rojo y azul' },
+        { src: 'images/reference/IMG_8145_6306.jpg', caption: 'Verde lima' },
+      ],
+    },
+    trama: {
+      summary: 'Superficie lisa granulada · 25 baldosas por caja · logo opcional',
+      refs: [],
+    },
+    moneda: {
+      summary: 'Puntos tipo moneda · color yute · 25 baldosas por caja',
+      refs: [],
+    },
+  };
+
   const TILE_SIZE_CM = 40;
 
   const TILES_PER_BOX_BY_PATTERN = {
@@ -831,6 +850,7 @@
   global.TileCalc = {
     FLOOR_TYPES,
     FLOOR_TYPE_IMAGES,
+    FLOOR_TYPE_INFO,
     PATTERNS,
     TILE_PRESETS,
     TILE_SIZE_CM,
