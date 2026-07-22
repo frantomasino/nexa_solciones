@@ -281,6 +281,41 @@
     )));
   }
 
+  function parseCustomPaint(data) {
+    const map = {};
+    if (!data) return map;
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        if (item && Number.isInteger(item.col) && Number.isInteger(item.row)) {
+          map[`${item.col},${item.row}`] = item.colorIndex ?? 0;
+        }
+      }
+      return map;
+    }
+    if (typeof data === 'object') {
+      for (const [key, val] of Object.entries(data)) {
+        if (key.includes(',')) {
+          const idx = parseInt(val, 10);
+          if (!Number.isNaN(idx)) map[key] = idx;
+        }
+      }
+    }
+    return map;
+  }
+
+  function applyCustomPaint(grid, customPaint) {
+    if (!customPaint || !Object.keys(customPaint).length) return grid;
+    return grid.map((row, r) => row.map((cell, c) => {
+      if (cell < 0) return cell;
+      const key = `${c},${r}`;
+      return key in customPaint ? customPaint[key] : cell;
+    }));
+  }
+
+  function hasCustomPaint(customPaint) {
+    return customPaint && Object.keys(customPaint).length > 0;
+  }
+
   function countActiveTiles(grid) {
     let n = 0;
     for (const row of grid) {
@@ -352,6 +387,7 @@
       customPercents = [50, 30, 20],
       excludedCells = [],
       roomPolygon = null,
+      customPaint: inputCustomPaint = null,
     } = input;
 
     const tilesPerBox = inputTilesPerBox ?? tilesPerBoxForPattern(pattern);
@@ -359,6 +395,7 @@
     const { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 } = gridInfo;
     const polygonExcluded = polygonExclusions(cols, rows, actualWidthM, actualLengthM, roomPolygon);
     const excludedSet = mergeExclusions(excludedCells, polygonExcluded);
+    const customPaint = parseCustomPaint(inputCustomPaint);
     const numColors = colorsForPattern(pattern, inputColorCount);
     const gridOptions = { aisleWidth, stripeWidth, colorCount: numColors };
 
@@ -377,6 +414,7 @@
       baseCounts = distributeCustom(activeTotal, customPercents);
     } else {
       grid = buildGrid(cols, rows, pattern, gridOptions);
+      grid = applyCustomPaint(grid, customPaint);
       grid = applyExclusions(grid, cols, rows, excludedSet);
       baseCounts = countByColor(grid, numColors);
     }
@@ -422,6 +460,8 @@
       excludedCount,
       roomPolygon: roomPolygon?.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       polygonExcludedCount: polygonExcluded.size,
+      customPaint: hasCustomPaint(customPaint) ? { ...customPaint } : null,
+      isCustomPainted: hasCustomPaint(customPaint),
     };
   }
 
@@ -528,20 +568,22 @@
     return { ctx, logicalW, logicalH };
   }
 
-  function drawPlanDimensions(ctx, layout, dims) {
+  function drawPlanDimensions(ctx, layout, dims, style = 'default') {
     const { padTop, padLeft, drawW, drawH } = layout;
     const { widthM, lengthM, roomWidthM, roomLengthM } = dims;
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094';
-    const fontSize = Math.max(10, Math.min(13, Math.min(drawW, drawH) * 0.04));
-    const tick = 5;
+    const accent = style === 'assembly' ? '#111' : (getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094');
+    const fontSize = style === 'assembly'
+      ? Math.max(14, Math.min(22, Math.min(drawW, drawH) * 0.06))
+      : Math.max(10, Math.min(13, Math.min(drawW, drawH) * 0.04));
+    const tick = style === 'assembly' ? 8 : 5;
 
     ctx.save();
     ctx.strokeStyle = accent;
     ctx.fillStyle = accent;
-    ctx.lineWidth = 1.25;
-    ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+    ctx.lineWidth = style === 'assembly' ? 2 : 1.25;
+    ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
 
-    const topY = padTop - 12;
+    const topY = padTop - (style === 'assembly' ? 18 : 12);
     ctx.beginPath();
     ctx.moveTo(padLeft, topY);
     ctx.lineTo(padLeft + drawW, topY);
@@ -553,13 +595,12 @@
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    let widthLabel = `Ancho ${formatMetros(widthM)}`;
-    if (roomWidthM && Math.abs(roomWidthM - widthM) > 0.04) {
-      widthLabel += ` (pedido ${formatMetros(roomWidthM)})`;
-    }
-    ctx.fillText(widthLabel, padLeft + drawW / 2, topY - 4);
+    const widthLabel = style === 'assembly'
+      ? formatMetros(widthM).replace(' m', '')
+      : `Ancho ${formatMetros(widthM)}${roomWidthM && Math.abs(roomWidthM - widthM) > 0.04 ? ` (pedido ${formatMetros(roomWidthM)})` : ''}`;
+    ctx.fillText(widthLabel, padLeft + drawW / 2, topY - 6);
 
-    const leftX = padLeft - 12;
+    const leftX = padLeft - (style === 'assembly' ? 16 : 12);
     ctx.beginPath();
     ctx.moveTo(leftX, padTop);
     ctx.lineTo(leftX, padTop + drawH);
@@ -569,12 +610,11 @@
     ctx.lineTo(leftX + tick, padTop + drawH);
     ctx.stroke();
 
-    let lengthLabel = `Largo ${formatMetros(lengthM)}`;
-    if (roomLengthM && Math.abs(roomLengthM - lengthM) > 0.04) {
-      lengthLabel += ` (pedido ${formatMetros(roomLengthM)})`;
-    }
+    const lengthLabel = style === 'assembly'
+      ? formatMetros(lengthM).replace(' m', '')
+      : `Largo ${formatMetros(lengthM)}${roomLengthM && Math.abs(roomLengthM - lengthM) > 0.04 ? ` (pedido ${formatMetros(roomLengthM)})` : ''}`;
 
-    ctx.translate(leftX - 8, padTop + drawH / 2);
+    ctx.translate(leftX - 10, padTop + drawH / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -625,14 +665,15 @@
     const { ctx } = prepareCanvas(canvas, layout);
     const showGrid = options.showGrid !== false;
     const showDimensions = options.showDimensions !== false;
+    const assemblyMode = options.assemblyMode === true;
     const tilePhoto = options.floorTypeImage;
     const numColors = planColorCount || colors.length;
-    const usePhotoTiles = tilePhoto && isFloorType(pattern) && numColors <= 1;
+    const usePhotoTiles = !assemblyMode && tilePhoto && isFloorType(pattern) && numColors <= 1;
     const photoAlpha = 0.82;
     const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
     const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
 
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414';
+    const bg = assemblyMode ? '#ffffff' : (getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#141414');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, drawW + padLeft + padRight, drawH + padTop + padBottom);
 
@@ -676,13 +717,15 @@
           ctx.restore();
         }
 
-        if (isFloorType(pattern) && (!usePhotoTiles || numColors > 1)) {
+        if (!assemblyMode && isFloorType(pattern) && (!usePhotoTiles || numColors > 1)) {
           drawTileDetail(ctx, pattern, idx, x, y, cellW, cellH, colors);
         }
 
         if (showGrid) {
-          ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-          ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+          ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.15)';
+          ctx.lineWidth = assemblyMode
+            ? Math.max(1, Math.min(cellW, cellH) * 0.04)
+            : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
           ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
         }
       }
@@ -701,7 +744,7 @@
         lengthM: actualLengthM,
         roomWidthM,
         roomLengthM,
-      });
+      }, assemblyMode ? 'assembly' : 'default');
     }
 
     const roomPolygon = options.roomPolygon;
@@ -847,6 +890,20 @@
     return c.toDataURL();
   }
 
+  function renderAssemblyPlanImage(result, options = {}) {
+    const canvas = document.createElement('canvas');
+    drawFloorPlan(canvas, result, {
+      ...options,
+      assemblyMode: true,
+      minCellPx: options.minCellPx ?? 36,
+      maxSize: options.maxSize ?? 2800,
+      showGrid: true,
+      showDimensions: true,
+      supersample: 2,
+    });
+    return canvas.toDataURL('image/png');
+  }
+
   global.TileCalc = {
     FLOOR_TYPES,
     FLOOR_TYPE_IMAGES,
@@ -861,7 +918,10 @@
     getColorsForFloorType,
     pointInPolygon,
     polygonExclusions,
-    metersFromCanvasPoint,
+    parseCustomPaint,
+    applyCustomPaint,
+    hasCustomPaint,
+    renderAssemblyPlanImage,
     calculate,
     drawFloorPlan,
     drawFloorPlanAsync,
@@ -874,6 +934,7 @@
     isFloorType,
     tilesPerBoxForPattern,
     cellFromPoint,
+    metersFromCanvasPoint,
     layoutMetrics,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

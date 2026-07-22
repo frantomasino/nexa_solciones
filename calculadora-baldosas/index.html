@@ -384,6 +384,13 @@
                   <button type="button" id="planShapeClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Borrar forma dibujada">Limpiar forma</button>
                   <button type="button" id="planObstacleToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Marcar baldosas a esquivar (columnas, piletas, etc.)">Obstáculos</button>
                   <button type="button" id="planObstacleClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar todos los obstáculos">Limpiar</button>
+                  <button type="button" id="planPaintToggle" class="btn btn-sm btn-outline plan-tool-btn plan-tool-highlight" title="Pintar baldosas por color en el plano">🎨 Pintar</button>
+                </div>
+                <div id="paintToolbar" class="paint-toolbar hidden">
+                  <p class="paint-toolbar-title">Pintar baldosas — elegí color y tocá el plano (arrastrá para pintar varias)</p>
+                  <div id="paintBrushes" class="paint-brushes"></div>
+                  <p id="paintLiveTally" class="paint-live-tally"></p>
+                  <button type="button" id="planPaintClear" class="btn btn-sm btn-ghost btn-danger-text hidden">Volver a diseño automático</button>
                 </div>
                 <div id="planStage" class="plan-stage">
                   <canvas id="floorCanvas"></canvas>
@@ -468,7 +475,10 @@
     </section>
 
     <figure class="print-plan-wrap">
-      <img id="printPlanImg" class="print-plan-img" alt="Plano del piso">
+      <h2 class="print-assembly-title">Guía de armado del piso</h2>
+      <p class="print-assembly-hint">Cada cuadrado = 1 baldosa 40×40 cm. Respetá los colores para armar el diseño en el taller.</p>
+      <div id="printLegend" class="print-legend hidden"></div>
+      <img id="printPlanImg" class="print-plan-img" alt="Plano de armado del piso">
       <figcaption id="printPlanCaption" class="print-plan-caption"></figcaption>
     </figure>
 

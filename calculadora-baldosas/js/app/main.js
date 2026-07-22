@@ -23,6 +23,10 @@
   let shapeClosed = false;
   let activeColorSlot = 1;
   let planNeedsFitView = true;
+  let paintMode = false;
+  let activePaintIndex = 0;
+  let customPaint = {};
+  let isPaintingDrag = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -80,6 +84,9 @@
     roomPolygon = [];
     shapeClosed = false;
     planNeedsFitView = true;
+    paintMode = false;
+    customPaint = {};
+    activePaintIndex = 0;
     clearMeasureFields();
     measureSession?.clearImage();
     setPhotoFileName('Ninguna foto');
@@ -106,6 +113,7 @@
       tilesPerBox: selectedPattern ? TileCalc.tilesPerBoxForPattern(selectedPattern) : parseInt($('#tilesPerBox').value, 10) || 25,
       excludedCells: [...excludedCells],
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
+      customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
       colorCount,
@@ -323,10 +331,12 @@
           : `Modo forma: tocá el plano para marcar vértices (${roomPolygon.length} puntos). Mínimo 3, luego «Cerrar forma».`;
       } else if (obstacleMode) {
         hint.textContent = `Modo obstáculos: tocá baldosas para marcar zonas sin piso (${n} marcadas).`;
+      } else if (paintMode) {
+        hint.textContent = `Modo pintar: elegí un color abajo y tocá baldosas en el plano. Se van sumando en tiempo real.`;
       } else if (shapeClosed) {
         hint.textContent = `Forma irregular activa (${roomPolygon.length} vértices). Usá Forma u Obstáculos para ajustar.`;
       } else {
-        hint.textContent = 'Arrastrá para mover · Zoom con +/− · Forma irregular o Obstáculos para ambientes no rectangulares.';
+        hint.textContent = 'Arrastrá para mover · Zoom +/− · <strong>Pintar</strong> para armar el diseño · Forma / Obstáculos';
       }
     }
   }
@@ -334,11 +344,83 @@
   function setPlanInteractionMode(mode) {
     obstacleMode = mode === 'obstacle';
     shapeMode = mode === 'shape';
+    paintMode = mode === 'paint';
     $('#planStage')?.classList.toggle('obstacle-mode', obstacleMode);
     $('#planStage')?.classList.toggle('shape-mode', shapeMode);
+    $('#planStage')?.classList.toggle('paint-mode', paintMode);
     $('#btnShapeDraw')?.classList.toggle('active', shapeMode);
+    $('#planPaintToggle')?.classList.toggle('active', paintMode);
+    $('#paintToolbar')?.classList.toggle('hidden', !paintMode);
     updateShapeStatus();
+    updatePaintUI();
     updateObstacleUI();
+  }
+
+  function paintCell(col, row, colorIndex) {
+    const key = `${col},${row}`;
+    if (lastResult?.grid?.[row]?.[col] < 0) return;
+    customPaint[key] = colorIndex;
+    updatePaintUI();
+    debounce(recalculate);
+  }
+
+  function clearCustomPaint() {
+    customPaint = {};
+    updatePaintUI();
+    debounce(recalculate);
+  }
+
+  function buildPaintBrushes() {
+    const wrap = $('#paintBrushes');
+    if (!wrap) return;
+    const n = colorCount || 1;
+    const colors = [
+      { name: $('#color1Name')?.value, hex: $('#color1Hex')?.value },
+      { name: $('#color2Name')?.value, hex: $('#color2Hex')?.value },
+      { name: $('#color3Name')?.value, hex: $('#color3Hex')?.value },
+    ];
+    wrap.innerHTML = Array.from({ length: n }, (_, i) => `
+      <button type="button" class="paint-brush-btn${i === activePaintIndex ? ' active' : ''}" data-paint-idx="${i}" title="${escapeHtml(colors[i]?.name || `Color ${i + 1}`)}">
+        <span class="paint-brush-swatch" style="background:${colors[i]?.hex || '#888'}"></span>
+        <span class="paint-brush-label">${escapeHtml(colors[i]?.name || `Color ${i + 1}`)}</span>
+        <span class="paint-brush-count" id="paintCount${i}">0</span>
+      </button>
+    `).join('');
+  }
+
+  function updatePaintCounts() {
+    const n = colorCount || 1;
+    for (let i = 0; i < 3; i++) {
+      const el = $(`#paintCount${i}`);
+      if (!el) continue;
+      el.textContent = i < n ? String(lastResult?.breakdown?.[i]?.tiles ?? 0) : '—';
+    }
+  }
+
+  function updatePaintUI() {
+    if (paintMode || TileCalc.hasCustomPaint(customPaint)) buildPaintBrushes();
+    updatePaintCounts();
+    const tally = $('#paintLiveTally');
+    if (tally && lastResult?.breakdown) {
+      tally.textContent = lastResult.breakdown
+        .slice(0, n)
+        .map((r) => `${r.name}: ${r.tiles}`)
+        .join(' · ');
+    }
+    $('#planPaintClear')?.classList.toggle('hidden', !TileCalc.hasCustomPaint(customPaint));
+  }
+
+  function startPaintMode() {
+    if (!lastResult) {
+      alert('Primero cargá medidas, tipo de piso y colores para ver el plano.');
+      return;
+    }
+    if (!colorCount) {
+      alert('Elegí cuántos colores vas a usar (1, 2 o 3).');
+      return;
+    }
+    setPlanInteractionMode('paint');
+    $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function clearRoomShape() {
@@ -453,6 +535,9 @@
     excludedCells = parseExcludedFromData(data.excludedCells);
     obstacleMode = false;
     shapeMode = false;
+    paintMode = false;
+    customPaint = TileCalc.parseCustomPaint(data.customPaint);
+    activePaintIndex = 0;
     roomPolygon = Array.isArray(data.roomPolygon) ? data.roomPolygon.map((p) => ({ xM: p.xM, yM: p.yM })) : [];
     shapeClosed = roomPolygon.length >= 3;
     updateShapeStatus();
@@ -638,6 +723,7 @@
     $('#color3Group').classList.toggle('hidden', colorCount < 3);
     if (activeColorSlot > colorCount) setActiveColorSlot(colorCount);
     else setActiveColorSlot(activeColorSlot);
+    updatePaintUI();
   }
 
   function setMeasureTab(tab) {
@@ -735,6 +821,7 @@
     $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
     updateShapeStatus();
+    updatePaintUI();
     updateObstacleUI();
   }
 
@@ -793,7 +880,10 @@
       ? `El plano usa baldosas enteras: ${result.cols} de ancho × ${result.rows} de largo (${result.actualWidthM.toFixed(2)} m × ${result.actualLengthM.toFixed(2)} m). Por eso cubre ${result.coveredM2.toFixed(1)} m² en vez de ${result.areaM2.toFixed(1)} m².`
       : `Plano: ${result.cols} baldosas de ancho × ${result.rows} de largo.`;
     if (result.excludedCount > 0) {
-      $('#gridHint').textContent += ` · ${result.excludedCount} baldosa(s) marcadas como obstáculo (sin contar).`;
+      $('#gridHint').textContent += ` · ${result.excludedCount} baldosa(s) fuera del contorno o obstáculo.`;
+    }
+    if (result.isCustomPainted) {
+      $('#gridHint').textContent += ' · Diseño pintado a mano en el plano.';
     }
     updateObstacleUI();
     $('#subtotalNetas').textContent = result.totalTiles;
@@ -973,6 +1063,7 @@
       breakdown: lastResult?.breakdown,
       excludedCells: [...excludedCells],
       roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
+      customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       logoEnabled: form.logoEnabled && selectedPattern === 'trama',
       logoImage: form.logoEnabled ? logoImageData : null,
       logoTileBg: form.logoTileBg,
@@ -1080,14 +1171,29 @@
 
     const canvas = $('#floorCanvas');
     const planImg = $('#printPlanImg');
-    if (canvas?.width) {
-      planImg.src = canvas.toDataURL('image/png');
+    if (lastResult) {
+      planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
+        roomWidthM: form.roomWidthM,
+        roomLengthM: form.roomLengthM,
+      });
       planImg.classList.remove('hidden');
-      $('#printPlanCaption').textContent = `Plano ${patron} · ${form.colorCount || ''} color(es) · repuesto ${form.sparePercent}%`;
+      $('#printPlanCaption').textContent =
+        `GUÍA DE ARMADO — cada cuadrado = 1 baldosa 40×40 cm · ${patron} · ${form.colorCount || ''} color(es)`;
+      const legend = $('#printLegend');
+      if (legend) {
+        legend.innerHTML = lastResult.breakdown.map((r) => `
+          <span class="print-legend-item">
+            <span class="print-swatch" style="background:${r.hex}"></span>
+            ${escapeHtml(r.name)}: <strong>${r.tiles}</strong> u.
+          </span>
+        `).join('');
+        legend.classList.remove('hidden');
+      }
     } else {
       planImg.src = '';
       planImg.classList.add('hidden');
       $('#printPlanCaption').textContent = '';
+      $('#printLegend')?.classList.add('hidden');
     }
 
     $('#printTable').innerHTML = `
@@ -1457,26 +1563,52 @@
         addShapePoint(clientX, clientY);
         return;
       }
+      if (paintMode && lastResult) {
+        const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
+        if (cell) paintCell(cell.col, cell.row, activePaintIndex);
+        return;
+      }
       if (!obstacleMode || !lastResult) return;
       const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
       if (cell) toggleExcludedCell(cell.col, cell.row);
     }
 
+    $('#planPaintToggle')?.addEventListener('click', () => {
+      if (paintMode) setPlanInteractionMode('none');
+      else startPaintMode();
+    });
+    $('#planPaintClear')?.addEventListener('click', clearCustomPaint);
+    $('#paintBrushes')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.paint-brush-btn');
+      if (!btn) return;
+      activePaintIndex = parseInt(btn.dataset.paintIdx, 10) || 0;
+      buildPaintBrushes();
+    });
+
     $('#planStage')?.addEventListener('pointerdown', (e) => {
-      if (!shapeMode && !obstacleMode) return;
-      if (e.target.closest('.plan-toolbar')) return;
+      if (!shapeMode && !obstacleMode && !paintMode) return;
+      if (e.target.closest('.plan-toolbar') || e.target.closest('.paint-toolbar')) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      isPaintingDrag = paintMode;
+      handlePlanPointer(e.clientX, e.clientY);
+    });
+    $('#planStage')?.addEventListener('pointermove', (e) => {
+      if (!isPaintingDrag || !paintMode || !lastResult) return;
       e.preventDefault();
       handlePlanPointer(e.clientX, e.clientY);
     });
+    window.addEventListener('pointerup', () => { isPaintingDrag = false; });
     $('#roomWidth').addEventListener('input', () => {
       excludedCells.clear();
+      customPaint = {};
       clearRoomShape();
       updateAreaFromDims();
       debounce(recalculate);
     });
     $('#roomLength').addEventListener('input', () => {
       excludedCells.clear();
+      customPaint = {};
       clearRoomShape();
       updateAreaFromDims();
       debounce(recalculate);
