@@ -165,7 +165,32 @@
                   <span>O ingresá m² directo</span>
                   <input type="number" id="areaInput" min="0.1" step="0.01" placeholder="Ej: 22">
                 </label>
-                <p class="hint area-hint">Ingresá <strong>ancho y largo</strong> del rectángulo que envuelve el ambiente (aunque no sea cuadrado). Después usá <strong>Forma</strong> en el plano para marcar contornos en L o irregulares, u <strong>Obstáculos</strong> para columnas.</p>
+                <p class="hint area-hint">Ingresá <strong>ancho y largo</strong> del rectángulo que envuelve todo el ambiente (aunque sea en L).</p>
+              </div>
+
+              <div class="shape-panel" id="shapePanel">
+                <p class="field-label">Forma del ambiente (si no es rectángulo completo)</p>
+                <p class="hint shape-panel-hint">Para ambientes en <strong>L</strong> u otras formas: primero las medidas de arriba, después elegí una opción.</p>
+                <div class="field-row field-row-2">
+                  <label class="field">
+                    <span>Ancho brazo L (m)</span>
+                    <input type="number" id="lShapeCutWidth" min="0.1" step="0.01" placeholder="Ej: 3">
+                    <small class="field-hint">Hasta dónde llega el brazo horizontal</small>
+                  </label>
+                  <label class="field">
+                    <span>Alto recorte L (m)</span>
+                    <input type="number" id="lShapeCutLength" min="0.1" step="0.01" placeholder="Ej: 2">
+                    <small class="field-hint">Altura de la esquina que no lleva piso</small>
+                  </label>
+                </div>
+                <div class="shape-actions">
+                  <button type="button" id="btnShapeL" class="btn btn-outline btn-sm">↱ Forma en L</button>
+                  <button type="button" id="btnShapeDraw" class="btn btn-outline btn-sm">✏ Dibujar contorno</button>
+                  <button type="button" id="btnShapeClose" class="btn btn-primary btn-sm hidden">Cerrar forma</button>
+                  <button type="button" id="btnShapeUndo" class="btn btn-ghost btn-sm hidden">Deshacer punto</button>
+                  <button type="button" id="btnShapeClear" class="btn btn-ghost btn-sm btn-danger-text hidden">Quitar forma</button>
+                </div>
+                <p id="shapeStatus" class="shape-status hint">Sin forma especial — se usa todo el rectángulo.</p>
               </div>
             </div>
 
@@ -346,7 +371,7 @@
                   <button type="button" id="planRotateRight" class="btn btn-sm btn-outline plan-tool-btn" title="Girar 15° derecha">↻</button>
                   <button type="button" id="planResetView" class="btn btn-sm btn-outline plan-tool-btn" title="Centrar plano">Centrar</button>
                   <span class="plan-toolbar-sep" aria-hidden="true"></span>
-                  <button type="button" id="planShapeToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Dibujar forma irregular (L, recortes, etc.)">Forma</button>
+                  <button type="button" id="planShapeToggle" class="btn btn-sm btn-outline plan-tool-btn plan-tool-highlight" title="Dibujar forma irregular (L, recortes, etc.)">✏ Forma</button>
                   <button type="button" id="planShapeClose" class="btn btn-sm btn-outline plan-tool-btn hidden" title="Cerrar el contorno">Cerrar forma</button>
                   <button type="button" id="planShapeUndo" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar último punto">Deshacer</button>
                   <button type="button" id="planShapeClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Borrar forma dibujada">Limpiar forma</button>

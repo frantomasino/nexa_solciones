@@ -22,6 +22,7 @@
   let roomPolygon = [];
   let shapeClosed = false;
   let activeColorSlot = 1;
+  let planNeedsFitView = true;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -78,6 +79,7 @@
     shapeMode = false;
     roomPolygon = [];
     shapeClosed = false;
+    planNeedsFitView = true;
     clearMeasureFields();
     measureSession?.clearImage();
     setPhotoFileName('Ninguna foto');
@@ -87,6 +89,7 @@
     setColorCount(null);
     updateCanvasPlaceholder();
     renderResults(null);
+    updateShapeStatus();
   }
 
   function readForm() {
@@ -228,6 +231,81 @@
     debounce(recalculate);
   }
 
+  function createLShapePolygon(widthM, lengthM, cutWidthM, cutLengthM) {
+    const cutW = Math.min(widthM - 0.1, Math.max(0.1, cutWidthM));
+    const cutL = Math.min(lengthM - 0.1, Math.max(0.1, cutLengthM));
+    return [
+      { xM: 0, yM: 0 },
+      { xM: cutW, yM: 0 },
+      { xM: cutW, yM: cutL },
+      { xM: widthM, yM: cutL },
+      { xM: widthM, yM: lengthM },
+      { xM: 0, yM: lengthM },
+    ];
+  }
+
+  function updateShapeStatus() {
+    const el = $('#shapeStatus');
+    if (!el) return;
+    const showClear = roomPolygon.length > 0 || shapeClosed;
+    $('#btnShapeClear')?.classList.toggle('hidden', !showClear);
+    $('#btnShapeClose')?.classList.toggle('hidden', !shapeMode || roomPolygon.length < 3 || shapeClosed);
+    $('#btnShapeUndo')?.classList.toggle('hidden', !shapeMode || roomPolygon.length === 0);
+    $('#btnShapeDraw')?.classList.toggle('active', shapeMode);
+    $('#planShapeClose')?.classList.toggle('hidden', !shapeMode || roomPolygon.length < 3 || shapeClosed);
+    $('#planShapeUndo')?.classList.toggle('hidden', !shapeMode || roomPolygon.length === 0);
+    $('#planShapeClear')?.classList.toggle('hidden', !showClear);
+
+    if (!roomPolygon.length) {
+      el.textContent = 'Sin forma especial — se usa todo el rectángulo.';
+      el.classList.remove('active');
+      return;
+    }
+    el.classList.add('active');
+    if (shapeMode) {
+      el.textContent = `Dibujando contorno: ${roomPolygon.length} punto(s). Tocá el plano de la derecha · mínimo 3 · luego «Cerrar forma».`;
+    } else if (shapeClosed) {
+      const outside = lastResult?.polygonExcludedCount ?? 0;
+      el.textContent = `Forma activa (${roomPolygon.length} vértices) · ${outside} baldosas fuera del contorno (marcadas con ✕ roja en el plano).`;
+    } else {
+      el.textContent = `Contorno abierto (${roomPolygon.length} puntos) — tocá «Cerrar forma» para aplicar.`;
+    }
+  }
+
+  function applyLShapePreset() {
+    const w = parseFloat($('#roomWidth').value) || 0;
+    const l = parseFloat($('#roomLength').value) || 0;
+    if (w <= 0 || l <= 0) {
+      alert('Primero ingresá ancho y largo del ambiente (el rectángulo que envuelve la L).');
+      $('#roomWidth').focus();
+      return;
+    }
+    const cutW = parseFloat($('#lShapeCutWidth')?.value) || w * 0.6;
+    const cutL = parseFloat($('#lShapeCutLength')?.value) || l * 0.5;
+    roomPolygon = createLShapePolygon(w, l, cutW, cutL);
+    shapeClosed = true;
+    shapeMode = false;
+    planNeedsFitView = true;
+    setPlanInteractionMode('none');
+    updateShapeStatus();
+    debounce(recalculate);
+    if (!selectedPattern || !colorCount) {
+      alert('Forma en L aplicada. Elegí tipo de piso y colores para ver el plano.');
+    } else {
+      setTimeout(() => $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
+    }
+  }
+
+  function startShapeDrawing() {
+    if (!lastResult) {
+      alert('Primero cargá medidas, tipo de piso y colores para ver el plano.');
+      return;
+    }
+    setPlanInteractionMode('shape');
+    updateShapeStatus();
+    $('#planViewer')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   function updateObstacleUI() {
     const n = excludedCells.size;
     const polyN = shapeClosed && roomPolygon.length >= 3 ? (lastResult?.polygonExcludedCount ?? 0) : 0;
@@ -258,12 +336,16 @@
     shapeMode = mode === 'shape';
     $('#planStage')?.classList.toggle('obstacle-mode', obstacleMode);
     $('#planStage')?.classList.toggle('shape-mode', shapeMode);
+    $('#btnShapeDraw')?.classList.toggle('active', shapeMode);
+    updateShapeStatus();
     updateObstacleUI();
   }
 
   function clearRoomShape() {
     roomPolygon = [];
     shapeClosed = false;
+    planNeedsFitView = true;
+    updateShapeStatus();
     updateObstacleUI();
     debounce(recalculate);
   }
@@ -274,6 +356,8 @@
     shapeMode = false;
     $('#planStage')?.classList.remove('shape-mode');
     $('#planShapeToggle')?.classList.remove('active');
+    $('#btnShapeDraw')?.classList.remove('active');
+    updateShapeStatus();
     updateObstacleUI();
     debounce(recalculate);
   }
@@ -282,6 +366,8 @@
     if (!roomPolygon.length) return;
     roomPolygon.pop();
     shapeClosed = false;
+    planNeedsFitView = true;
+    updateShapeStatus();
     updateObstacleUI();
     debounce(recalculate);
   }
@@ -300,6 +386,8 @@
     if (!pt) return;
     roomPolygon.push(pt);
     shapeClosed = false;
+    planNeedsFitView = true;
+    updateShapeStatus();
     updateObstacleUI();
     debounce(recalculate);
   }
@@ -367,6 +455,7 @@
     shapeMode = false;
     roomPolygon = Array.isArray(data.roomPolygon) ? data.roomPolygon.map((p) => ({ xM: p.xM, yM: p.yM })) : [];
     shapeClosed = roomPolygon.length >= 3;
+    updateShapeStatus();
     updateObstacleUI();
 
     selectedPattern = resolvePattern(data);
@@ -574,12 +663,15 @@
   async function recalculate() {
     const form = readForm();
     if (form.roomWidthM <= 0 || form.roomLengthM <= 0) {
+      planNeedsFitView = true;
       renderResults(null);
+      updateShapeStatus();
       return;
     }
     if (!selectedPattern || !colorCount) {
       updateCanvasPlaceholder();
       renderResults(null);
+      updateShapeStatus();
       return;
     }
 
@@ -590,10 +682,17 @@
     await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
     empty.classList.add('hidden');
     viewer.classList.remove('hidden');
-    requestAnimationFrame(() => planViewerControls?.fitView());
+    if (planNeedsFitView) {
+      requestAnimationFrame(() => {
+        planViewerControls?.fitView();
+        planNeedsFitView = false;
+      });
+    }
 
     $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
+    updateShapeStatus();
+    updateObstacleUI();
   }
 
   function renderResults(result, form) {
@@ -1295,21 +1394,37 @@
 
     $('#planShapeToggle')?.addEventListener('click', () => {
       if (shapeMode) setPlanInteractionMode('none');
-      else setPlanInteractionMode('shape');
+      else startShapeDrawing();
     });
     $('#planShapeClose')?.addEventListener('click', closeRoomShape);
     $('#planShapeUndo')?.addEventListener('click', undoShapePoint);
     $('#planShapeClear')?.addEventListener('click', clearRoomShape);
 
-    $('#planStage')?.addEventListener('click', (e) => {
-      if (e.target.closest('.plan-toolbar')) return;
+    $('#btnShapeL')?.addEventListener('click', () => applyLShapePreset());
+    $('#btnShapeDraw')?.addEventListener('click', () => {
+      if (shapeMode) setPlanInteractionMode('none');
+      else startShapeDrawing();
+    });
+    $('#btnShapeClose')?.addEventListener('click', closeRoomShape);
+    $('#btnShapeUndo')?.addEventListener('click', undoShapePoint);
+    $('#btnShapeClear')?.addEventListener('click', clearRoomShape);
+
+    function handlePlanPointer(clientX, clientY) {
       if (shapeMode && lastResult) {
-        addShapePoint(e.clientX, e.clientY);
+        addShapePoint(clientX, clientY);
         return;
       }
       if (!obstacleMode || !lastResult) return;
-      const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
+      const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
       if (cell) toggleExcludedCell(cell.col, cell.row);
+    }
+
+    $('#planStage')?.addEventListener('pointerdown', (e) => {
+      if (!shapeMode && !obstacleMode) return;
+      if (e.target.closest('.plan-toolbar')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      handlePlanPointer(e.clientX, e.clientY);
     });
     $('#roomWidth').addEventListener('input', () => {
       excludedCells.clear();
@@ -1375,6 +1490,7 @@
     initTheme();
     buildPatternGrids();
     buildColorPalette([]);
+    updateShapeStatus();
     bindEvents();
     initPlanViewer();
     initMeasurePhoto();

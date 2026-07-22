@@ -1090,8 +1090,41 @@ a.dropdown-item:hover {
   vertical-align: middle;
 }
 
-.color-catalog-hint {
-  margin: -0.25rem 0 0.5rem;
+.shape-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 32, 148, 0.04);
+}
+
+.shape-panel-hint {
+  margin: 0 0 0.65rem;
+}
+
+.shape-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.shape-status {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+}
+
+.shape-status.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: rgba(0, 32, 148, 0.08);
+}
+
+.plan-tool-highlight {
+  font-weight: 700;
+  border-color: var(--accent);
 }
 
 .color-palette {
