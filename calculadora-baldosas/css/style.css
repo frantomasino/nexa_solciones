@@ -1267,6 +1267,24 @@ a.dropdown-item:hover {
   background: var(--bg-panel);
 }
 
+.plan-stage.obstacle-mode {
+  cursor: crosshair;
+}
+
+.plan-tool-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(238, 125, 48, 0.12);
+}
+
+.tiles-per-box-display {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 0.35rem 0;
+}
+
 .plan-stage {
   flex: 1;
   min-height: 240px;
