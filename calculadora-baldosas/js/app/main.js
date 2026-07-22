@@ -1833,6 +1833,7 @@
     initTheme();
     buildPatternGrids();
     buildColorPalette([]);
+    setShapeTypeUI('rect');
     updateShapeStatus();
     bindEvents();
     initPlanViewer();
