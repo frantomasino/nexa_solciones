@@ -1313,7 +1313,8 @@ a.dropdown-item:hover {
   background: var(--bg-panel);
 }
 
-.plan-stage.obstacle-mode {
+.plan-stage.obstacle-mode,
+.plan-stage.shape-mode {
   cursor: crosshair;
 }
 

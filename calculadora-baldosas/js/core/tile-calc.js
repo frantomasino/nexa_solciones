@@ -43,21 +43,95 @@
     '40': { w: TILE_SIZE_CM, l: TILE_SIZE_CM },
   };
 
-  /** Colores del producto real (fotos cliente jul 2026 — IMG_8141, 8142, 8145). */
-  const NEXA_COLOR_CATALOG = [
-    { name: 'Negro', hex: '#252525' },
-    { name: 'Gris oscuro', hex: '#5C5F63' },
-    { name: 'Gris claro', hex: '#B8BCC2' },
-    { name: 'Blanco', hex: '#F0F0F0' },
-    { name: 'Naranja', hex: '#E14931' },
-    { name: 'Rojo', hex: '#E33641' },
-    { name: 'Verde bosque', hex: '#3D6B52' },
-    { name: 'Azul', hex: '#2B4BA8' },
-    { name: 'Verde lima', hex: '#79A943' },
-    { name: 'Beige arena', hex: '#C6B7A2' },
-  ];
+  /** Colores por tipo de piso (fotos cliente jul 2026). */
+  const NEXA_COLORS_BY_FLOOR_TYPE = {
+    moneda: [
+      { name: 'Yute', hex: '#C9B89A' },
+    ],
+    rejilla: [
+      { name: 'Azul claro', hex: '#5B9BD5' },
+      { name: 'Celeste', hex: '#7EC8E3' },
+      { name: 'Verde oscuro', hex: '#2D5A3D' },
+      { name: 'Azul oscuro', hex: '#1E3A7A' },
+      { name: 'Rojo', hex: '#D32F2F' },
+      { name: 'Naranja', hex: '#E85D2B' },
+      { name: 'Amarillo', hex: '#F5C518' },
+      { name: 'Negro', hex: '#252525' },
+      { name: 'Gris oscuro', hex: '#5C5F63' },
+      { name: 'Blanco', hex: '#F0F0F0' },
+      { name: 'Gris claro', hex: '#B8BCC2' },
+    ],
+    trama: [
+      { name: 'Negro', hex: '#252525' },
+      { name: 'Gris oscuro', hex: '#5C5F63' },
+      { name: 'Gris claro', hex: '#B8BCC2' },
+      { name: 'Blanco', hex: '#F0F0F0' },
+    ],
+  };
 
-  const DEFAULT_COLORS = NEXA_COLOR_CATALOG;
+  const NEXA_COLOR_CATALOG = Object.values(NEXA_COLORS_BY_FLOOR_TYPE).flat();
+
+  const DEFAULT_COLORS = NEXA_COLORS_BY_FLOOR_TYPE.rejilla;
+
+  function getColorsForFloorType(floorType) {
+    return NEXA_COLORS_BY_FLOOR_TYPE[floorType] || DEFAULT_COLORS;
+  }
+
+  function pointInPolygon(x, y, polygon) {
+    if (!polygon || polygon.length < 3) return true;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].xM;
+      const yi = polygon[i].yM;
+      const xj = polygon[j].xM;
+      const yj = polygon[j].yM;
+      const denom = yj - yi;
+      if (denom === 0) continue;
+      const intersect = ((yi > y) !== (yj > y))
+        && (x < ((xj - xi) * (y - yi)) / denom + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function polygonExclusions(cols, rows, actualWidthM, actualLengthM, polygon) {
+    const excluded = new Set();
+    if (!polygon || polygon.length < 3 || !cols || !rows) return excluded;
+    const cellWidthM = actualWidthM / cols;
+    const cellHeightM = actualLengthM / rows;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const xM = (col + 0.5) * cellWidthM;
+        const yM = (row + 0.5) * cellHeightM;
+        if (!pointInPolygon(xM, yM, polygon)) excluded.add(`${col},${row}`);
+      }
+    }
+    return excluded;
+  }
+
+  function mergeExclusions(manualExcluded, polygonExcluded) {
+    const set = parseExcludedCells(manualExcluded);
+    if (polygonExcluded?.size) {
+      for (const key of polygonExcluded) set.add(key);
+    }
+    return set;
+  }
+
+  function metersFromCanvasPoint(canvas, clientX, clientY, cols, rows, actualWidthM, actualLengthM) {
+    if (!canvas || !cols || !rows) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const logicalW = parseFloat(canvas.dataset.logicalWidth) || rect.width;
+    const logicalH = parseFloat(canvas.dataset.logicalHeight) || rect.height;
+    const px = ((clientX - rect.left) / rect.width) * logicalW;
+    const py = ((clientY - rect.top) / rect.height) * logicalH;
+    const layout = layoutMetrics(cols, rows);
+    const { padLeft, padTop, drawW, drawH } = layout;
+    const xM = ((px - padLeft) / drawW) * actualWidthM;
+    const yM = ((py - padTop) / drawH) * actualLengthM;
+    if (xM < 0 || yM < 0 || xM > actualWidthM || yM > actualLengthM) return null;
+    return { xM, yM };
+  }
 
   function metersToCm(m) {
     return m * 100;
@@ -258,12 +332,14 @@
       stripeWidth = 1,
       customPercents = [50, 30, 20],
       excludedCells = [],
+      roomPolygon = null,
     } = input;
 
     const tilesPerBox = inputTilesPerBox ?? tilesPerBoxForPattern(pattern);
-    const excludedSet = parseExcludedCells(excludedCells);
     const gridInfo = computeGrid(roomWidthM, roomLengthM, tileWidthCm, tileLengthCm);
     const { cols, rows, actualWidthM, actualLengthM, areaM2, coveredM2 } = gridInfo;
+    const polygonExcluded = polygonExclusions(cols, rows, actualWidthM, actualLengthM, roomPolygon);
+    const excludedSet = mergeExclusions(excludedCells, polygonExcluded);
     const numColors = colorsForPattern(pattern, inputColorCount);
     const gridOptions = { aisleWidth, stripeWidth, colorCount: numColors };
 
@@ -325,6 +401,8 @@
       floorType: isFloorType(pattern) ? pattern : null,
       excludedCells: [...excludedSet],
       excludedCount,
+      roomPolygon: roomPolygon?.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
+      polygonExcludedCount: polygonExcluded.size,
     };
   }
 
@@ -485,6 +563,40 @@
     ctx.restore();
   }
 
+  function drawRoomPolygonOverlay(ctx, layout, polygon, actualWidthM, actualLengthM, closed) {
+    if (!polygon?.length) return;
+    const { padLeft, padTop, drawW, drawH } = layout;
+    const toX = (xM) => padLeft + (xM / actualWidthM) * drawW;
+    const toY = (yM) => padTop + (yM / actualLengthM) * drawH;
+
+    ctx.save();
+    ctx.strokeStyle = '#22d3ee';
+    ctx.fillStyle = 'rgba(34, 211, 238, 0.08)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash(closed ? [] : [8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(toX(polygon[0].xM), toY(polygon[0].yM));
+    for (let i = 1; i < polygon.length; i++) {
+      ctx.lineTo(toX(polygon[i].xM), toY(polygon[i].yM));
+    }
+    if (closed && polygon.length >= 3) {
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.stroke();
+
+    for (const p of polygon) {
+      ctx.beginPath();
+      ctx.arc(toX(p.xM), toY(p.yM), 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#22d3ee';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawFloorPlan(canvas, result, options = {}) {
     if (!canvas || !result?.grid) return null;
 
@@ -571,6 +683,18 @@
         roomWidthM,
         roomLengthM,
       });
+    }
+
+    const roomPolygon = options.roomPolygon;
+    if (roomPolygon?.length) {
+      drawRoomPolygonOverlay(
+        ctx,
+        layout,
+        roomPolygon,
+        actualWidthM,
+        actualLengthM,
+        options.roomPolygonClosed !== false
+      );
     }
 
     canvas.dataset.logicalWidth = String(drawW + padLeft + padRight);
@@ -712,7 +836,12 @@
     TILE_SIZE_CM,
     TILES_PER_BOX_BY_PATTERN,
     NEXA_COLOR_CATALOG,
+    NEXA_COLORS_BY_FLOOR_TYPE,
     DEFAULT_COLORS,
+    getColorsForFloorType,
+    pointInPolygon,
+    polygonExclusions,
+    metersFromCanvasPoint,
     calculate,
     drawFloorPlan,
     drawFloorPlanAsync,

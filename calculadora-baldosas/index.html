@@ -165,7 +165,7 @@
                   <span>O ingresá m² directo</span>
                   <input type="number" id="areaInput" min="0.1" step="0.01" placeholder="Ej: 22">
                 </label>
-                <p class="hint area-hint">Ingresá <strong>ancho y largo</strong> del ambiente (no tiene que ser cuadrado). El m² es solo referencia. Si hay columnas o zonas sin piso, marcá <strong>obstáculos</strong> en el plano.</p>
+                <p class="hint area-hint">Ingresá <strong>ancho y largo</strong> del rectángulo que envuelve el ambiente (aunque no sea cuadrado). Después usá <strong>Forma</strong> en el plano para marcar contornos en L o irregulares, u <strong>Obstáculos</strong> para columnas.</p>
               </div>
             </div>
 
@@ -245,7 +245,7 @@
             <div class="floor-type-grid" id="floorTypeGrid"></div>
 
             <p class="field-label">Colores</p>
-            <p class="hint color-catalog-hint">Colores reales del producto (fotos del cliente). Tocá una muestra para asignarla al color activo, o ajustá nombre y tono a mano. Otros colores se fabrican bajo consulta.</p>
+            <p class="hint color-catalog-hint">Elegí primero el tipo de piso para ver los colores disponibles.</p>
             <div class="color-count-btns" id="colorCountBtns">
               <button type="button" class="color-count-btn" data-count="1">1 color</button>
               <button type="button" class="color-count-btn" data-count="2">2 colores</button>
@@ -255,16 +255,16 @@
             <div class="color-palette hidden" id="colorPalette" aria-label="Muestras de color del producto"></div>
             <div class="colors-row hidden">
               <div class="color-chip color-chip-active" data-slot="1" id="colorChip1">
-                <input type="color" id="color1Hex" class="color-hex" value="#252525">
-                <input type="text" id="color1Name" class="color-name" value="Negro">
+                <input type="color" id="color1Hex" class="color-hex" value="#5B9BD5">
+                <input type="text" id="color1Name" class="color-name" value="Azul claro">
               </div>
               <div class="color-chip" data-slot="2" id="color2Group">
                 <input type="color" id="color2Hex" class="color-hex" value="#F0F0F0">
                 <input type="text" id="color2Name" class="color-name" value="Blanco">
               </div>
               <div class="color-chip" data-slot="3" id="color3Group">
-                <input type="color" id="color3Hex" class="color-hex" value="#2B4BA8">
-                <input type="text" id="color3Name" class="color-name" value="Azul">
+                <input type="color" id="color3Hex" class="color-hex" value="#1E3A7A">
+                <input type="text" id="color3Name" class="color-name" value="Azul oscuro">
               </div>
             </div>
 
@@ -346,13 +346,17 @@
                   <button type="button" id="planRotateRight" class="btn btn-sm btn-outline plan-tool-btn" title="Girar 15° derecha">↻</button>
                   <button type="button" id="planResetView" class="btn btn-sm btn-outline plan-tool-btn" title="Centrar plano">Centrar</button>
                   <span class="plan-toolbar-sep" aria-hidden="true"></span>
+                  <button type="button" id="planShapeToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Dibujar forma irregular (L, recortes, etc.)">Forma</button>
+                  <button type="button" id="planShapeClose" class="btn btn-sm btn-outline plan-tool-btn hidden" title="Cerrar el contorno">Cerrar forma</button>
+                  <button type="button" id="planShapeUndo" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar último punto">Deshacer</button>
+                  <button type="button" id="planShapeClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Borrar forma dibujada">Limpiar forma</button>
                   <button type="button" id="planObstacleToggle" class="btn btn-sm btn-outline plan-tool-btn" title="Marcar baldosas a esquivar (columnas, piletas, etc.)">Obstáculos</button>
                   <button type="button" id="planObstacleClear" class="btn btn-sm btn-ghost plan-tool-btn hidden" title="Quitar todos los obstáculos">Limpiar</button>
                 </div>
                 <div id="planStage" class="plan-stage">
                   <canvas id="floorCanvas"></canvas>
                 </div>
-                <p class="plan-viewer-hint" id="planViewerHint">Arrastrá para mover · Rueda o +/− para zoom · Girá con el control o ↺ ↻</p>
+                <p class="plan-viewer-hint" id="planViewerHint">Arrastrá para mover · Zoom con +/− · <strong>Forma</strong> para ambientes en L o irregulares · <strong>Obstáculos</strong> para columnas</p>
               </div>
             </div>
             <input type="hidden" id="photoThumbData">

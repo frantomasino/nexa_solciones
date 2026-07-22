@@ -18,6 +18,9 @@
   let planViewerControls = null;
   let excludedCells = new Set();
   let obstacleMode = false;
+  let shapeMode = false;
+  let roomPolygon = [];
+  let shapeClosed = false;
   let activeColorSlot = 1;
 
   const $ = (sel) => document.querySelector(sel);
@@ -72,6 +75,9 @@
     if ($('#photoFile')) $('#photoFile').value = '';
     excludedCells = new Set();
     obstacleMode = false;
+    shapeMode = false;
+    roomPolygon = [];
+    shapeClosed = false;
     clearMeasureFields();
     measureSession?.clearImage();
     setPhotoFileName('Ninguna foto');
@@ -96,6 +102,7 @@
       tileLengthCm: TileCalc.TILE_SIZE_CM,
       tilesPerBox: selectedPattern ? TileCalc.tilesPerBoxForPattern(selectedPattern) : parseInt($('#tilesPerBox').value, 10) || 25,
       excludedCells: [...excludedCells],
+      roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
       pattern: selectedPattern,
       colorCount,
@@ -223,14 +230,78 @@
 
   function updateObstacleUI() {
     const n = excludedCells.size;
+    const polyN = shapeClosed && roomPolygon.length >= 3 ? (lastResult?.polygonExcludedCount ?? 0) : 0;
     $('#planObstacleClear')?.classList.toggle('hidden', n === 0);
     $('#planObstacleToggle')?.classList.toggle('active', obstacleMode);
+    $('#planShapeToggle')?.classList.toggle('active', shapeMode);
+    $('#planShapeClose')?.classList.toggle('hidden', !shapeMode || roomPolygon.length < 3 || shapeClosed);
+    $('#planShapeUndo')?.classList.toggle('hidden', !shapeMode || roomPolygon.length === 0);
+    $('#planShapeClear')?.classList.toggle('hidden', roomPolygon.length === 0 && !shapeClosed);
     const hint = $('#planViewerHint');
     if (hint && lastResult) {
-      hint.textContent = obstacleMode
-        ? `Modo obstáculos: tocá baldosas para marcar zonas sin piso (${n} marcadas).`
-        : 'Arrastrá para mover · Rueda o +/− para zoom · Usá Obstáculos para esquivar columnas o piletas.';
+      if (shapeMode) {
+        hint.textContent = shapeClosed
+          ? `Forma cerrada: ${roomPolygon.length} vértices · ${polyN} baldosas fuera del contorno. Tocá Forma para editar.`
+          : `Modo forma: tocá el plano para marcar vértices (${roomPolygon.length} puntos). Mínimo 3, luego «Cerrar forma».`;
+      } else if (obstacleMode) {
+        hint.textContent = `Modo obstáculos: tocá baldosas para marcar zonas sin piso (${n} marcadas).`;
+      } else if (shapeClosed) {
+        hint.textContent = `Forma irregular activa (${roomPolygon.length} vértices). Usá Forma u Obstáculos para ajustar.`;
+      } else {
+        hint.textContent = 'Arrastrá para mover · Zoom con +/− · Forma irregular o Obstáculos para ambientes no rectangulares.';
+      }
     }
+  }
+
+  function setPlanInteractionMode(mode) {
+    obstacleMode = mode === 'obstacle';
+    shapeMode = mode === 'shape';
+    $('#planStage')?.classList.toggle('obstacle-mode', obstacleMode);
+    $('#planStage')?.classList.toggle('shape-mode', shapeMode);
+    updateObstacleUI();
+  }
+
+  function clearRoomShape() {
+    roomPolygon = [];
+    shapeClosed = false;
+    updateObstacleUI();
+    debounce(recalculate);
+  }
+
+  function closeRoomShape() {
+    if (roomPolygon.length < 3) return;
+    shapeClosed = true;
+    shapeMode = false;
+    $('#planStage')?.classList.remove('shape-mode');
+    $('#planShapeToggle')?.classList.remove('active');
+    updateObstacleUI();
+    debounce(recalculate);
+  }
+
+  function undoShapePoint() {
+    if (!roomPolygon.length) return;
+    roomPolygon.pop();
+    shapeClosed = false;
+    updateObstacleUI();
+    debounce(recalculate);
+  }
+
+  function addShapePoint(clientX, clientY) {
+    if (!lastResult) return;
+    const pt = TileCalc.metersFromCanvasPoint(
+      $('#floorCanvas'),
+      clientX,
+      clientY,
+      lastResult.cols,
+      lastResult.rows,
+      lastResult.actualWidthM,
+      lastResult.actualLengthM
+    );
+    if (!pt) return;
+    roomPolygon.push(pt);
+    shapeClosed = false;
+    updateObstacleUI();
+    debounce(recalculate);
   }
 
   function parseExcludedFromData(data) {
@@ -293,19 +364,23 @@
 
     excludedCells = parseExcludedFromData(data.excludedCells);
     obstacleMode = false;
+    shapeMode = false;
+    roomPolygon = Array.isArray(data.roomPolygon) ? data.roomPolygon.map((p) => ({ xM: p.xM, yM: p.yM })) : [];
+    shapeClosed = roomPolygon.length >= 3;
     updateObstacleUI();
 
     selectedPattern = resolvePattern(data);
     setColorCount(resolveColorCount(data));
     updatePatternSelection();
 
-    const colors = data.colors || TileCalc.NEXA_COLOR_CATALOG;
-    $('#color1Name').value = colors[0]?.name || TileCalc.NEXA_COLOR_CATALOG[0].name;
-    $('#color1Hex').value = colors[0]?.hex || TileCalc.NEXA_COLOR_CATALOG[0].hex;
-    $('#color2Name').value = colors[1]?.name || TileCalc.NEXA_COLOR_CATALOG[1].name;
-    $('#color2Hex').value = colors[1]?.hex || TileCalc.NEXA_COLOR_CATALOG[1].hex;
-    $('#color3Name').value = colors[2]?.name || TileCalc.NEXA_COLOR_CATALOG[2].name;
-    $('#color3Hex').value = colors[2]?.hex || TileCalc.NEXA_COLOR_CATALOG[2].hex;
+    const colors = data.colors || TileCalc.getColorsForFloorType(selectedPattern || data.pattern);
+    $('#color1Name').value = colors[0]?.name || TileCalc.getColorsForFloorType(data.pattern)[0]?.name || '';
+    $('#color1Hex').value = colors[0]?.hex || TileCalc.getColorsForFloorType(data.pattern)[0]?.hex || '#888888';
+    $('#color2Name').value = colors[1]?.name || TileCalc.getColorsForFloorType(data.pattern)[1]?.name || '';
+    $('#color2Hex').value = colors[1]?.hex || TileCalc.getColorsForFloorType(data.pattern)[1]?.hex || '#888888';
+    $('#color3Name').value = colors[2]?.name || TileCalc.getColorsForFloorType(data.pattern)[2]?.name || '';
+    $('#color3Hex').value = colors[2]?.hex || TileCalc.getColorsForFloorType(data.pattern)[2]?.hex || '#888888';
+    applyFloorTypeColors(false);
 
     $('#photoThumbData').value = data.photoThumb || '';
     setMeasureTab(data.measureMethod || 'manual');
@@ -362,7 +437,27 @@
         span: form.logoSpan || 1,
       };
     }
+    if (roomPolygon.length) {
+      opts.roomPolygon = roomPolygon;
+      opts.roomPolygonClosed = shapeClosed;
+    }
     return opts;
+  }
+
+  function applyFloorTypeColors(resetSlots = true) {
+    if (!selectedPattern) {
+      buildColorPalette([]);
+      return;
+    }
+    const catalog = TileCalc.getColorsForFloorType(selectedPattern);
+    buildColorPalette(catalog);
+    if (!resetSlots || !colorCount) return;
+    catalog.slice(0, colorCount).forEach((color, i) => {
+      const hexEl = $(`#color${i + 1}Hex`);
+      const nameEl = $(`#color${i + 1}Name`);
+      if (hexEl) hexEl.value = color.hex;
+      if (nameEl) nameEl.value = color.name;
+    });
   }
 
   function setActiveColorSlot(slot) {
@@ -381,10 +476,22 @@
     debounce(recalculate);
   }
 
-  function buildColorPalette() {
+  function buildColorPalette(catalog) {
     const palette = $('#colorPalette');
     if (!palette) return;
-    palette.innerHTML = TileCalc.NEXA_COLOR_CATALOG.map((color) => `
+    const colors = catalog?.length ? catalog : (selectedPattern ? TileCalc.getColorsForFloorType(selectedPattern) : []);
+    const typeLabel = selectedPattern ? TileCalc.FLOOR_TYPES[selectedPattern] : 'piso';
+    const hint = $('.color-catalog-hint');
+    if (hint) {
+      hint.textContent = selectedPattern
+        ? `Colores disponibles para ${typeLabel} (fotos del cliente). Tocá una muestra para asignarla al color activo.`
+        : 'Elegí primero el tipo de piso para ver los colores disponibles.';
+    }
+    if (!colors.length) {
+      palette.innerHTML = '';
+      return;
+    }
+    palette.innerHTML = colors.map((color) => `
       <button type="button" class="color-palette-btn" data-hex="${color.hex}" data-name="${escapeHtml(color.name)}" title="${escapeHtml(color.name)}">
         <span class="color-palette-swatch" style="background:${color.hex}"></span>
         <span>${escapeHtml(color.name)}</span>
@@ -415,6 +522,13 @@
     const row = $('.colors-row');
     const palette = $('#colorPalette');
     if (!colorCount) {
+      hint?.classList.remove('hidden');
+      row?.classList.add('hidden');
+      palette?.classList.add('hidden');
+      return;
+    }
+    if (!selectedPattern) {
+      hint.textContent = 'Elegí primero el tipo de piso para ver los colores.';
       hint?.classList.remove('hidden');
       row?.classList.add('hidden');
       palette?.classList.add('hidden');
@@ -716,6 +830,7 @@
       canvasThumb: createThumb($('#floorCanvas')) || $('#photoThumbData').value || null,
       breakdown: lastResult?.breakdown,
       excludedCells: [...excludedCells],
+      roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon.map((p) => ({ ...p })) : null,
       logoEnabled: form.logoEnabled && selectedPattern === 'trama',
       logoImage: form.logoEnabled ? logoImageData : null,
       logoTileBg: form.logoTileBg,
@@ -879,6 +994,7 @@
       btn.addEventListener('click', () => {
         selectedPattern = btn.dataset.pattern;
         updatePatternSelection();
+        applyFloorTypeColors(true);
         debounce(recalculate);
       });
     });
@@ -1172,25 +1288,38 @@
     $('#areaInput')?.addEventListener('input', applyAreaInput);
 
     $('#planObstacleToggle')?.addEventListener('click', () => {
-      obstacleMode = !obstacleMode;
-      $('#planStage')?.classList.toggle('obstacle-mode', obstacleMode);
-      updateObstacleUI();
+      if (obstacleMode) setPlanInteractionMode('none');
+      else setPlanInteractionMode('obstacle');
     });
     $('#planObstacleClear')?.addEventListener('click', clearExcludedCells);
 
+    $('#planShapeToggle')?.addEventListener('click', () => {
+      if (shapeMode) setPlanInteractionMode('none');
+      else setPlanInteractionMode('shape');
+    });
+    $('#planShapeClose')?.addEventListener('click', closeRoomShape);
+    $('#planShapeUndo')?.addEventListener('click', undoShapePoint);
+    $('#planShapeClear')?.addEventListener('click', clearRoomShape);
+
     $('#planStage')?.addEventListener('click', (e) => {
-      if (!obstacleMode || !lastResult) return;
       if (e.target.closest('.plan-toolbar')) return;
+      if (shapeMode && lastResult) {
+        addShapePoint(e.clientX, e.clientY);
+        return;
+      }
+      if (!obstacleMode || !lastResult) return;
       const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
       if (cell) toggleExcludedCell(cell.col, cell.row);
     });
     $('#roomWidth').addEventListener('input', () => {
       excludedCells.clear();
+      clearRoomShape();
       updateAreaFromDims();
       debounce(recalculate);
     });
     $('#roomLength').addEventListener('input', () => {
       excludedCells.clear();
+      clearRoomShape();
       updateAreaFromDims();
       debounce(recalculate);
     });
@@ -1198,6 +1327,7 @@
     $$('.color-count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         setColorCount(parseInt(btn.dataset.count, 10));
+        applyFloorTypeColors(true);
         debounce(recalculate);
       });
     });
@@ -1244,7 +1374,7 @@
   function init() {
     initTheme();
     buildPatternGrids();
-    buildColorPalette();
+    buildColorPalette([]);
     bindEvents();
     initPlanViewer();
     initMeasurePhoto();
