@@ -749,6 +749,53 @@
     ctx.restore();
   }
 
+  function drawAssemblyShapeOutline(ctx, layout, polygon, actualWidthM, actualLengthM) {
+    if (!polygon?.length || polygon.length < 3) return;
+    const { padLeft, padTop, drawW, drawH } = layout;
+    const toX = (xM) => padLeft + (xM / actualWidthM) * drawW;
+    const toY = (yM) => padTop + (yM / actualLengthM) * drawH;
+
+    ctx.save();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(toX(polygon[0].xM), toY(polygon[0].yM));
+    for (let i = 1; i < polygon.length; i++) {
+      ctx.lineTo(toX(polygon[i].xM), toY(polygon[i].yM));
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawAssemblyObstacleMark(ctx, x, y, w, h) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = Math.max(1.5, Math.min(w, h) * 0.1);
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + 3);
+    ctx.lineTo(x + w - 3, y + h - 3);
+    ctx.moveTo(x + w - 3, y + 3);
+    ctx.lineTo(x + 3, y + h - 3);
+    ctx.stroke();
+  }
+
+  function drawAssemblyOutsideShape(ctx, x, y, w, h) {
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.04);
+    const step = Math.max(6, Math.min(w, h) * 0.35);
+    for (let d = -h; d < w + h; d += step) {
+      ctx.beginPath();
+      ctx.moveTo(x + d, y + h);
+      ctx.lineTo(x + d + h, y);
+      ctx.stroke();
+    }
+  }
+
   function drawRoomPolygonOverlay(ctx, layout, polygon, actualWidthM, actualLengthM, closed) {
     if (!polygon?.length) return;
     const { padLeft, padTop, drawW, drawH } = layout;
@@ -853,6 +900,9 @@
     const polygonKeys = options.polygonCellKeys
       || (result.polygonExcludedKeys ? new Set(result.polygonExcludedKeys) : null);
     const paintNeutralMode = options.paintNeutralMode === true;
+    const manualObstacleKeys = options.manualObstacleKeys instanceof Set
+      ? options.manualObstacleKeys
+      : new Set(options.manualObstacleKeys || []);
     const customPaintMap = options.customPaint || {};
     const NEUTRAL_TILE = '#e2e2e2';
 
@@ -873,12 +923,15 @@
           const isColumn = columnKeys.has(key);
           const isOutsideShape = polygonKeys?.has(key);
           if (assemblyMode) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
             if (isColumn) {
-              ctx.strokeStyle = '#999';
-              ctx.lineWidth = Math.max(1.5, Math.min(cellW, cellH) * 0.08);
-              ctx.strokeRect(x + 1.5, y + 1.5, cw - 2, ch - 2);
+              drawColumnBlock(ctx, x + 0.5, y + 0.5, cw, ch, cw > 22 && ch > 16 ? 'COL' : '');
+            } else if (isOutsideShape) {
+              drawAssemblyOutsideShape(ctx, x + 0.5, y + 0.5, cw, ch);
+            } else if (manualObstacleKeys.has(key)) {
+              drawAssemblyObstacleMark(ctx, x + 0.5, y + 0.5, cw, ch);
+            } else {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
             }
           } else if (isColumn) {
             drawColumnBlock(ctx, x + 0.5, y + 0.5, cw, ch, '');
@@ -974,7 +1027,15 @@
       }, assemblyMode ? 'assembly' : 'default');
     }
 
-    if (!assemblyMode && options.roomPolygon?.length) {
+    if (assemblyMode && options.roomPolygon?.length && options.roomPolygonClosed !== false) {
+      drawAssemblyShapeOutline(
+        ctx,
+        layout,
+        options.roomPolygon,
+        actualWidthM,
+        actualLengthM
+      );
+    } else if (!assemblyMode && options.roomPolygon?.length) {
       drawRoomPolygonOverlay(
         ctx,
         layout,
