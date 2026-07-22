@@ -537,12 +537,13 @@
   }
 
   function clearRoomShape() {
+    const hadShape = roomPolygon.length > 0;
     roomPolygon = [];
     shapeClosed = false;
-    planNeedsFitView = true;
     updateShapeStatus();
-    updateObstacleUI();
-    debounce(recalculate);
+    updateColumnUI();
+    if (hadShape) debounce(recalculate);
+    else redrawPlan();
   }
 
   function closeRoomShape() {
