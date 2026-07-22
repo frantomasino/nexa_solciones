@@ -860,47 +860,11 @@
     updateColorUI();
   }
 
-  function updateFloorTypeDetail() {
-    const panel = $('#floorTypeDetail');
-    const desc = $('#floorTypeDesc');
-    const gallery = $('#floorTypeRefGallery');
-    if (!panel || !desc || !gallery) return;
-
-    if (!selectedPattern) {
-      panel.classList.add('hidden');
-      gallery.classList.add('hidden');
-      gallery.innerHTML = '';
-      return;
-    }
-
-    const info = TileCalc.FLOOR_TYPE_INFO?.[selectedPattern];
-    const refs = info?.refs || [];
-    desc.textContent = '';
-    desc.classList.add('hidden');
-
-    if (!refs.length) {
-      panel.classList.add('hidden');
-      gallery.classList.add('hidden');
-      gallery.innerHTML = '';
-      return;
-    }
-
-    panel.classList.remove('hidden');
-    gallery.innerHTML = refs.map((ref) => `
-      <figure class="floor-ref-card">
-        <img src="${ref.src}" alt="${escapeHtml(ref.caption)}" loading="lazy">
-        <span>${escapeHtml(ref.caption)}</span>
-      </figure>
-    `).join('');
-    gallery.classList.remove('hidden');
-  }
-
   function updatePatternSelection() {
     $$('.floor-type-btn').forEach((btn) => {
       btn.classList.toggle('active', !!selectedPattern && btn.dataset.pattern === selectedPattern);
     });
     $('#floorTypeHint')?.classList.toggle('hidden', !!selectedPattern);
-    updateFloorTypeDetail();
     updateTilesPerBoxUI();
     updateLogoPanel();
     updatePatternUI();
@@ -1263,65 +1227,35 @@
     if (!lastResult) { alert('Calculá el piso primero.'); return; }
     const form = readForm();
     const cliente = form.cliente?.trim() || 'Sin nombre';
-    const referencia = form.referencia?.trim() || '—';
+    const referencia = form.referencia?.trim();
     const patron = TileCalc.PATTERNS[form.pattern] || form.pattern || '—';
-    const colores = (form.colors || []).slice(0, form.colorCount || 0).map((c) => c.name).join(' · ') || '—';
-    const fecha = new Date().toLocaleString('es-AR', {
-      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
 
-    document.title = `Presupuesto ${cliente} — Nexa`;
+    document.title = `Armado ${cliente} — Nexa`;
 
-    $('#printDate').textContent = fecha;
-    $('#printCliente').textContent = cliente;
-    $('#printReferencia').textContent = referencia;
-    $('#printMedidas').textContent = `${formatMetrosLabel(form.roomWidthM)} × ${formatMetrosLabel(form.roomLengthM)}`;
-    $('#printArea2').textContent = `${lastResult.areaM2.toFixed(2).replace('.', ',')} m² pedidos`;
-    $('#printCubierto').textContent = `${lastResult.coveredM2.toFixed(2).replace('.', ',')} m² (${lastResult.cols}×${lastResult.rows} baldosas)`;
-    $('#printGrilla').textContent = `${lastResult.actualWidthM.toFixed(2).replace('.', ',')} × ${lastResult.actualLengthM.toFixed(2).replace('.', ',')} m en plano`;
-    $('#printPatron').textContent = patron;
-    $('#printColores').textContent = colores;
+    const headerParts = [cliente];
+    if (referencia) headerParts.push(referencia);
+    headerParts.push(`${formatMetrosLabel(form.roomWidthM)} × ${formatMetrosLabel(form.roomLengthM)}`);
+    headerParts.push(patron);
+    $('#printHeaderLine').textContent = headerParts.join(' · ');
 
-    const notasEl = $('#printNotas');
-    if (form.notas?.trim()) {
-      notasEl.textContent = `Notas: ${form.notas.trim()}`;
-      notasEl.classList.remove('hidden');
-    } else {
-      notasEl.classList.add('hidden');
-    }
-
-    const canvas = $('#floorCanvas');
     const planImg = $('#printPlanImg');
-    if (lastResult) {
-      planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
-        roomWidthM: form.roomWidthM,
-        roomLengthM: form.roomLengthM,
-        columnRects,
-        roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon : null,
-        roomPolygonClosed: shapeClosed,
-      });
-      planImg.classList.remove('hidden');
-      $('#printPlanCaption').textContent =
-        `GUÍA DE ARMADO — cada cuadrado = 1 baldosa 40×40 cm · ${patron} · ${form.colorCount || ''} color(es)`;
-      const legend = $('#printLegend');
-      if (legend) {
-        legend.innerHTML = lastResult.breakdown.map((r) => `
-          <span class="print-legend-item">
-            <span class="print-swatch" style="background:${r.hex}"></span>
-            ${escapeHtml(r.name)}: <strong>${r.tiles}</strong> u.
-          </span>
-        `).join('');
-        legend.classList.remove('hidden');
-      }
-    } else {
-      planImg.src = '';
-      planImg.classList.add('hidden');
-      $('#printPlanCaption').textContent = '';
-      $('#printLegend')?.classList.add('hidden');
-    }
+    planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
+      columnRects,
+      roomPolygon: shapeClosed && roomPolygon.length >= 3 ? roomPolygon : null,
+      roomPolygonClosed: shapeClosed,
+    });
+    planImg.classList.remove('hidden');
+
+    const legend = $('#printLegend');
+    legend.innerHTML = lastResult.breakdown.map((r) => `
+      <span class="print-legend-item">
+        <span class="print-swatch" style="background:${r.hex}"></span>
+        ${escapeHtml(r.name)}: <strong>${r.tiles}</strong>
+      </span>
+    `).join('');
 
     $('#printTable').innerHTML = `
-      <thead><tr><th>Color</th><th>Netas</th><th>Repuesto</th><th>A comprar</th><th>%</th><th>Cajas</th></tr></thead>
+      <thead><tr><th>Color</th><th>Netas</th><th>Repuesto</th><th>A comprar</th><th>Cajas</th></tr></thead>
       <tbody>${lastResult.breakdown.map((r) => {
         const spare = r.spareTiles ?? (r.tilesWithSpare - r.tiles);
         return `<tr>
@@ -1329,23 +1263,21 @@
           <td>${r.tiles}</td>
           <td>+${spare}</td>
           <td><strong>${r.tilesWithSpare}</strong></td>
-          <td>${r.percent}%</td>
           <td>${r.boxes}</td>
         </tr>`;
       }).join('')}</tbody>
       <tfoot>
         <tr>
-          <td>Subtotal</td>
+          <td>Total</td>
           <td>${lastResult.totalTiles}</td>
           <td>+${lastResult.totalSpareTiles ?? 0}</td>
           <td>${lastResult.totalTilesWithSpare}</td>
-          <td>100%</td>
           <td>${lastResult.totalBoxes}</td>
         </tr>
       </tfoot>`;
 
     $('#printTotal').textContent =
-      `Total: ${lastResult.totalTiles} baldosas netas + ${lastResult.totalSpareTiles ?? 0} repuesto (${form.sparePercent}%) = ${lastResult.totalTilesWithSpare} a comprar · ${lastResult.totalBoxes} cajas`;
+      `${lastResult.totalTiles} baldosas + ${lastResult.totalSpareTiles ?? 0} repuesto (${form.sparePercent}%) = ${lastResult.totalTilesWithSpare} a comprar`;
 
     window.print();
     document.title = 'Nexa Soluciones';

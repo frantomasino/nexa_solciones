@@ -17,18 +17,6 @@
     moneda: 'images/piso-moneda.jpg',
   };
 
-  const FLOOR_TYPE_INFO = {
-    rejilla: {
-      refs: [
-        { src: 'images/reference/IMG_8142_b669.jpg', caption: 'Negro, grises y blanco' },
-        { src: 'images/reference/IMG_8141_3d33.jpg', caption: 'Naranja, verde, rojo y azul' },
-        { src: 'images/reference/IMG_8145_6306.jpg', caption: 'Verde lima' },
-      ],
-    },
-    trama: { refs: [] },
-    moneda: { refs: [] },
-  };
-
   const TILE_SIZE_CM = 40;
 
   const TILES_PER_BOX_BY_PATTERN = {
@@ -624,21 +612,60 @@
   }
 
   function drawPlanDimensions(ctx, layout, dims, style = 'default') {
-    const { padTop, padLeft, drawW, drawH } = layout;
+    const { padTop, padLeft, drawW, drawH, padBottom, padRight } = layout;
     const { widthM, lengthM, roomWidthM, roomLengthM } = dims;
     const accent = style === 'assembly' ? '#111' : (getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094');
     const fontSize = style === 'assembly'
-      ? Math.max(14, Math.min(22, Math.min(drawW, drawH) * 0.06))
+      ? Math.max(16, Math.min(28, Math.min(drawW, drawH) * 0.07))
       : Math.max(10, Math.min(13, Math.min(drawW, drawH) * 0.04));
-    const tick = style === 'assembly' ? 8 : 5;
+    const tick = style === 'assembly' ? 10 : 5;
 
     ctx.save();
     ctx.strokeStyle = accent;
     ctx.fillStyle = accent;
-    ctx.lineWidth = style === 'assembly' ? 2 : 1.25;
+    ctx.lineWidth = style === 'assembly' ? 2.5 : 1.25;
     ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
 
-    const topY = padTop - (style === 'assembly' ? 18 : 12);
+    if (style === 'assembly') {
+      const widthLabel = formatMetros(widthM).replace(' m', '');
+      const lengthLabel = formatMetros(lengthM).replace(' m', '');
+      const bottomY = padTop + drawH + 14;
+
+      ctx.beginPath();
+      ctx.moveTo(padLeft, bottomY);
+      ctx.lineTo(padLeft + drawW, bottomY);
+      ctx.moveTo(padLeft, bottomY - tick);
+      ctx.lineTo(padLeft, bottomY + tick);
+      ctx.moveTo(padLeft + drawW, bottomY - tick);
+      ctx.lineTo(padLeft + drawW, bottomY + tick);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(widthLabel, padLeft + drawW / 2, bottomY + 8);
+
+      const rightX = padLeft + drawW + 14;
+      ctx.beginPath();
+      ctx.moveTo(rightX, padTop);
+      ctx.lineTo(rightX, padTop + drawH);
+      ctx.moveTo(rightX - tick, padTop);
+      ctx.lineTo(rightX + tick, padTop);
+      ctx.moveTo(rightX - tick, padTop + drawH);
+      ctx.lineTo(rightX + tick, padTop + drawH);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(rightX + 10, padTop + drawH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(lengthLabel, 0, 0);
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
+
+    const topY = padTop - 12;
     ctx.beginPath();
     ctx.moveTo(padLeft, topY);
     ctx.lineTo(padLeft + drawW, topY);
@@ -650,12 +677,10 @@
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    const widthLabel = style === 'assembly'
-      ? formatMetros(widthM).replace(' m', '')
-      : `Ancho ${formatMetros(widthM)}${roomWidthM && Math.abs(roomWidthM - widthM) > 0.04 ? ` (pedido ${formatMetros(roomWidthM)})` : ''}`;
+    const widthLabel = `Ancho ${formatMetros(widthM)}${roomWidthM && Math.abs(roomWidthM - widthM) > 0.04 ? ` (pedido ${formatMetros(roomWidthM)})` : ''}`;
     ctx.fillText(widthLabel, padLeft + drawW / 2, topY - 6);
 
-    const leftX = padLeft - (style === 'assembly' ? 16 : 12);
+    const leftX = padLeft - 12;
     ctx.beginPath();
     ctx.moveTo(leftX, padTop);
     ctx.lineTo(leftX, padTop + drawH);
@@ -665,9 +690,7 @@
     ctx.lineTo(leftX + tick, padTop + drawH);
     ctx.stroke();
 
-    const lengthLabel = style === 'assembly'
-      ? formatMetros(lengthM).replace(' m', '')
-      : `Largo ${formatMetros(lengthM)}${roomLengthM && Math.abs(roomLengthM - lengthM) > 0.04 ? ` (pedido ${formatMetros(roomLengthM)})` : ''}`;
+    const lengthLabel = `Largo ${formatMetros(lengthM)}${roomLengthM && Math.abs(roomLengthM - lengthM) > 0.04 ? ` (pedido ${formatMetros(roomLengthM)})` : ''}`;
 
     ctx.translate(leftX - 10, padTop + drawH / 2);
     ctx.rotate(-Math.PI / 2);
@@ -793,7 +816,15 @@
 
         if (idx < 0) {
           const isColumn = columnKeys.has(`${col},${row}`);
-          if (isColumn) {
+          if (assemblyMode) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+            if (isColumn) {
+              ctx.strokeStyle = '#999';
+              ctx.lineWidth = Math.max(1.5, Math.min(cellW, cellH) * 0.08);
+              ctx.strokeRect(x + 1.5, y + 1.5, cw - 2, ch - 2);
+            }
+          } else if (isColumn) {
             drawColumnBlock(ctx, x + 0.5, y + 0.5, cw, ch, '');
           } else {
             ctx.fillStyle = 'rgba(200, 60, 60, 0.18)';
@@ -808,8 +839,10 @@
             ctx.stroke();
           }
           if (showGrid) {
-            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-            ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+            ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = assemblyMode
+              ? Math.max(1, Math.min(cellW, cellH) * 0.05)
+              : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
             ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
           }
           continue;
@@ -842,12 +875,18 @@
       }
     }
 
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094';
-    ctx.strokeStyle = accent;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(padLeft, padTop, drawW, drawH);
-    ctx.globalAlpha = 1;
+    if (!assemblyMode) {
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094';
+      ctx.strokeStyle = accent;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(padLeft, padTop, drawW, drawH);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(padLeft, padTop, drawW, drawH);
+    }
 
     if (showDimensions && actualWidthM && actualLengthM) {
       drawPlanDimensions(ctx, layout, {
@@ -858,19 +897,18 @@
       }, assemblyMode ? 'assembly' : 'default');
     }
 
-    const roomPolygon = options.roomPolygon;
-    if (roomPolygon?.length) {
+    if (!assemblyMode && options.roomPolygon?.length) {
       drawRoomPolygonOverlay(
         ctx,
         layout,
-        roomPolygon,
+        options.roomPolygon,
         actualWidthM,
         actualLengthM,
         options.roomPolygonClosed !== false
       );
     }
 
-    if (options.columnRects?.length || options.columnPreview) {
+    if (!assemblyMode && (options.columnRects?.length || options.columnPreview)) {
       drawColumnsOverlay(ctx, layout, options.columnRects, options.columnPreview, cols, rows);
     }
 
@@ -1010,8 +1048,12 @@
     drawFloorPlan(canvas, result, {
       ...options,
       assemblyMode: true,
-      minCellPx: options.minCellPx ?? 36,
-      maxSize: options.maxSize ?? 2800,
+      padTop: 8,
+      padLeft: 8,
+      padRight: 52,
+      padBottom: 52,
+      minCellPx: options.minCellPx ?? 44,
+      maxSize: options.maxSize ?? 3200,
       showGrid: true,
       showDimensions: true,
       supersample: 2,
@@ -1022,7 +1064,6 @@
   global.TileCalc = {
     FLOOR_TYPES,
     FLOOR_TYPE_IMAGES,
-    FLOOR_TYPE_INFO,
     PATTERNS,
     TILE_PRESETS,
     TILE_SIZE_CM,

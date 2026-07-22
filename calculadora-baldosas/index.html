@@ -268,10 +268,6 @@
             <p class="field-label">Tipo de piso</p>
             <p id="floorTypeHint" class="hint">Elegí un tipo de piso</p>
             <div class="floor-type-grid" id="floorTypeGrid"></div>
-            <div id="floorTypeDetail" class="floor-type-detail hidden" aria-live="polite">
-              <p id="floorTypeDesc" class="floor-type-desc"></p>
-              <div id="floorTypeRefGallery" class="floor-ref-gallery hidden"></div>
-            </div>
 
             <p class="field-label">Colores</p>
             <p class="hint color-catalog-hint">Elegí primero el tipo de piso para ver los colores disponibles.</p>
@@ -459,39 +455,16 @@
   </main>
 
   <div id="printArea" class="print-only">
-    <header class="print-header">
-      <img src="icons/nexa-logo.png" alt="Nexa Soluciones" class="print-logo" width="140" height="46">
-      <div class="print-header-text">
-        <h1>Presupuesto de piso técnico</h1>
-        <p id="printDate" class="print-date"></p>
-      </div>
-    </header>
-
-    <section class="print-meta">
-      <div class="print-meta-grid">
-        <div class="print-meta-item"><span class="print-meta-label">Cliente</span><span id="printCliente" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Referencia</span><span id="printReferencia" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Medidas</span><span id="printMedidas" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Superficie</span><span id="printArea2" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Plano cubre</span><span id="printCubierto" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Grilla</span><span id="printGrilla" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Tipo de piso</span><span id="printPatron" class="print-meta-value"></span></div>
-        <div class="print-meta-item"><span class="print-meta-label">Colores</span><span id="printColores" class="print-meta-value"></span></div>
-      </div>
-      <p id="printNotas" class="print-notas hidden"></p>
-    </section>
+    <p id="printHeaderLine" class="print-header-line"></p>
 
     <figure class="print-plan-wrap">
-      <h2 class="print-assembly-title">Guía de armado del piso</h2>
-      <p class="print-assembly-hint">Cada cuadrado = 1 baldosa 40×40 cm. Respetá los colores para armar el diseño en el taller.</p>
-      <div id="printLegend" class="print-legend hidden"></div>
       <img id="printPlanImg" class="print-plan-img" alt="Plano de armado del piso">
-      <figcaption id="printPlanCaption" class="print-plan-caption"></figcaption>
+      <div id="printLegend" class="print-legend"></div>
     </figure>
 
     <table id="printTable" class="print-table"></table>
     <p id="printTotal" class="print-total"></p>
-    <footer class="print-footer">Nexa Soluciones · Pisos encastrables de alto rendimiento · Baldosa 40×40 cm</footer>
+    <footer class="print-footer">Nexa Soluciones · Baldosa 40×40 cm</footer>
   </div>
 
   <!-- Modal instalar app -->

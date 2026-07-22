@@ -1711,13 +1711,13 @@ a.dropdown-item:hover {
 
 .total-row small { font-weight: 400; color: var(--text-muted); }
 
-/* Print */
+/* Print — papel de armado */
 .print-only { display: none; }
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 14mm;
+    margin: 10mm 12mm;
   }
 
   body > *:not(#printArea) { display: none !important; }
@@ -1729,158 +1729,83 @@ a.dropdown-item:hover {
     background: #fff;
     font-family: Inter, system-ui, sans-serif;
     font-size: 10pt;
-    line-height: 1.4;
+    line-height: 1.35;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .print-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding-bottom: 0.75rem;
-    margin-bottom: 1rem;
-    border-bottom: 3px solid #002094;
-  }
-
-  .print-logo { height: 40px; width: auto; }
-
-  .print-header h1 {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #002094;
-  }
-
-  .print-date {
-    margin: 0.15rem 0 0;
+  .print-header-line {
+    margin: 0 0 0.5rem;
     font-size: 0.82rem;
-    color: #555;
-  }
-
-  .print-meta {
-    margin-bottom: 1rem;
-  }
-
-  .print-meta-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.45rem 1.25rem;
-  }
-
-  .print-meta-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-  }
-
-  .print-meta-label {
-    font-size: 0.72rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #666;
-  }
-
-  .print-meta-value {
-    font-size: 0.92rem;
-    font-weight: 500;
-    color: #111;
-  }
-
-  .print-notas {
-    margin: 0.75rem 0 0;
-    padding: 0.5rem 0.65rem;
-    background: #f5f7fb;
-    border-left: 3px solid #ee7d30;
-    font-size: 0.85rem;
+    color: #333;
+    text-align: center;
   }
 
   .print-plan-wrap {
-    margin: 0 0 1rem;
+    margin: 0 0 0.65rem;
     text-align: center;
     page-break-inside: avoid;
   }
 
-  .print-assembly-title {
-    margin: 0 0 0.25rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #002094;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    text-align: left;
-  }
-
-  .print-assembly-hint {
-    margin: 0 0 0.5rem;
-    font-size: 0.82rem;
-    color: #444;
-    text-align: left;
+  .print-plan-img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    height: auto;
+    margin: 0 auto;
+    border: none;
+    background: #fff;
   }
 
   .print-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem 1.25rem;
-    margin-bottom: 0.65rem;
-    font-size: 0.85rem;
-    justify-content: flex-start;
+    gap: 0.75rem 1.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    justify-content: center;
   }
 
   .print-legend-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-  }
-
-  .print-plan-img {
-    max-width: 100%;
-    max-height: 420px;
-    width: auto;
-    height: auto;
-    border: 1px solid #ccd3e0;
-    border-radius: 4px;
-    background: #f0f2f6;
-  }
-
-  .print-plan-caption {
-    margin-top: 0.35rem;
-    font-size: 0.78rem;
-    color: #666;
+    gap: 0.4rem;
   }
 
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 0.25rem;
-    font-size: 0.88rem;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
     page-break-inside: avoid;
   }
 
   .print-table th {
-    background: #002094;
+    background: #222;
     color: #fff;
     font-weight: 600;
     text-align: left;
-    padding: 0.45rem 0.55rem;
-    border: 1px solid #002094;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #222;
   }
 
   .print-table td {
-    padding: 0.4rem 0.55rem;
-    border: 1px solid #ccd3e0;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #ccc;
     vertical-align: middle;
   }
 
   .print-table tbody tr:nth-child(even) td {
-    background: #f8f9fc;
+    background: #f7f7f7;
   }
 
   .print-table tfoot td {
-    font-weight: 600;
-    background: #eef1f8;
-    border-top: 2px solid #002094;
+    font-weight: 700;
+    background: #eee;
+    border-top: 2px solid #222;
   }
 
   .print-swatch {
@@ -1888,28 +1813,22 @@ a.dropdown-item:hover {
     width: 12px;
     height: 12px;
     border-radius: 2px;
-    border: 1px solid rgba(0,0,0,0.2);
+    border: 1px solid rgba(0,0,0,0.25);
     margin-right: 6px;
     vertical-align: middle;
   }
 
   .print-total {
-    margin: 0.75rem 0 0;
-    padding: 0.55rem 0.65rem;
-    background: #002094;
-    color: #fff;
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
     font-weight: 600;
-    font-size: 0.9rem;
-    border-radius: 4px;
-    page-break-inside: avoid;
+    text-align: center;
   }
 
   .print-footer {
-    margin-top: 1rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid #ccd3e0;
-    font-size: 0.75rem;
-    color: #777;
+    margin-top: 0.75rem;
+    font-size: 0.72rem;
+    color: #888;
     text-align: center;
   }
 }
