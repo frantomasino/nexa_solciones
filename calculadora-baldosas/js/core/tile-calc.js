@@ -756,25 +756,40 @@
     return { ctx, logicalW, logicalH };
   }
 
+  function drawAssemblyDimensionText(ctx, text, x, y, fontSize) {
+    ctx.save();
+    ctx.font = `800 ${fontSize}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(3, fontSize * 0.14);
+    ctx.strokeStyle = '#ffffff';
+    ctx.fillStyle = '#111111';
+    ctx.strokeText(text, x, y);
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
   function drawPlanDimensions(ctx, layout, dims, style = 'default') {
-    const { padTop, padLeft, drawW, drawH, padBottom, padRight } = layout;
+    const { padTop, padLeft, drawW, drawH, padBottom, padRight, cellW, cellH } = layout;
     const { widthM, lengthM, roomWidthM, roomLengthM } = dims;
     const accent = style === 'assembly' ? '#111' : (getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094');
     const fontSize = style === 'assembly'
-      ? Math.max(16, Math.min(28, Math.min(drawW, drawH) * 0.07))
+      ? Math.max(52, Math.min(160, Math.min(cellW || 0, cellH || 0) * 0.72))
       : Math.max(10, Math.min(13, Math.min(drawW, drawH) * 0.04));
-    const tick = style === 'assembly' ? 10 : 5;
+    const tick = style === 'assembly' ? Math.max(18, fontSize * 0.24) : 5;
+    const dimOffset = style === 'assembly' ? Math.max(28, fontSize * 0.42) : 14;
 
     ctx.save();
     ctx.strokeStyle = accent;
     ctx.fillStyle = accent;
-    ctx.lineWidth = style === 'assembly' ? 2.5 : 1.25;
+    ctx.lineWidth = style === 'assembly' ? Math.max(4, fontSize * 0.08) : 1.25;
     ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
 
     if (style === 'assembly') {
-      const widthLabel = formatMetros(widthM).replace(' m', '');
-      const lengthLabel = formatMetros(lengthM).replace(' m', '');
-      const bottomY = padTop + drawH + 14;
+      const widthLabel = `${formatMetros(widthM).replace(' m', '')} m`;
+      const lengthLabel = `${formatMetros(lengthM).replace(' m', '')} m`;
+      const bottomY = padTop + drawH + dimOffset;
 
       ctx.beginPath();
       ctx.moveTo(padLeft, bottomY);
@@ -785,11 +800,9 @@
       ctx.lineTo(padLeft + drawW, bottomY + tick);
       ctx.stroke();
 
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(widthLabel, padLeft + drawW / 2, bottomY + 8);
+      drawAssemblyDimensionText(ctx, widthLabel, padLeft + drawW / 2, bottomY + dimOffset * 0.95, fontSize);
 
-      const rightX = padLeft + drawW + 14;
+      const rightX = padLeft + drawW + dimOffset;
       ctx.beginPath();
       ctx.moveTo(rightX, padTop);
       ctx.lineTo(rightX, padTop + drawH);
@@ -800,11 +813,9 @@
       ctx.stroke();
 
       ctx.save();
-      ctx.translate(rightX + 10, padTop + drawH / 2);
+      ctx.translate(rightX + dimOffset * 0.95, padTop + drawH / 2);
       ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(lengthLabel, 0, 0);
+      drawAssemblyDimensionText(ctx, lengthLabel, 0, 0, fontSize);
       ctx.restore();
       ctx.restore();
       return;
@@ -1381,23 +1392,29 @@
     const pad = 64;
     const cell = Math.floor((targetPx - pad) / Math.max(cols, rows, 1));
     const minCellPx = Math.max(56, Math.min(150, cell));
-    const maxSize = Math.max(4500, cols * minCellPx + pad * 2, rows * minCellPx + pad * 2);
-    return { minCellPx, maxSize };
+    const dimPad = Math.max(140, Math.min(260, minCellPx * 1.35));
+    const maxSize = Math.max(
+      4500,
+      cols * minCellPx + pad * 2 + dimPad,
+      rows * minCellPx + pad * 2 + dimPad
+    );
+    return { minCellPx, maxSize, dimPad };
   }
 
   function renderAssemblyPlanImage(result, options = {}) {
     const { cols, rows } = result;
     const printMetrics = assemblyPrintMetrics(cols, rows);
+    const dimPad = printMetrics.dimPad;
     const canvas = document.createElement('canvas');
     drawFloorPlan(canvas, result, {
       ...options,
       assemblyMode: true,
       customPaint: options.customPaint || result.customPaint || null,
       splitCells: options.splitCells || result.splitCells || null,
-      padTop: 8,
-      padLeft: 8,
-      padRight: 52,
-      padBottom: 52,
+      padTop: 12,
+      padLeft: 12,
+      padRight: dimPad,
+      padBottom: dimPad,
       minCellPx: options.minCellPx ?? printMetrics.minCellPx,
       maxSize: options.maxSize ?? printMetrics.maxSize,
       showGrid: true,
