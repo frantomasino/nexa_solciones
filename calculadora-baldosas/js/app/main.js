@@ -948,6 +948,28 @@
     return opts;
   }
 
+  function ensureColorSlotsFilled(upToCount) {
+    if (!selectedPattern || !upToCount) return;
+    const catalog = TileCalc.getColorsForFloorType(selectedPattern);
+    const used = new Set();
+    for (let i = 0; i < upToCount; i++) {
+      const hexEl = $(`#color${i + 1}Hex`);
+      const nameEl = $(`#color${i + 1}Name`);
+      if (!hexEl || !nameEl) continue;
+      const hex = hexEl.value.trim();
+      const name = nameEl.value.trim();
+      if (hex || name) {
+        if (hex) used.add(hex.toLowerCase());
+        continue;
+      }
+      const pick = catalog.find((c) => !used.has(c.hex.toLowerCase())) || catalog[i] || catalog[0];
+      if (!pick) continue;
+      hexEl.value = pick.hex;
+      nameEl.value = pick.name;
+      used.add(pick.hex.toLowerCase());
+    }
+  }
+
   function applyFloorTypeColors(resetSlots = true) {
     if (!selectedPattern) {
       buildColorPalette([]);
@@ -1017,7 +1039,8 @@
     });
   }
 
-  function setColorCount(count) {
+  function setColorCount(count, options = {}) {
+    const previousCount = colorCount;
     if (count == null || count === '') {
       colorCount = null;
       $$('.color-count-btn').forEach((b) => b.classList.remove('active'));
@@ -1027,6 +1050,14 @@
     colorCount = Math.min(3, Math.max(1, parseInt(count, 10) || 1));
     $$('.color-count-btn').forEach((b) => b.classList.toggle('active', parseInt(b.dataset.count, 10) === colorCount));
     updateColorUI();
+    if (!selectedPattern) return;
+    if (options.resetColors) {
+      applyFloorTypeColors(true);
+      return;
+    }
+    applyFloorTypeColors(false);
+    ensureColorSlotsFilled(colorCount);
+    highlightPaletteSelection($(`#color${activeColorSlot}Hex`)?.value);
   }
 
   function updateColorUI() {
@@ -1967,7 +1998,6 @@
     $$('.color-count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         setColorCount(parseInt(btn.dataset.count, 10));
-        applyFloorTypeColors(true);
         debounce(recalculate);
       });
     });
