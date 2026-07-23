@@ -1791,12 +1791,12 @@ a.dropdown-item:hover {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 4mm;
   }
 
   @page print-landscape-page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 4mm;
   }
 
   .print-only.print-landscape {
@@ -1814,16 +1814,16 @@ a.dropdown-item:hover {
     background: #fff;
     font-family: Inter, system-ui, sans-serif;
     font-size: 10pt;
-    line-height: 1.35;
+    line-height: 1.2;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-header-line {
-    margin: 0 0 0.35rem;
-    font-size: 0.78rem;
+    margin: 0 0 0.15rem;
+    font-size: 0.62rem;
     font-weight: 600;
-    color: #333;
+    color: #444;
     text-align: center;
     flex-shrink: 0;
   }
@@ -1832,19 +1832,20 @@ a.dropdown-item:hover {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     margin: 0;
     text-align: center;
     page-break-inside: avoid;
     min-height: 0;
+    width: 100%;
   }
 
   .print-plan-img {
     display: block;
     width: 100%;
     max-width: 100%;
-    max-height: 88vh;
+    max-height: 96vh;
     height: auto;
     margin: 0 auto;
     border: none;
@@ -1855,10 +1856,10 @@ a.dropdown-item:hover {
   .print-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem 1.5rem;
-    margin-top: 0.4rem;
-    font-size: 0.95rem;
-    font-weight: 600;
+    gap: 0.5rem 1rem;
+    margin-top: 0.2rem;
+    font-size: 0.82rem;
+    font-weight: 700;
     justify-content: center;
     flex-shrink: 0;
   }
