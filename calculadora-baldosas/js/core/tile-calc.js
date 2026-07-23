@@ -43,38 +43,25 @@
     '40': { w: TILE_SIZE_CM, l: TILE_SIZE_CM },
   };
 
-  /** Colores por tipo de piso (fotos cliente jul 2026). */
+  /** Colores Nexa (fotos cliente jul 2026) — mismos en Rejilla, Trama y Moneda. */
+  const NEXA_COLORS = [
+    { name: 'Yute', hex: '#C9B89A' },
+    { name: 'Azul claro', hex: '#5B9BD5' },
+    { name: 'Celeste', hex: '#7EC8E3' },
+  ];
+
   const NEXA_COLORS_BY_FLOOR_TYPE = {
-    moneda: [
-      { name: 'Yute', hex: '#C9B89A' },
-    ],
-    rejilla: [
-      { name: 'Azul claro', hex: '#5B9BD5' },
-      { name: 'Celeste', hex: '#7EC8E3' },
-      { name: 'Verde oscuro', hex: '#2D5A3D' },
-      { name: 'Azul oscuro', hex: '#1E3A7A' },
-      { name: 'Rojo', hex: '#D32F2F' },
-      { name: 'Naranja', hex: '#E85D2B' },
-      { name: 'Amarillo', hex: '#F5C518' },
-      { name: 'Negro', hex: '#252525' },
-      { name: 'Gris oscuro', hex: '#5C5F63' },
-      { name: 'Blanco', hex: '#F0F0F0' },
-      { name: 'Gris claro', hex: '#B8BCC2' },
-    ],
-    trama: [
-      { name: 'Negro', hex: '#252525' },
-      { name: 'Gris oscuro', hex: '#5C5F63' },
-      { name: 'Gris claro', hex: '#B8BCC2' },
-      { name: 'Blanco', hex: '#F0F0F0' },
-    ],
+    rejilla: NEXA_COLORS,
+    trama: NEXA_COLORS,
+    moneda: NEXA_COLORS,
   };
 
-  const NEXA_COLOR_CATALOG = Object.values(NEXA_COLORS_BY_FLOOR_TYPE).flat();
+  const NEXA_COLOR_CATALOG = [...NEXA_COLORS];
 
-  const DEFAULT_COLORS = NEXA_COLORS_BY_FLOOR_TYPE.rejilla;
+  const DEFAULT_COLORS = NEXA_COLORS;
 
   function getColorsForFloorType(floorType) {
-    return NEXA_COLORS_BY_FLOOR_TYPE[floorType] || DEFAULT_COLORS;
+    return NEXA_COLORS;
   }
 
   function pointInPolygon(x, y, polygon) {
@@ -1471,6 +1458,7 @@
     TILE_SIZE_CM,
     TILES_PER_BOX_BY_PATTERN,
     NEXA_COLOR_CATALOG,
+    NEXA_COLORS,
     NEXA_COLORS_BY_FLOOR_TYPE,
     DEFAULT_COLORS,
     getColorsForFloorType,
