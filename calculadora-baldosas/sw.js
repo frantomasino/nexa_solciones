@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const CACHE = 'nexa-v45';
+=======
+const CACHE = 'nexa-v44';
+>>>>>>> origin/main
 const ASSETS = [
   './',
   './index.html',
