@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 const CACHE = 'nexa-v41';
+=======
+const CACHE = 'nexa-v42';
+>>>>>>> Stashed changes
 const ASSETS = [
   './',
   './index.html',

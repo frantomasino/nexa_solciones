@@ -1025,7 +1025,7 @@
     const hint = $('.color-catalog-hint');
     if (hint) {
       hint.textContent = selectedPattern
-        ? `Colores disponibles para ${typeLabel} (fotos del cliente). Tocá una muestra para asignarla al color activo.`
+        ? 'Colores Nexa: Yute · Azul claro · Celeste (todos los pisos). Tocá una muestra para asignarla al color activo.'
         : 'Elegí primero el tipo de piso para ver los colores disponibles.';
     }
     if (!colors.length) {
