@@ -48,10 +48,15 @@
     { name: 'Yute', hex: '#C9B89A' },
     { name: 'Azul claro', hex: '#5B9BD5' },
     { name: 'Celeste', hex: '#7EC8E3' },
+    { name: 'Verde claro', hex: '#85E13F' },
     { name: 'Verde oscuro', hex: '#2D5A3D' },
     { name: 'Azul oscuro', hex: '#1E3A7A' },
     { name: 'Naranja', hex: '#E85D2B' },
     { name: 'Rojo', hex: '#D32F2F' },
+    { name: 'Gris claro', hex: '#CCCFCE' },
+    { name: 'Blanco', hex: '#FAF7F1' },
+    { name: 'Negro', hex: '#111111' },
+    { name: 'Gris oscuro', hex: '#585D69' },
   ];
 
   const NEXA_COLORS_BY_FLOOR_TYPE = {
