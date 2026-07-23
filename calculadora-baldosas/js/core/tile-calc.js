@@ -48,7 +48,11 @@
     { name: 'Yute', hex: '#C9B89A' },
     { name: 'Azul claro', hex: '#5B9BD5' },
     { name: 'Celeste', hex: '#7EC8E3' },
+<<<<<<< HEAD
+    { name: 'Verde claro', hex: '#85E13F' },
+=======
     { name: 'Verde claro', hex: '#9AD19A' },
+>>>>>>> origin/main
     { name: 'Verde oscuro', hex: '#2D5A3D' },
     { name: 'Azul oscuro', hex: '#1E3A7A' },
     { name: 'Naranja', hex: '#E85D2B' },
