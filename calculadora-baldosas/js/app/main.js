@@ -543,23 +543,70 @@
   }
 
   function paintCell(col, row, colorIndex) {
+    if (!lastResult) return;
     const key = `${col},${row}`;
-    const hasSplitColumn = !!splitCells[key]?.columnHalf;
-    if (lastResult?.grid?.[row]?.[col] < 0 && !hasSplitColumn) return;
+    const existing = splitCells[key];
+    const isColumnEdge = TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows);
+
+    if (isColumnEdge || existing?.columnHalf) {
+      applyColumnEdgePaint(col, row, colorIndex);
+      return;
+    }
+
+    if (lastResult.grid?.[row]?.[col] < 0) return;
+
     if (halfPaintMode) {
       paintHalfCell(col, row, colorIndex);
       return;
     }
+
     delete splitCells[key];
     customPaint[key] = colorIndex;
     updatePaintUI();
     debounce(recalculate);
   }
 
-  function paintHalfCell(col, row, colorIndex) {
+  function applyColumnEdgePaint(col, row, colorIndex) {
     const key = `${col},${row}`;
+    const columnHalf = splitCells[key]?.columnHalf
+      || TileCalc.inferColumnHalfForCell(col, row, columnRects)
+      || activeHalfSide;
+    const paintHalf = TileCalc.oppositeHalf(columnHalf);
+    const entry = splitCells[key] || {};
+
+    if (
+      entry.columnHalf === columnHalf
+      && entry.paintHalf === paintHalf
+      && entry.colorIndex === colorIndex
+    ) {
+      delete entry.paintHalf;
+      delete entry.colorIndex;
+      if (!entry.columnHalf) delete splitCells[key];
+      else splitCells[key] = entry;
+    } else {
+      splitCells[key] = {
+        columnHalf,
+        paintHalf,
+        colorIndex,
+      };
+    }
+
+    delete customPaint[key];
+    updatePaintUI();
+    updateColumnUI();
+    debounce(recalculate);
+  }
+
+  function paintHalfCell(col, row, colorIndex) {
+    if (!lastResult) return;
+    const key = `${col},${row}`;
+    if (TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows)) {
+      applyColumnEdgePaint(col, row, colorIndex);
+      return;
+    }
+
     const hasSplitColumn = !!splitCells[key]?.columnHalf;
-    if (lastResult?.grid?.[row]?.[col] < 0 && !hasSplitColumn) return;
+    if (lastResult.grid?.[row]?.[col] < 0 && !hasSplitColumn) return;
     let paintHalf = activeHalfSide;
     if (hasSplitColumn) paintHalf = TileCalc.oppositeHalf(splitCells[key].columnHalf);
     const entry = splitCells[key] || {};
@@ -583,23 +630,26 @@
   function toggleHalfColumn(col, row) {
     if (!lastResult) return;
     const key = `${col},${row}`;
+    const inferred = TileCalc.inferColumnHalfForCell(col, row, columnRects);
     const colKeys = TileCalc.columnCellKeys(columnRects, lastResult.cols, lastResult.rows);
-    if (!colKeys.has(key)) {
-      alert('Primero marcá la columna arrastrando un rectángulo. Después tocá una celda del borde para dejar media baldosa al lado.');
+    if (!colKeys.has(key) && !inferred) {
+      alert('Tocá una celda del borde de la columna (donde queda media baldosa al lado del pilar).');
       return;
     }
+    const side = inferred || activeHalfSide;
     const entry = splitCells[key] || {};
-    if (entry.columnHalf === activeHalfSide) {
+    if (entry.columnHalf === side) {
       delete entry.columnHalf;
       if (!entry.paintHalf) delete splitCells[key];
       else splitCells[key] = entry;
     } else {
-      entry.columnHalf = activeHalfSide;
-      if (entry.paintHalf) entry.paintHalf = TileCalc.oppositeHalf(activeHalfSide);
+      entry.columnHalf = side;
+      if (entry.colorIndex != null) entry.paintHalf = TileCalc.oppositeHalf(side);
       splitCells[key] = entry;
       delete customPaint[key];
     }
     updateColumnUI();
+    updatePaintUI();
     debounce(recalculate);
   }
 
@@ -669,9 +719,9 @@
           .map((c, i) => `${colors[i]?.name || `Color ${i + 1}`}: ${TileCalc.formatTileCount(c)}`)
           .join(' · ');
       } else if (halfPaintMode) {
-        tally.textContent = 'Elegí color y lado (◧◨◤◥). Tocá el plano para media baldosa.';
+        tally.textContent = 'Elegí color y lado (◧◨◤◥), o tocá el borde de una columna para media baldosa automática.';
       } else {
-        tally.textContent = 'Elegí un color y tocá las baldosas en el plano.';
+        tally.textContent = 'Elegí un color y tocá las baldosas. En columnas: un toque = media columna + media baldosa pintada.';
       }
     }
     $('#planPaintClear')?.classList.toggle('hidden', !TileCalc.hasPaintData(customPaint, splitCells));

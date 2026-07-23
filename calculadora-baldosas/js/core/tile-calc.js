@@ -398,10 +398,11 @@
     if (!data || typeof data !== 'object') return map;
     for (const [key, val] of Object.entries(data)) {
       if (!key.includes(',') || !val) continue;
+      const colorIdx = val.colorIndex != null ? parseInt(val.colorIndex, 10) : NaN;
       const entry = {
         columnHalf: HALF_SIDES.includes(val.columnHalf) ? val.columnHalf : null,
         paintHalf: HALF_SIDES.includes(val.paintHalf) ? val.paintHalf : null,
-        colorIndex: Number.isInteger(val.colorIndex) ? val.colorIndex : null,
+        colorIndex: !Number.isNaN(colorIdx) ? colorIdx : null,
       };
       if (entry.columnHalf || entry.paintHalf) map[key] = entry;
     }
@@ -413,7 +414,35 @@
   }
 
   function hasPaintData(customPaint, splitCells) {
-    return hasCustomPaint(customPaint) || hasSplitCells(splitCells);
+    if (hasCustomPaint(customPaint)) return true;
+    if (!splitCells) return false;
+    return Object.values(splitCells).some(
+      (entry) => entry?.paintHalf != null && entry.colorIndex != null
+    );
+  }
+
+  function inferColumnHalfForCell(col, row, columnRects) {
+    if (!columnRects?.length) return null;
+    for (const rect of columnRects) {
+      if (col < rect.col0 || col > rect.col1 || row < rect.row0 || row > rect.row1) continue;
+      const onLeft = col === rect.col0;
+      const onRight = col === rect.col1;
+      const onTop = row === rect.row0;
+      const onBottom = row === rect.row1;
+      const edgeHalves = [];
+      if (onLeft) edgeHalves.push('R');
+      if (onRight) edgeHalves.push('L');
+      if (onTop) edgeHalves.push('B');
+      if (onBottom) edgeHalves.push('T');
+      if (edgeHalves.length === 1) return edgeHalves[0];
+      if (edgeHalves.length > 1) return edgeHalves[0];
+    }
+    return null;
+  }
+
+  function isColumnEdgeCell(col, row, columnRects, cols, rows) {
+    const keys = columnCellKeys(columnRects, cols, rows);
+    return keys.has(`${col},${row}`) && !!inferColumnHalfForCell(col, row, columnRects);
   }
 
   function adjustColumnExclusions(columnExcluded, splitCells) {
@@ -476,7 +505,11 @@
 
   function applySpare(counts, sparePercent) {
     const factor = 1 + sparePercent / 100;
-    return counts.map((c) => Math.ceil(c * factor));
+    return counts.map((c) => Math.ceil((c || 0) * factor));
+  }
+
+  function roundSpareDelta(withSpare, baseCounts) {
+    return withSpare.map((w, i) => Math.round(((w || 0) - (baseCounts[i] || 0)) * 100) / 100);
   }
 
   function computeBoxes(tileCounts, tilesPerBox) {
@@ -573,7 +606,7 @@
     const excludedCount = cols * rows - totalTiles;
 
     const withSpare = applySpare(baseCounts, sparePercent);
-    const spareCounts = baseCounts.map((c, i) => (withSpare[i] || 0) - c);
+    const spareCounts = roundSpareDelta(withSpare, baseCounts);
     const boxes = computeBoxes(withSpare, tilesPerBox);
 
     const breakdown = activeColors.map((color, i) => ({
@@ -1061,9 +1094,29 @@
         const y = padTop + row * cellH;
         const cw = cellW - 1;
         const ch = cellH - 1;
+        const cellKey = `${col},${row}`;
+        const split = splitCellsMap[cellKey];
+
+        if (split && (split.columnHalf || split.paintHalf)) {
+          drawSplitCell(ctx, x, y, cw, ch, split, colors, {
+            assemblyMode,
+            paintNeutralMode,
+            baseColorIndex: idx >= 0 ? idx : 0,
+            baseColorHex: colors[idx >= 0 ? idx : 0]?.hex,
+            hasPaintData,
+          });
+          if (showGrid) {
+            ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = assemblyMode
+              ? Math.max(1, Math.min(cellW, cellH) * 0.04)
+              : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+            ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+          }
+          continue;
+        }
 
         if (idx < 0) {
-          const key = `${col},${row}`;
+          const key = cellKey;
           const isColumn = columnKeys.has(key);
           const isOutsideShape = polygonKeys?.has(key);
           if (assemblyMode) {
@@ -1104,26 +1157,6 @@
             ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.12)';
             ctx.lineWidth = assemblyMode
               ? Math.max(1, Math.min(cellW, cellH) * 0.05)
-              : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
-            ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
-          }
-          continue;
-        }
-
-        const cellKey = `${col},${row}`;
-        const split = splitCellsMap[cellKey];
-        if (split && (split.columnHalf || split.paintHalf)) {
-          drawSplitCell(ctx, x, y, cw, ch, split, colors, {
-            assemblyMode,
-            paintNeutralMode,
-            baseColorIndex: idx,
-            baseColorHex: colors[idx]?.hex,
-            hasPaintData,
-          });
-          if (showGrid) {
-            ctx.strokeStyle = assemblyMode ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)';
-            ctx.lineWidth = assemblyMode
-              ? Math.max(1, Math.min(cellW, cellH) * 0.04)
               : Math.max(0.5, Math.min(cellW, cellH) * 0.02);
             ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
           }
@@ -1402,8 +1435,11 @@
     parseSplitCells,
     hasSplitCells,
     oppositeHalf,
+    inferColumnHalfForCell,
+    isColumnEdgeCell,
     formatTileCount,
     sumPaintCounts,
+    roundSpareDelta,
     adjustColumnExclusions,
     renderAssemblyPlanImage,
     calculate,
