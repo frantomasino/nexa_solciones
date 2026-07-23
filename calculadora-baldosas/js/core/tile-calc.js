@@ -710,6 +710,10 @@
     return `${Number(m || 0).toFixed(2).replace('.', ',')} m`;
   }
 
+  function formatMetrosAssembly(m) {
+    return Number(m || 0).toFixed(2).replace('.', ',');
+  }
+
   function layoutMetrics(cols, rows, options = {}) {
     const padTop = options.padTop ?? 36;
     const padLeft = options.padLeft ?? 44;
@@ -775,10 +779,10 @@
     const { widthM, lengthM, roomWidthM, roomLengthM } = dims;
     const accent = style === 'assembly' ? '#111' : (getComputedStyle(document.documentElement).getPropertyValue('--nexa-blue').trim() || '#002094');
     const fontSize = style === 'assembly'
-      ? Math.max(52, Math.min(160, Math.min(cellW || 0, cellH || 0) * 0.72))
+      ? Math.max(72, Math.min(240, Math.min(cellW || 0, cellH || 0) * 1.05))
       : Math.max(10, Math.min(13, Math.min(drawW, drawH) * 0.04));
-    const tick = style === 'assembly' ? Math.max(18, fontSize * 0.24) : 5;
-    const dimOffset = style === 'assembly' ? Math.max(28, fontSize * 0.42) : 14;
+    const tick = style === 'assembly' ? Math.max(22, fontSize * 0.22) : 5;
+    const dimOffset = style === 'assembly' ? Math.max(36, fontSize * 0.5) : 14;
 
     ctx.save();
     ctx.strokeStyle = accent;
@@ -787,9 +791,9 @@
     ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
 
     if (style === 'assembly') {
-      const widthLabel = `${formatMetros(widthM).replace(' m', '')} m`;
-      const lengthLabel = `${formatMetros(lengthM).replace(' m', '')} m`;
-      const bottomY = padTop + drawH + dimOffset;
+      const widthLabel = formatMetrosAssembly(widthM);
+      const lengthLabel = formatMetrosAssembly(lengthM);
+      const bottomY = padTop + drawH + dimOffset * 0.55;
 
       ctx.beginPath();
       ctx.moveTo(padLeft, bottomY);
@@ -800,9 +804,9 @@
       ctx.lineTo(padLeft + drawW, bottomY + tick);
       ctx.stroke();
 
-      drawAssemblyDimensionText(ctx, widthLabel, padLeft + drawW / 2, bottomY + dimOffset * 0.95, fontSize);
+      drawAssemblyDimensionText(ctx, widthLabel, padLeft + drawW / 2, bottomY + dimOffset * 1.05, fontSize);
 
-      const rightX = padLeft + drawW + dimOffset;
+      const rightX = padLeft + drawW + dimOffset * 0.55;
       ctx.beginPath();
       ctx.moveTo(rightX, padTop);
       ctx.lineTo(rightX, padTop + drawH);
@@ -813,7 +817,7 @@
       ctx.stroke();
 
       ctx.save();
-      ctx.translate(rightX + dimOffset * 0.95, padTop + drawH / 2);
+      ctx.translate(rightX + dimOffset * 1.05, padTop + drawH / 2);
       ctx.rotate(-Math.PI / 2);
       drawAssemblyDimensionText(ctx, lengthLabel, 0, 0, fontSize);
       ctx.restore();
@@ -1225,9 +1229,11 @@
     }
 
     if (showDimensions && actualWidthM && actualLengthM) {
+      const labelWidthM = assemblyMode && roomWidthM > 0 ? roomWidthM : actualWidthM;
+      const labelLengthM = assemblyMode && roomLengthM > 0 ? roomLengthM : actualLengthM;
       drawPlanDimensions(ctx, layout, {
-        widthM: actualWidthM,
-        lengthM: actualLengthM,
+        widthM: labelWidthM,
+        lengthM: labelLengthM,
         roomWidthM,
         roomLengthM,
       }, assemblyMode ? 'assembly' : 'default');
@@ -1388,15 +1394,13 @@
   }
 
   function assemblyPrintMetrics(cols, rows) {
-    const targetPx = 3000;
-    const pad = 64;
-    const cell = Math.floor((targetPx - pad) / Math.max(cols, rows, 1));
-    const minCellPx = Math.max(56, Math.min(150, cell));
-    const dimPad = Math.max(140, Math.min(260, minCellPx * 1.35));
+    const maxGrid = Math.max(cols, rows, 1);
+    const minCellPx = Math.max(88, Math.min(260, Math.floor(5200 / maxGrid)));
+    const dimPad = Math.max(220, Math.min(400, minCellPx * 1.65));
     const maxSize = Math.max(
-      4500,
-      cols * minCellPx + pad * 2 + dimPad,
-      rows * minCellPx + pad * 2 + dimPad
+      6500,
+      cols * minCellPx + dimPad + 32,
+      rows * minCellPx + dimPad + 32
     );
     return { minCellPx, maxSize, dimPad };
   }
@@ -1411,8 +1415,8 @@
       assemblyMode: true,
       customPaint: options.customPaint || result.customPaint || null,
       splitCells: options.splitCells || result.splitCells || null,
-      padTop: 12,
-      padLeft: 12,
+      padTop: 8,
+      padLeft: 8,
       padRight: dimPad,
       padBottom: dimPad,
       minCellPx: options.minCellPx ?? printMetrics.minCellPx,
