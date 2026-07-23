@@ -567,10 +567,13 @@
   }
 
   function applyColumnEdgePaint(col, row, colorIndex) {
-    const key = `${col},${row}`;
-    const columnHalf = splitCells[key]?.columnHalf
-      || TileCalc.inferColumnHalfForCell(col, row, columnRects)
-      || activeHalfSide;
+    if (!lastResult) return;
+    const resolved = TileCalc.resolveHalfColumnTap(
+      col, row, columnRects, lastResult.cols, lastResult.rows, activeHalfSide
+    );
+    if (!resolved) return;
+    const { col: tc, row: tr, columnHalf } = resolved;
+    const key = `${tc},${tr}`;
     const paintHalf = TileCalc.oppositeHalf(columnHalf);
     const entry = splitCells[key] || {};
 
@@ -629,14 +632,18 @@
 
   function toggleHalfColumn(col, row) {
     if (!lastResult) return;
-    const key = `${col},${row}`;
-    const inferred = TileCalc.inferColumnHalfForCell(col, row, columnRects);
-    const colKeys = TileCalc.columnCellKeys(columnRects, lastResult.cols, lastResult.rows);
-    if (!colKeys.has(key) && !inferred) {
-      alert('Tocá una celda del borde de la columna (donde queda media baldosa al lado del pilar).');
+    const resolved = TileCalc.resolveHalfColumnTap(
+      col, row, columnRects, lastResult.cols, lastResult.rows, activeHalfSide
+    );
+    if (!resolved) {
+      const summary = $('#columnSummary');
+      if (summary) {
+        summary.textContent = 'Tocá la columna (COL) o la baldosa pegada al pilar. Elegí el lado con ◧◨◤◥ si hace falta.';
+      }
       return;
     }
-    const side = inferred || activeHalfSide;
+    const { col: tc, row: tr, columnHalf: side } = resolved;
+    const key = `${tc},${tr}`;
     const entry = splitCells[key] || {};
     if (entry.columnHalf === side) {
       delete entry.columnHalf;
