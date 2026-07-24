@@ -56,6 +56,7 @@
     { name: 'Verde oscuro', hex: '#2D5A3D' },
     { name: 'Azul oscuro', hex: '#1E3A7A' },
     { name: 'Naranja', hex: '#E85D2B' },
+    { name: 'Amarillo', hex: '#FFD100' },
     { name: 'Rojo', hex: '#D32F2F' },
     { name: 'Gris claro', hex: '#CCCFCE' },
     { name: 'Blanco', hex: '#FAF7F1' },
