@@ -1,67 +1,54 @@
-# Login con Supabase (rama preview)
+# Login con Supabase (solo prueba local)
 
-**Esta rama tiene login activado.** Producción (`main`) sigue sin login hasta que lo apruebes.
+**Producción (`nexa-solciones.vercel.app`) NO tiene login.** El dashboard entra directo como siempre.
 
-## URL correcta para probar
+El login solo se activa en **localhost** para que puedas probar sin tocar el sitio público.
 
-| URL | ¿Muestra login? |
-|-----|-----------------|
-| `https://nexa-solciones.vercel.app` | **No** — es producción, entra directo al dashboard |
-| Preview del PR #55 (dominio con `supabas` en el nombre) | **Sí** — pantalla con Google y teléfono |
-| `http://localhost:8080` (servidor local en esta rama) | **Sí** |
+## 1. Probar en tu PC
 
-**Preview actual (jul 2026):**  
-https://nexa-solciones-git-cursor-supabas-cb32e5-frantomasinos-projects.vercel.app
+En la carpeta del proyecto:
 
-Si en incógnito ves el dashboard sin login, casi seguro estás en **producción**. Mirá la barra de direcciones: tiene que decir `supabas` en el dominio.
+```bash
+cd calculadora-baldosas
+python3 -m http.server 8080
+```
 
-Si Vercel pide iniciar sesión antes de ver la app, es la **protección de deployments** del proyecto. Entrá con tu cuenta de Vercel o desactivala en *Project Settings → Deployment Protection* para previews.
+Abrí en el navegador: **http://localhost:8080**
 
-Para forzar cierre de sesión en preview: agregá `?logout=1` al final de la URL.
+Ahí sí deberías ver la pantalla de login (Google / teléfono).
 
-## 1. SQL en Supabase
+## 2. SQL en Supabase
 
-En **SQL Editor**, ejecutá el archivo `schema.sql` de esta carpeta.
+En **SQL Editor**, ejecutá `schema.sql` (tabla `presupuestos`).  
+Los usuarios aparecen en **Authentication → Users**, no hace falta tabla de perfil.
 
-## 2. URLs de redirect (Google)
+## 3. URLs en Supabase (para localhost, NO producción)
 
-En **Authentication → URL Configuration**:
+**Authentication → URL Configuration:**
 
-- Site URL: tu preview de Vercel o `http://localhost:8080`
-- Redirect URLs:
-  - `https://nexa-solciones.vercel.app/**`
-  - `https://*-frantomasinos-projects.vercel.app/**` (previews)
-  - `http://localhost:8080/**`
+| Campo | Valor |
+|-------|--------|
+| Site URL | `http://localhost:8080` |
+| Redirect URLs | `http://localhost:8080/**` |
 
-## 3. Google
+**No uses** `nexa-solciones.vercel.app` hasta que apruebes pasar login a producción.
 
-**Authentication → Providers → Google**: activar y poner Client ID + Secret de Google Cloud Console.
+## 4. Google
 
-## 4. Teléfono (SMS)
+**Authentication → Providers → Google** → activar con Client ID y Secret.
 
-**Authentication → Providers → Phone**: activar y configurar Twilio (u otro proveedor).
+En **Google Cloud Console** → tu OAuth client:
 
-Sin Twilio, usá solo Google para probar.
+- **Authorized JavaScript origins:** `http://localhost:8080`
+- **Authorized redirect URIs:** `https://wspouzdlkougxtbgkgyn.supabase.co/auth/v1/callback`
 
-## 5. Claves en la app
+## 5. Claves
 
-Solo van en el frontend:
+Solo en el frontend: `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`.  
+Nunca la `sb_secret_...`.
 
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_...`)
+## 6. Cuando quieras producción
 
-**Nunca** la `sb_secret_...`.
-
-## 6. Pasar a producción
-
-Cuando esté probado:
-
-1. Mergear la rama a `main`
-2. O copiar los cambios y poner `AUTH_ENABLED = true` en `supabase-config.js`
-
-## Flujo
-
-1. Usuario entra con Google o SMS
-2. Se sincronizan presupuestos local → nube → local
-3. Cada guardado/edición/borrado se replica en Supabase
-4. Mismo usuario ve todo desde celular o PC
+1. Cambiar `supabase-config.js` para incluir `nexa-solciones.vercel.app`
+2. Agregar redirect `https://nexa-solciones.vercel.app/**` en Supabase
+3. Mergear y desplegar
