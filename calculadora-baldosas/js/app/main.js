@@ -1629,10 +1629,117 @@
     });
   }
   function showView(view) {
+    $('#viewLogin')?.classList.toggle('hidden', view !== 'login');
     $('#viewDashboard').classList.toggle('hidden', view !== 'dashboard');
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
     document.body.dataset.view = view;
+    document.querySelector('.app-header')?.classList.toggle('hidden', view === 'login');
     if (view === 'dashboard') renderDashboard();
+  }
+
+  let loginPhonePending = '';
+
+  function showLoginError(msg) {
+    const el = $('#loginError');
+    if (!el) return;
+    if (msg) {
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    } else {
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+  }
+
+  function showLoginStep(step) {
+    $('#loginStepChoose')?.classList.toggle('hidden', step !== 'choose');
+    $('#loginStepOtp')?.classList.toggle('hidden', step !== 'otp');
+    showLoginError('');
+  }
+
+  async function enterAuthenticatedApp() {
+    try {
+      if (global.CloudStorage?.syncOnLogin) {
+        await global.CloudStorage.syncOnLogin();
+      }
+    } catch (err) {
+      console.warn('Sync inicial', err);
+      showLoginError('No se pudo sincronizar. ¿Ejecutaste js/auth/schema.sql en Supabase?');
+      showView('login');
+      return;
+    }
+    const authUser = global.Auth.getUser();
+    if (authUser?.name) {
+      Storage.setCurrentUser(authUser.name);
+      updateUserDisplay(authUser.name);
+    }
+    initAuthUserButton();
+    showView('dashboard');
+  }
+
+  function initAuthLogin() {
+    if (!global.Auth?.isEnabled?.()) return;
+
+    $('#btnLoginGoogle')?.addEventListener('click', async () => {
+      showLoginError('');
+      try {
+        await global.Auth.signInWithGoogle();
+      } catch (err) {
+        showLoginError(err.message || 'No se pudo iniciar con Google');
+      }
+    });
+
+    $('#btnLoginPhoneSend')?.addEventListener('click', async () => {
+      const phone = $('#loginPhone')?.value?.trim();
+      if (!phone) {
+        showLoginError('Ingresá el número con código de país (ej: +54911...)');
+        return;
+      }
+      showLoginError('');
+      try {
+        loginPhonePending = await global.Auth.signInWithPhone(phone);
+        $('#loginPhoneDisplay').textContent = loginPhonePending;
+        $('#loginOtp').value = '';
+        showLoginStep('otp');
+      } catch (err) {
+        showLoginError(err.message || 'No se pudo enviar el SMS. ¿Está activado Phone en Supabase?');
+      }
+    });
+
+    $('#btnLoginPhoneVerify')?.addEventListener('click', async () => {
+      const code = $('#loginOtp')?.value?.trim();
+      if (!code) {
+        showLoginError('Ingresá el código de 6 dígitos');
+        return;
+      }
+      showLoginError('');
+      try {
+        await global.Auth.verifyPhoneOtp(loginPhonePending, code);
+        await enterAuthenticatedApp();
+      } catch (err) {
+        showLoginError(err.message || 'Código incorrecto o vencido');
+      }
+    });
+
+    $('#btnLoginPhoneBack')?.addEventListener('click', () => {
+      loginPhonePending = '';
+      showLoginStep('choose');
+    });
+  }
+
+  function initAuthUserButton() {
+    const btn = $('#btnUser');
+    if (!btn || !global.Auth?.isEnabled?.()) return;
+    btn.replaceWith(btn.cloneNode(true));
+    $('#btnUser').addEventListener('click', async () => {
+      const user = global.Auth.getUser();
+      const label = user?.email || user?.phone || user?.name || 'Sesión';
+      if (confirm(`Cerrar sesión de ${label}?`)) {
+        await global.Auth.signOut();
+        showLoginStep('choose');
+        showView('login');
+      }
+    });
   }
 
   function budgetRowActionsHtml(id) {
@@ -2076,6 +2183,7 @@
   }
 
   function initUser() {
+    if (global.Auth?.isEnabled?.()) return;
     const user = Storage.getCurrentUser();
     updateUserDisplay(user.name);
 
@@ -2459,7 +2567,7 @@
     });
   }
 
-  function init() {
+  async function init() {
     initTheme();
     buildPatternGrids();
     buildColorPalette([]);
@@ -2469,10 +2577,29 @@
     bindEvents();
     initPlanViewer();
     initMeasurePhoto();
-    initUser();
     initLogo();
     initPWA();
-    showView('dashboard');
+    initAuthLogin();
+
+    if (global.Auth?.isEnabled?.()) {
+      global.Auth.init();
+      try {
+        await global.Auth.getSession();
+        if (global.Auth.isLoggedIn()) {
+          await enterAuthenticatedApp();
+        } else {
+          showLoginStep('choose');
+          showView('login');
+        }
+      } catch (err) {
+        console.warn('Auth init', err);
+        showLoginError('Error al conectar con Supabase');
+        showView('login');
+      }
+    } else {
+      initUser();
+      showView('dashboard');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);

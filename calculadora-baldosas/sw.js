@@ -1,12 +1,15 @@
-const CACHE = 'nexa-v80-mobile';
+const CACHE = 'nexa-v81-auth-preview';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './js/auth/supabase-config.js',
+  './js/auth/auth.js',
   './js/core/tile-calc.js',
   './js/core/plan-viewer.js',
   './js/core/photo-measure.js',
   './js/data/storage.js',
+  './js/data/cloud-storage.js',
   './js/export/export-excel.js',
   './js/app/main.js',
   './manifest.json',

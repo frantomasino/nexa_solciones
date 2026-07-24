@@ -87,11 +87,20 @@
     }
 
     writeAll(items);
-    return data;
+    const saved = data.id
+      ? items.find((p) => p.id === data.id) || data
+      : items[items.length - 1];
+    if (global.CloudStorage?.isActive?.()) {
+      global.CloudStorage.pushItem(saved).catch((err) => console.warn('Sync nube (save)', err));
+    }
+    return saved;
   }
 
   function remove(id) {
     writeAll(readAll().filter((p) => p.id !== id));
+    if (global.CloudStorage?.isActive?.()) {
+      global.CloudStorage.deleteItem(id).catch((err) => console.warn('Sync nube (delete)', err));
+    }
   }
 
   function duplicate(id) {

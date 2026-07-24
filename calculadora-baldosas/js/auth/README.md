@@ -1,57 +1,50 @@
-# Login con Supabase (pendiente)
+# Login con Supabase (rama preview)
 
-Este módulo está **desconectado a propósito**. La app funciona con `localStorage` hasta que el cliente quiera activar la nube.
+**Esta rama tiene login activado.** Producción (`main`) sigue sin login hasta que lo apruebes.
 
-## Pasos para reconectar
+## 1. SQL en Supabase
 
-1. Crear proyecto en [supabase.com](https://supabase.com) (plan gratuito).
-2. Completar `supabase-config.js` con la URL y la `anon key` del proyecto.
-3. Crear tabla `presupuestos` en SQL Editor:
+En **SQL Editor**, ejecutá el archivo `schema.sql` de esta carpeta.
 
-```sql
-create table presupuestos (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) not null,
-  cliente text,
-  link text,
-  room_width_m numeric,
-  room_length_m numeric,
-  tile_width_cm numeric,
-  tile_length_cm numeric,
-  tiles_per_box integer,
-  spare_percent numeric,
-  pattern text,
-  colors jsonb,
-  custom_percents jsonb,
-  aisle_width integer,
-  stripe_width integer,
-  breakdown jsonb,
-  total_tiles_with_spare integer,
-  total_boxes integer,
-  canvas_thumb text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
+## 2. URLs de redirect (Google)
 
-alter table presupuestos enable row level security;
+En **Authentication → URL Configuration**:
 
-create policy "Users see own presupuestos"
-  on presupuestos for all
-  using (auth.uid() = user_id);
-```
+- Site URL: tu preview de Vercel o `http://localhost:8080`
+- Redirect URLs:
+  - `https://nexa-solciones.vercel.app/**`
+  - `https://*-frantomasinos-projects.vercel.app/**` (previews)
+  - `http://localhost:8080/**`
 
-4. En `index.html`, agregar antes de `main.js`:
+## 3. Google
 
-```html
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth/supabase-config.js"></script>
-<script src="js/auth/auth.js"></script>
-```
+**Authentication → Providers → Google**: activar y poner Client ID + Secret de Google Cloud Console.
 
-5. Descomentar el código de inicialización en `auth.js`.
-6. Reemplazar `js/data/storage.js` por una versión que use Supabase (o agregar un adaptador).
-7. Agregar vista de login/registro en `main.js` (ocultar dashboard si no hay sesión).
+## 4. Teléfono (SMS)
 
-## Campos guardados
+**Authentication → Providers → Phone**: activar y configurar Twilio (u otro proveedor).
 
-Los mismos que usa `storage.js` local, en snake_case en Postgres.
+Sin Twilio, usá solo Google para probar.
+
+## 5. Claves en la app
+
+Solo van en el frontend:
+
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_...`)
+
+**Nunca** la `sb_secret_...`.
+
+## 6. Pasar a producción
+
+Cuando esté probado:
+
+1. Mergear la rama a `main`
+2. O copiar los cambios y poner `AUTH_ENABLED = true` en `supabase-config.js`
+
+## Flujo
+
+1. Usuario entra con Google o SMS
+2. Se sincronizan presupuestos local → nube → local
+3. Cada guardado/edición/borrado se replica en Supabase
+4. Mismo usuario ve todo desde celular o PC
