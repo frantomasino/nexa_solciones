@@ -809,9 +809,9 @@
     }
     updateColumnUI();
     updatePaintUI();
+    updatePaintCounts();
     schedulePlanRedraw();
     paintResultsPending = true;
-    syncPaintResults({ refreshThumb: false });
   }
 
   function toggleHalfColumn(col, row, tapHalf = null, manualSide = null) {
@@ -1178,14 +1178,17 @@
     if (lastResult?.polygonExcludedKeys?.length) {
       opts.polygonCellKeys = new Set(lastResult.polygonExcludedKeys);
     }
-    if (paintMode || columnMode || obstacleMode) {
+    if (paintMode || obstacleMode) {
       opts.paintNeutralMode = true;
-      opts.customPaint = customPaint;
-    } else if (TileCalc.hasPaintData(customPaint, splitCells)) {
+    }
+    if (TileCalc.hasPaintData(customPaint, splitCells) || paintMode || obstacleMode) {
       opts.customPaint = customPaint;
     }
     if (paintMode || columnMode || TileCalc.hasSplitCells(splitCells)) {
       opts.splitCells = splitCells;
+    }
+    if (columnMode && TileCalc.hasPaintData(customPaint, splitCells)) {
+      opts.columnOutlineOnly = true;
     }
     if (lastResult?.cols && lastResult?.rows) {
       const stage = $('#planStage');
