@@ -810,7 +810,7 @@
     updateColumnUI();
     updatePaintUI();
     updatePaintCounts();
-    schedulePlanRedraw();
+    redrawPlanSync();
     paintResultsPending = true;
   }
 
@@ -1178,16 +1178,17 @@
     if (lastResult?.polygonExcludedKeys?.length) {
       opts.polygonCellKeys = new Set(lastResult.polygonExcludedKeys);
     }
-    if (paintMode || obstacleMode) {
+    const hasPaint = TileCalc.hasPaintData(customPaint, splitCells);
+    if (paintMode || columnMode || obstacleMode) {
       opts.paintNeutralMode = true;
-    }
-    if (TileCalc.hasPaintData(customPaint, splitCells) || paintMode || obstacleMode) {
+      opts.customPaint = customPaint;
+    } else if (hasPaint) {
       opts.customPaint = customPaint;
     }
     if (paintMode || columnMode || TileCalc.hasSplitCells(splitCells)) {
       opts.splitCells = splitCells;
     }
-    if (columnMode && TileCalc.hasPaintData(customPaint, splitCells)) {
+    if (columnMode && hasPaint) {
       opts.columnOutlineOnly = true;
     }
     if (lastResult?.cols && lastResult?.rows) {
