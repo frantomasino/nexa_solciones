@@ -1856,6 +1856,16 @@
     headerParts.push(patron);
     $('#printHeaderLine').textContent = headerParts.join(' · ');
 
+    const notasEl = $('#printNotesLine');
+    const notas = form.notas?.trim();
+    if (notas) {
+      notasEl.textContent = `Notas: ${notas}`;
+      notasEl.classList.remove('hidden');
+    } else {
+      notasEl.textContent = '';
+      notasEl.classList.add('hidden');
+    }
+
     const planImg = $('#printPlanImg');
     planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
       columnRects,
