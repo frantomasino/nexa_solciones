@@ -1635,11 +1635,37 @@
     if (view === 'dashboard') renderDashboard();
   }
 
+  function budgetRowActionsHtml(id) {
+    return `
+      <button type="button" class="btn-icon-action has-tip" data-action="excel" data-id="${id}" data-tip="Exportar a Excel" aria-label="Exportar a Excel" title="Exportar a Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></button>
+      <button type="button" class="btn-icon-action has-tip" data-action="edit" data-id="${id}" data-tip="Editar presupuesto" aria-label="Editar presupuesto" title="Editar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      <button type="button" class="btn-icon-action has-tip" data-action="dup" data-id="${id}" data-tip="Duplicar presupuesto" aria-label="Duplicar presupuesto" title="Duplicar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+      <button type="button" class="btn-icon-action btn-icon-danger has-tip" data-action="del" data-id="${id}" data-tip="Eliminar presupuesto" aria-label="Eliminar presupuesto" title="Eliminar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+  }
+
+  function handleDashboardActivate(e) {
+    const btn = e.target.closest('[data-action]');
+    if (btn) {
+      const { id, action } = btn.dataset;
+      if (action === 'edit') openEditor(id);
+      else if (action === 'excel') {
+        const p = Storage.getById(id);
+        const result = NexaExport.exportOne(p);
+        if (!result.ok) alert(result.error);
+      } else if (action === 'dup') { Storage.duplicate(id); renderDashboard(); }
+      else if (action === 'del' && confirm('¿Borrar este presupuesto?')) { Storage.remove(id); renderDashboard(); }
+      return;
+    }
+    const item = e.target.closest('.budget-row, .budget-card');
+    if (item?.dataset.id) openEditor(item.dataset.id);
+  }
+
   function renderDashboard() {
     const items = Storage.getAll();
     const filtered = filterItems(items);
     const tbody = $('#dashboardTableBody');
     const tableWrap = $('#dashboardTableWrap');
+    const mobileList = $('#dashboardMobileList');
     const empty = $('#dashboardEmpty');
 
     let totalM2 = 0;
@@ -1661,64 +1687,83 @@
 
     if (!items.length) {
       tbody.innerHTML = '';
+      if (mobileList) mobileList.innerHTML = '';
       tableWrap.classList.add('hidden');
+      mobileList?.classList.add('hidden');
       empty.classList.remove('hidden');
       return;
     }
 
     empty.classList.add('hidden');
     tableWrap.classList.remove('hidden');
+    mobileList?.classList.remove('hidden');
 
     if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="table-empty">No hay resultados para "${escapeHtml(getSearchQuery())}"</td></tr>`;
+      const msg = `No hay resultados para "${escapeHtml(getSearchQuery())}"`;
+      tbody.innerHTML = `<tr><td colspan="9" class="table-empty">${msg}</td></tr>`;
+      if (mobileList) mobileList.innerHTML = `<p class="table-empty budget-mobile-empty">${msg}</p>`;
       return;
     }
 
-    tbody.innerHTML = filtered
-      .map((p) => {
-        const date = formatDate(p.updatedAt || p.createdAt);
-        const area = ((p.roomWidthM || 0) * (p.roomLengthM || 0)).toFixed(1);
-        const thumb = p.canvasThumb || p.photoThumb;
-        const tiles = p.totalTilesWithSpare ?? '—';
-        const boxes = p.totalBoxes ?? '—';
-        const patron = TileCalc.PATTERNS[p.pattern] || p.pattern || '—';
-        const cliente = escapeHtml(p.cliente || 'Sin cliente');
-        const ref = p.referencia ? `<span class="row-ref">${escapeHtml(p.referencia)}</span>` : '';
-        const linkIcon = p.link
-          ? `<a href="${escapeHtml(p.link)}" class="row-link" target="_blank" rel="noopener" title="Abrir link" onclick="event.stopPropagation()">↗</a>`
-          : '';
+    const rows = filtered.map((p) => {
+      const date = formatDate(p.updatedAt || p.createdAt);
+      const area = ((p.roomWidthM || 0) * (p.roomLengthM || 0)).toFixed(1);
+      const thumb = p.canvasThumb || p.photoThumb;
+      const tiles = p.totalTilesWithSpare ?? '—';
+      const boxes = p.totalBoxes ?? '—';
+      const patron = TileCalc.PATTERNS[p.pattern] || p.pattern || '—';
+      const cliente = escapeHtml(p.cliente || 'Sin cliente');
+      const ref = p.referencia ? `<span class="row-ref">${escapeHtml(p.referencia)}</span>` : '';
+      const linkIcon = p.link
+        ? `<a href="${escapeHtml(p.link)}" class="row-link" target="_blank" rel="noopener" title="Abrir link" onclick="event.stopPropagation()">↗</a>`
+        : '';
+      const usuario = escapeHtml(p.createdBy || p.updatedBy || '—');
+      const actions = budgetRowActionsHtml(p.id);
+      const thumbHtml = thumb
+        ? `<img src="${thumb}" alt="Plano" loading="lazy">`
+        : '<span class="thumb-fallback">▦</span>';
 
-        const usuario = escapeHtml(p.createdBy || p.updatedBy || '—');
-
-        return `
+      const tableRow = `
         <tr class="budget-row" data-id="${p.id}" tabindex="0">
-          <td class="col-thumb">
-            <div class="row-thumb">
-              ${thumb ? `<img src="${thumb}" alt="Plano" loading="lazy">` : '<span class="thumb-fallback">▦</span>'}
-            </div>
-          </td>
-          <td class="col-client">
-            <span class="row-client">${cliente}</span>
-            ${ref}
-            ${linkIcon}
-          </td>
+          <td class="col-thumb"><div class="row-thumb">${thumbHtml}</div></td>
+          <td class="col-client"><span class="row-client">${cliente}</span>${ref}${linkIcon}</td>
           <td class="col-user"><span class="user-tag">${usuario}</span></td>
           <td class="col-date">${date}</td>
           <td class="col-area"><strong>${area}</strong> m²</td>
           <td class="col-pattern"><span class="pattern-tag">${escapeHtml(patron)}</span></td>
           <td class="col-tiles">${tiles}</td>
           <td class="col-boxes">${boxes}</td>
-          <td class="col-actions">
-            <div class="row-actions">
-              <button type="button" class="btn-icon-action has-tip" data-action="excel" data-id="${p.id}" data-tip="Exportar a Excel" aria-label="Exportar a Excel" title="Exportar a Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></button>
-              <button type="button" class="btn-icon-action has-tip" data-action="edit" data-id="${p.id}" data-tip="Editar presupuesto" aria-label="Editar presupuesto" title="Editar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-              <button type="button" class="btn-icon-action has-tip" data-action="dup" data-id="${p.id}" data-tip="Duplicar presupuesto" aria-label="Duplicar presupuesto" title="Duplicar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
-              <button type="button" class="btn-icon-action btn-icon-danger has-tip" data-action="del" data-id="${p.id}" data-tip="Eliminar presupuesto" aria-label="Eliminar presupuesto" title="Eliminar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-            </div>
-          </td>
+          <td class="col-actions"><div class="row-actions">${actions}</div></td>
         </tr>`;
-      })
-      .join('');
+
+      const card = `
+        <article class="budget-card" data-id="${p.id}" role="listitem" tabindex="0">
+          <div class="budget-card-top">
+            <div class="row-thumb">${thumbHtml}</div>
+            <div class="budget-card-body">
+              <span class="row-client">${cliente}</span>
+              ${ref}
+              <div class="budget-card-meta">
+                <span>${area} m²</span>
+                <span class="pattern-tag">${escapeHtml(patron)}</span>
+                <span>${date}</span>
+                ${linkIcon}
+              </div>
+            </div>
+          </div>
+          <div class="budget-card-stats">
+            <span class="budget-card-stat">${tiles} baldosas</span>
+            <span class="budget-card-stat">${boxes} cajas</span>
+            <span class="budget-card-stat user-tag">${usuario}</span>
+          </div>
+          <div class="row-actions budget-card-actions">${actions}</div>
+        </article>`;
+
+      return { tableRow, card };
+    });
+
+    tbody.innerHTML = rows.map((r) => r.tableRow).join('');
+    if (mobileList) mobileList.innerHTML = rows.map((r) => r.card).join('');
   }
 
   async function savePresupuesto() {
@@ -2397,28 +2442,19 @@
 
     $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());
 
-    $('#dashboardTableBody').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action]');
-      if (btn) {
-        const { id, action } = btn.dataset;
-        if (action === 'edit') openEditor(id);
-        else if (action === 'excel') {
-          const p = Storage.getById(id);
-          const result = NexaExport.exportOne(p);
-          if (!result.ok) alert(result.error);
-        }
-        else if (action === 'dup') { Storage.duplicate(id); renderDashboard(); }
-        else if (action === 'del' && confirm('¿Borrar este presupuesto?')) { Storage.remove(id); renderDashboard(); }
-        return;
-      }
-      const row = e.target.closest('.budget-row');
-      if (row?.dataset.id) openEditor(row.dataset.id);
-    });
+    $('#dashboardTableBody').addEventListener('click', handleDashboardActivate);
+    $('#dashboardMobileList')?.addEventListener('click', handleDashboardActivate);
 
     $('#dashboardTableBody').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const row = e.target.closest('.budget-row');
         if (row?.dataset.id) openEditor(row.dataset.id);
+      }
+    });
+    $('#dashboardMobileList')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const card = e.target.closest('.budget-card');
+        if (card?.dataset.id) openEditor(card.dataset.id);
       }
     });
   }
