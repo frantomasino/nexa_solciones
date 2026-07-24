@@ -37,6 +37,9 @@
   let columnDragStart = null;
   let columnPreview = null;
   let isColumnDragging = false;
+  let planRedrawRaf = null;
+  let lastPaintedKey = null;
+  let paintResultsPending = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -460,6 +463,7 @@
   }
 
   function setPlanInteractionMode(mode) {
+    if (paintMode && mode !== 'paint' && paintResultsPending) syncPaintResults();
     obstacleMode = mode === 'obstacle';
     shapeMode = mode === 'shape';
     paintMode = mode === 'paint';
@@ -537,33 +541,82 @@
   }
 
   async function redrawPlan() {
-    if (!lastResult) return;
-    const canvas = $('#floorCanvas');
-    await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(readForm()));
+    schedulePlanRedraw();
   }
 
-  function paintCell(col, row, colorIndex) {
+  function redrawPlanSync() {
     if (!lastResult) return;
+    const canvas = $('#floorCanvas');
+    TileCalc.drawFloorPlanSync(canvas, lastResult, getDrawOptions(readForm()));
+  }
+
+  function schedulePlanRedraw() {
+    if (planRedrawRaf != null) return;
+    planRedrawRaf = requestAnimationFrame(() => {
+      planRedrawRaf = null;
+      redrawPlanSync();
+    });
+  }
+
+  function updatePaintTally() {
+    const n = colorCount || 1;
+    const tally = $('#paintLiveTally');
+    if (!tally) return;
+    const counts = TileCalc.countByCustomPaint(customPaint, n, splitCells);
+    const painted = TileCalc.sumPaintCounts(counts);
+    if (painted > 0) {
+      const colors = [
+        { name: $('#color1Name')?.value },
+        { name: $('#color2Name')?.value },
+        { name: $('#color3Name')?.value },
+      ];
+      tally.textContent = counts
+        .slice(0, n)
+        .map((c, i) => `${colors[i]?.name || `Color ${i + 1}`}: ${TileCalc.formatTileCount(c)}`)
+        .join(' · ');
+    } else {
+      tally.textContent = '';
+    }
+  }
+
+  function syncPaintResults() {
+    if (!lastResult) return;
+    const form = readForm();
+    lastResult = TileCalc.calculate(form);
+    renderResults(lastResult, form);
+    updatePaintUI();
+    const canvas = $('#floorCanvas');
+    if (canvas) $('#photoThumbData').value = canvas.toDataURL('image/png');
+    paintResultsPending = false;
+  }
+
+  function paintCell(col, row, colorIndex, { skipDuplicate = false } = {}) {
+    if (!lastResult) return false;
     const key = `${col},${row}`;
+    if (skipDuplicate && key === lastPaintedKey) return false;
+    lastPaintedKey = key;
     const existing = splitCells[key];
     const isColumnEdge = TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows);
 
     if (isColumnEdge || existing?.columnHalf) {
       applyColumnEdgePaint(col, row, colorIndex);
-      return;
+      return true;
     }
 
-    if (lastResult.grid?.[row]?.[col] < 0) return;
+    if (lastResult.grid?.[row]?.[col] < 0) return false;
 
     if (halfPaintMode) {
       paintHalfCell(col, row, colorIndex);
-      return;
+      return true;
     }
 
     delete splitCells[key];
     customPaint[key] = colorIndex;
-    updatePaintUI();
-    debounce(recalculate);
+    updatePaintCounts();
+    updatePaintTally();
+    schedulePlanRedraw();
+    paintResultsPending = true;
+    return true;
   }
 
   function applyColumnEdgePaint(col, row, colorIndex) {
@@ -595,9 +648,11 @@
     }
 
     delete customPaint[key];
-    updatePaintUI();
+    updatePaintCounts();
+    updatePaintTally();
     updateColumnUI();
-    debounce(recalculate);
+    schedulePlanRedraw();
+    paintResultsPending = true;
   }
 
   function paintHalfCell(col, row, colorIndex) {
@@ -626,8 +681,10 @@
       };
     }
     delete customPaint[key];
-    updatePaintUI();
-    debounce(recalculate);
+    updatePaintCounts();
+    updatePaintTally();
+    schedulePlanRedraw();
+    paintResultsPending = true;
   }
 
   function toggleHalfColumn(col, row) {
@@ -1915,14 +1972,14 @@
     $('#btnShapeUndo')?.addEventListener('click', undoShapePoint);
     $('#btnShapeClear')?.addEventListener('click', clearRoomShape);
 
-    function handlePlanPointer(clientX, clientY) {
+    function handlePlanPointer(clientX, clientY, { skipDuplicate = false } = {}) {
       if (shapeMode && lastResult) {
         addShapePoint(clientX, clientY);
         return;
       }
       if (paintMode && lastResult) {
         const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
-        if (cell) paintCell(cell.col, cell.row, activePaintIndex);
+        if (cell) paintCell(cell.col, cell.row, activePaintIndex, { skipDuplicate });
         return;
       }
       if (columnMode && lastResult) {
@@ -1972,6 +2029,7 @@
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       isPaintingDrag = paintMode;
+      lastPaintedKey = null;
       handlePlanPointer(e.clientX, e.clientY);
     });
     $('#planStage')?.addEventListener('pointermove', (e) => {
@@ -1983,7 +2041,7 @@
       }
       if (!isPaintingDrag || !paintMode || !lastResult) return;
       e.preventDefault();
-      handlePlanPointer(e.clientX, e.clientY);
+      handlePlanPointer(e.clientX, e.clientY, { skipDuplicate: true });
     });
     window.addEventListener('pointerup', (e) => {
       if (isColumnDragging && columnMode && lastResult) {
@@ -1996,6 +2054,8 @@
           redrawPlan();
         }
       }
+      if (paintResultsPending) syncPaintResults();
+      lastPaintedKey = null;
       isPaintingDrag = false;
     });
     $('#roomWidth').addEventListener('input', () => {
