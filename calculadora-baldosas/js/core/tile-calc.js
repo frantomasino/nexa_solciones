@@ -11,11 +11,16 @@
     moneda: 'Moneda',
   };
 
+  const FLOOR_IMAGE_VERSION = 'v3';
   const FLOOR_TYPE_IMAGES = {
-    rejilla: 'images/piso-rejilla.jpg',
-    trama: 'images/piso-trama.jpg',
-    moneda: 'images/piso-moneda.jpg',
+    rejilla: `images/piso-rejilla.jpg?${FLOOR_IMAGE_VERSION}`,
+    trama: `images/piso-trama.jpg?${FLOOR_IMAGE_VERSION}`,
+    moneda: `images/piso-moneda.jpg?${FLOOR_IMAGE_VERSION}`,
   };
+
+  function usesPhotoTexture(pattern) {
+    return pattern === 'rejilla' || pattern === 'trama';
+  }
 
   const TILE_SIZE_CM = 40;
 
@@ -894,7 +899,6 @@
   }
 
   function drawTileDetail(ctx, pattern, idx, x, y, w, h, colors) {
-    const pad = Math.max(1, Math.min(w, h) * 0.08);
     const cx = x + w / 2;
     const cy = y + h / 2;
 
@@ -910,48 +914,6 @@
       return;
     }
 
-    if (pattern === 'rejilla' && idx > 0) {
-      ctx.save();
-      ctx.strokeStyle = colors[idx]?.hex || '#888';
-      ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.065);
-      const x0 = x + pad;
-      const y0 = y + pad;
-      const x1 = x + w - pad;
-      const y1 = y + h - pad;
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.moveTo(x1, y0);
-      ctx.lineTo(x0, y1);
-      ctx.stroke();
-      const steps = 3;
-      for (let i = 1; i <= steps; i++) {
-        const t = i / (steps + 1);
-        ctx.beginPath();
-        ctx.moveTo(x0 + (x1 - x0) * t, y0);
-        ctx.lineTo(x0 + (x1 - x0) * (1 - t), y1);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x1 - (x1 - x0) * t, y0);
-        ctx.lineTo(x1 - (x1 - x0) * (1 - t), y1);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    if (pattern === 'trama') {
-      const seed = (Math.round(x) * 17 + Math.round(y) * 31) | 0;
-      const speck = idx === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.25)';
-      for (let i = 0; i < 16; i++) {
-        const px = x + pad + ((seed + i * 19) % 100) / 100 * (w - pad * 2);
-        const py = y + pad + ((seed + i * 37) % 100) / 100 * (h - pad * 2);
-        const r = Math.max(0.45, Math.min(w, h) * (0.03 + (i % 4) * 0.01));
-        ctx.fillStyle = speck;
-        ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
   }
 
   function formatMetros(m) {
@@ -1356,8 +1318,10 @@
     const assemblyMode = options.assemblyMode === true;
     const tilePhoto = options.floorTypeImage;
     const numColors = planColorCount || colors.length;
-    const usePhotoTiles = !assemblyMode && tilePhoto && isFloorType(pattern) && numColors <= 1;
-    const photoAlpha = 0.9;
+    const usePhotoTexture = !assemblyMode && tilePhoto && usesPhotoTexture(pattern);
+    const usePhotoMoneda = !assemblyMode && tilePhoto && pattern === 'moneda' && numColors <= 1;
+    const usePhotoTiles = usePhotoTexture || usePhotoMoneda;
+    const photoAlpha = 0.95;
     const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
     const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
     const columnKeys = options.columnCellKeys || columnCellKeys(options.columnRects, cols, rows);
@@ -1474,7 +1438,7 @@
             ctx.restore();
           }
 
-          if (!assemblyMode && !paintNeutralMode && isFloorType(pattern) && (!usePhotoTiles || numColors > 1)) {
+          if (!assemblyMode && !paintNeutralMode && pattern === 'moneda' && !usePhotoMoneda) {
             drawTileDetail(ctx, pattern, colorIdx, x, y, cellW, cellH, colors);
           }
         }
@@ -1650,10 +1614,11 @@
     if (!isFloorType(pattern)) return Promise.resolve(null);
     const src = FLOOR_TYPE_IMAGES[pattern];
     if (!src) return Promise.resolve(null);
-    if (floorTypeImageCache[pattern]) return Promise.resolve(floorTypeImageCache[pattern]);
+    const cacheKey = `${pattern}:${FLOOR_IMAGE_VERSION}`;
+    if (floorTypeImageCache[cacheKey]) return Promise.resolve(floorTypeImageCache[cacheKey]);
     return loadImage(src)
       .then((img) => {
-        floorTypeImageCache[pattern] = img;
+        floorTypeImageCache[cacheKey] = img;
         return img;
       })
       .catch(() => null);
@@ -1725,7 +1690,7 @@
         const idx = getColorIndex(pattern, col, row, cells, cells, { aisleWidth: 2, stripeWidth: 1 });
         ctx.fillStyle = colors[idx]?.hex || '#888';
         ctx.fillRect(col * cell, row * cell, cell, cell);
-        if (isFloorType(pattern)) {
+        if (pattern === 'moneda') {
           drawTileDetail(ctx, pattern, idx, col * cell, row * cell, cell, cell, colors);
         }
       }
