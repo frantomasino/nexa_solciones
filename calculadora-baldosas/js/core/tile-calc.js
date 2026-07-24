@@ -1233,9 +1233,10 @@
     if (dividerHalf) drawSplitDivider(ctx, x + 0.5, y + 0.5, cw, ch, dividerHalf, assemblyMode);
   }
 
-  function drawColumnsOverlay(ctx, layout, columnRects, columnPreview, cols, rows, splitCells) {
+  function drawColumnsOverlay(ctx, layout, columnRects, columnPreview, cols, rows, splitCells, overlayOptions = {}) {
     const { padLeft, padTop, cellW, cellH } = layout;
     const split = splitCells || {};
+    const outlineOnly = overlayOptions.outlineOnly === true;
     const drawCellsInRect = (rect, alpha, labelPrefix) => {
       const c0 = Math.max(0, rect.col0);
       const r0 = Math.max(0, rect.row0);
@@ -1246,20 +1247,32 @@
       const w = (c1 - c0 + 1) * cellW;
       const h = (r1 - r0 + 1) * cellH;
       ctx.save();
-      ctx.globalAlpha = alpha;
-      for (let row = r0; row <= r1; row++) {
-        for (let col = c0; col <= c1; col++) {
-          const key = `${col},${row}`;
-          if (split[key]?.columnHalf) continue;
-          const cx = padLeft + col * cellW;
-          const cy = padTop + row * cellH;
-          const label = labelPrefix && cellW > 18 && cellH > 14 ? labelPrefix : '';
-          drawColumnBlock(ctx, cx, cy, cellW, cellH, label);
+      if (!outlineOnly) {
+        ctx.globalAlpha = alpha;
+        for (let row = r0; row <= r1; row++) {
+          for (let col = c0; col <= c1; col++) {
+            const key = `${col},${row}`;
+            if (split[key]?.columnHalf || split[key]?.paintHalf) continue;
+            const cx = padLeft + col * cellW;
+            const cy = padTop + row * cellH;
+            const label = labelPrefix && cellW > 18 && cellH > 14 ? labelPrefix : '';
+            drawColumnBlock(ctx, cx, cy, cellW, cellH, label);
+          }
         }
       }
-      ctx.strokeStyle = '#888';
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = outlineOnly ? '#002094' : '#888';
+      ctx.lineWidth = outlineOnly ? 2.5 : 2;
+      ctx.setLineDash(outlineOnly ? [6, 4] : []);
       ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      ctx.setLineDash([]);
+      if (outlineOnly && labelPrefix && w > 40 && h > 24) {
+        ctx.fillStyle = '#002094';
+        ctx.font = `700 ${Math.max(9, Math.min(12, Math.min(cellW, cellH) * 0.3))}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(labelPrefix, x + 6, y + 4);
+      }
       ctx.restore();
     };
     (columnRects || []).forEach((rect, i) => drawCellsInRect(rect, 0.95, `COL ${i + 1}`));
@@ -1455,7 +1468,16 @@
     }
 
     if (!assemblyMode && (options.columnRects?.length || options.columnPreview)) {
-      drawColumnsOverlay(ctx, layout, options.columnRects, options.columnPreview, cols, rows, splitCellsMap);
+      drawColumnsOverlay(
+        ctx,
+        layout,
+        options.columnRects,
+        options.columnPreview,
+        cols,
+        rows,
+        splitCellsMap,
+        { outlineOnly: options.columnOutlineOnly === true }
+      );
     }
 
     storeCanvasLayout(canvas, layout);
