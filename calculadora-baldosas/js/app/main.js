@@ -662,6 +662,22 @@
     const alreadyPainted = customPaint[key] === colorIndex;
     if (skipDuplicate && alreadyPainted) return false;
 
+    if (!fast && (key in customPaint || splitCells[key]?.paintHalf)) {
+      delete customPaint[key];
+      const entry = splitCells[key];
+      if (entry) {
+        delete entry.paintHalf;
+        delete entry.colorIndex;
+        if (!entry.columnHalf) delete splitCells[key];
+        else splitCells[key] = entry;
+      }
+      lastPaintedKey = key;
+      markPaintCellDirty(col, row);
+      schedulePaintUiRefresh();
+      paintResultsPending = true;
+      return true;
+    }
+
     delete splitCells[key];
     customPaint[key] = colorIndex;
     lastPaintedKey = key;
@@ -783,13 +799,7 @@
     const resolved = TileCalc.resolveHalfColumnTap(
       col, row, columnRects, lastResult.cols, lastResult.rows, preferredSide || activeHalfSide
     );
-    if (!resolved) {
-      const summary = $('#columnSummary');
-      if (summary) {
-        summary.textContent = 'Tocá la columna (COL) o la baldosa pegada al pilar. Tocá el lado de la baldosa que querés marcar.';
-      }
-      return;
-    }
+    if (!resolved) return false;
     const { col: tc, row: tr, columnHalf: side } = resolved;
     const key = `${tc},${tr}`;
     const entry = splitCells[key] || {};
@@ -805,8 +815,31 @@
     }
     updateColumnUI();
     updatePaintUI();
-    schedulePlanRedraw();
+    markSplitCellDirty(tc, tr);
     paintResultsPending = true;
+    return true;
+  }
+
+  function toggleHalfColumnAt(clientX, clientY) {
+    if (!lastResult || !columnRects.length) return;
+    const resolved = TileCalc.resolveHalfColumnTapFromPoint(
+      $('#floorCanvas'),
+      clientX,
+      clientY,
+      columnRects,
+      lastResult.cols,
+      lastResult.rows,
+      planPointerOptions(),
+      activeHalfSide
+    );
+    if (!resolved) {
+      const summary = $('#columnSummary');
+      if (summary) {
+        summary.textContent = 'Tocá sobre la columna o la baldosa al lado del pilar. Usá los botones ◧◨◤◥ si hace falta elegir el lado.';
+      }
+      return;
+    }
+    toggleHalfColumn(resolved.col, resolved.row, resolved.columnHalf);
   }
 
   function setActiveHalfSide(side) {
@@ -1095,6 +1128,14 @@
       lastResult.rows,
       planPointerOptions()
     );
+  }
+
+  function isPlanCanvasHit(clientX, clientY) {
+    const canvas = $('#floorCanvas');
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right
+      && clientY >= rect.top && clientY <= rect.bottom;
   }
 
   function getDrawOptions(form) {
@@ -2093,12 +2134,12 @@
         return;
       }
       if (columnMode && lastResult) {
-        const hit = planCellFromClient(clientX, clientY);
-        if (!hit) return;
         if (halfColumnMode) {
-          toggleHalfColumn(hit.col, hit.row, hit.halfSide);
+          toggleHalfColumnAt(clientX, clientY);
           return;
         }
+        const hit = planCellFromClient(clientX, clientY);
+        if (!hit) return;
         columnDragStart = { col: hit.col, row: hit.row };
         columnPreview = TileCalc.normalizeColumnRect(hit.col, hit.row, hit.col, hit.row);
         isColumnDragging = true;
@@ -2136,7 +2177,7 @@
     $('#planStage')?.addEventListener('pointerdown', (e) => {
       if (!shapeMode && !obstacleMode && !paintMode && !columnMode) return;
       if (e.target.closest('.plan-toolbar') || e.target.closest('.paint-toolbar') || e.target.closest('.column-toolbar')) return;
-      if (e.target !== $('#floorCanvas')) return;
+      if (!isPlanCanvasHit(e.clientX, e.clientY)) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       isPaintingDrag = paintMode;
