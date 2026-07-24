@@ -38,8 +38,13 @@
   let columnPreview = null;
   let isColumnDragging = false;
   let planRedrawRaf = null;
+  let paintRepaintRaf = null;
   let lastPaintedKey = null;
+  let lastPaintCol = null;
+  let lastPaintRow = null;
+  let paintDirtyCells = new Set();
   let paintResultsPending = false;
+  let paintUiPending = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -558,6 +563,36 @@
     });
   }
 
+  function schedulePaintCellsRepaint() {
+    if (paintRepaintRaf != null) return;
+    paintRepaintRaf = requestAnimationFrame(() => {
+      paintRepaintRaf = null;
+      if (!lastResult || paintDirtyCells.size === 0) return;
+      const canvas = $('#floorCanvas');
+      const cells = [...paintDirtyCells].map((key) => {
+        const [col, row] = key.split(',').map(Number);
+        return { col, row };
+      });
+      paintDirtyCells.clear();
+      TileCalc.repaintPlanCells(canvas, lastResult, cells, getDrawOptions(readForm()));
+    });
+  }
+
+  function markPaintCellDirty(col, row) {
+    paintDirtyCells.add(`${col},${row}`);
+    schedulePaintCellsRepaint();
+  }
+
+  function schedulePaintUiRefresh() {
+    if (paintUiPending) return;
+    paintUiPending = true;
+    requestAnimationFrame(() => {
+      paintUiPending = false;
+      updatePaintCounts();
+      updatePaintTally();
+    });
+  }
+
   function updatePaintTally() {
     const n = colorCount || 1;
     const tally = $('#paintLiveTally');
@@ -579,26 +614,28 @@
     }
   }
 
-  function syncPaintResults() {
+  function syncPaintResults({ refreshThumb = true } = {}) {
     if (!lastResult) return;
     const form = readForm();
     lastResult = TileCalc.calculate(form);
     renderResults(lastResult, form);
     updatePaintUI();
-    const canvas = $('#floorCanvas');
-    if (canvas) $('#photoThumbData').value = canvas.toDataURL('image/png');
+    if (refreshThumb) {
+      const canvas = $('#floorCanvas');
+      if (canvas) $('#photoThumbData').value = canvas.toDataURL('image/png');
+    }
     paintResultsPending = false;
   }
 
-  function paintCell(col, row, colorIndex, { skipDuplicate = false } = {}) {
+  function paintCell(col, row, colorIndex, { skipDuplicate = false, fast = false } = {}) {
     if (!lastResult) return false;
     const key = `${col},${row}`;
     if (skipDuplicate && key === lastPaintedKey) return false;
-    lastPaintedKey = key;
     const existing = splitCells[key];
     const isColumnEdge = TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows);
 
     if (isColumnEdge || existing?.columnHalf) {
+      lastPaintedKey = key;
       applyColumnEdgePaint(col, row, colorIndex);
       return true;
     }
@@ -606,17 +643,57 @@
     if (lastResult.grid?.[row]?.[col] < 0) return false;
 
     if (halfPaintMode) {
+      lastPaintedKey = key;
       paintHalfCell(col, row, colorIndex);
       return true;
     }
 
+    const alreadyPainted = customPaint[key] === colorIndex;
+    if (skipDuplicate && alreadyPainted) return false;
+
     delete splitCells[key];
     customPaint[key] = colorIndex;
-    updatePaintCounts();
-    updatePaintTally();
-    schedulePlanRedraw();
+    lastPaintedKey = key;
+    if (fast) {
+      markPaintCellDirty(col, row);
+      schedulePaintUiRefresh();
+    } else {
+      updatePaintCounts();
+      updatePaintTally();
+      schedulePlanRedraw();
+    }
     paintResultsPending = true;
     return true;
+  }
+
+  function paintAtPointer(clientX, clientY, { dragging = false } = {}) {
+    if (!paintMode || !lastResult) return;
+    const canvas = $('#floorCanvas');
+    const cell = TileCalc.cellFromPoint(
+      canvas,
+      clientX,
+      clientY,
+      lastResult.cols,
+      lastResult.rows,
+      getDrawOptions(readForm())
+    );
+    if (!cell) return;
+
+    const targets = dragging && lastPaintCol != null && lastPaintRow != null
+      ? TileCalc.cellsAlongLine(lastPaintCol, lastPaintRow, cell.col, cell.row)
+      : [cell];
+
+    let painted = false;
+    for (const target of targets) {
+      if (paintCell(target.col, target.row, activePaintIndex, { skipDuplicate: dragging, fast: dragging })) {
+        painted = true;
+      }
+    }
+
+    if (painted) {
+      lastPaintCol = cell.col;
+      lastPaintRow = cell.row;
+    }
   }
 
   function applyColumnEdgePaint(col, row, colorIndex) {
@@ -1978,8 +2055,7 @@
         return;
       }
       if (paintMode && lastResult) {
-        const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
-        if (cell) paintCell(cell.col, cell.row, activePaintIndex, { skipDuplicate });
+        paintAtPointer(clientX, clientY, { dragging: skipDuplicate });
         return;
       }
       if (columnMode && lastResult) {
@@ -2030,6 +2106,8 @@
       e.preventDefault();
       isPaintingDrag = paintMode;
       lastPaintedKey = null;
+      lastPaintCol = null;
+      lastPaintRow = null;
       handlePlanPointer(e.clientX, e.clientY);
     });
     $('#planStage')?.addEventListener('pointermove', (e) => {
@@ -2054,8 +2132,18 @@
           redrawPlan();
         }
       }
-      if (paintResultsPending) syncPaintResults();
+      if (paintResultsPending) {
+        redrawPlanSync();
+        syncPaintResults({ refreshThumb: false });
+        requestAnimationFrame(() => {
+          const canvas = $('#floorCanvas');
+          if (canvas) $('#photoThumbData').value = canvas.toDataURL('image/png');
+        });
+      }
       lastPaintedKey = null;
+      lastPaintCol = null;
+      lastPaintRow = null;
+      paintDirtyCells.clear();
       isPaintingDrag = false;
     });
     $('#roomWidth').addEventListener('input', () => {

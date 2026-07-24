@@ -210,8 +210,7 @@
     const logicalH = parseFloat(canvas.dataset.logicalHeight) || rect.height;
     const px = ((clientX - rect.left) / rect.width) * logicalW;
     const py = ((clientY - rect.top) / rect.height) * logicalH;
-    const layout = layoutMetrics(cols, rows);
-    const { padLeft, padTop, drawW, drawH } = layout;
+    const { padLeft, padTop, drawW, drawH } = layoutFromCanvas(canvas, cols, rows);
     const xM = ((px - padLeft) / drawW) * actualWidthM;
     const yM = ((py - padTop) / drawH) * actualLengthM;
     if (xM < 0 || yM < 0 || xM > actualWidthM || yM > actualLengthM) return null;
@@ -684,7 +683,64 @@
     };
   }
 
-  function cellFromPoint(canvas, clientX, clientY, cols, rows) {
+  function storeCanvasLayout(canvas, layout) {
+    if (!canvas || !layout) return;
+    canvas.dataset.logicalWidth = String(layout.drawW + layout.padLeft + layout.padRight);
+    canvas.dataset.logicalHeight = String(layout.drawH + layout.padTop + layout.padBottom);
+    canvas.dataset.padTop = String(layout.padTop);
+    canvas.dataset.padLeft = String(layout.padLeft);
+    canvas.dataset.padRight = String(layout.padRight);
+    canvas.dataset.padBottom = String(layout.padBottom);
+    canvas.dataset.drawW = String(layout.drawW);
+    canvas.dataset.drawH = String(layout.drawH);
+    canvas.dataset.cellW = String(layout.cellW);
+    canvas.dataset.cellH = String(layout.cellH);
+    canvas.dataset.layoutRatio = String(layout.ratio);
+  }
+
+  function layoutFromCanvas(canvas, cols, rows, options = {}) {
+    if (canvas?.dataset?.cellW) {
+      return {
+        padTop: parseFloat(canvas.dataset.padTop),
+        padLeft: parseFloat(canvas.dataset.padLeft),
+        padRight: parseFloat(canvas.dataset.padRight),
+        padBottom: parseFloat(canvas.dataset.padBottom),
+        drawW: parseFloat(canvas.dataset.drawW),
+        drawH: parseFloat(canvas.dataset.drawH),
+        cellW: parseFloat(canvas.dataset.cellW),
+        cellH: parseFloat(canvas.dataset.cellH),
+        ratio: parseFloat(canvas.dataset.layoutRatio) || 1,
+      };
+    }
+    return layoutMetrics(cols, rows, options);
+  }
+
+  function cellsAlongLine(c0, r0, c1, r1) {
+    const cells = [];
+    let x = c0;
+    let y = r0;
+    const dx = Math.abs(c1 - c0);
+    const dy = Math.abs(r1 - r0);
+    const sx = c0 < c1 ? 1 : -1;
+    const sy = r0 < r1 ? 1 : -1;
+    let err = dx - dy;
+    while (true) {
+      cells.push({ col: x, row: y });
+      if (x === c1 && y === r1) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y += sy;
+      }
+    }
+    return cells;
+  }
+
+  function cellFromPoint(canvas, clientX, clientY, cols, rows, options = {}) {
     if (!canvas || !cols || !rows) return null;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
@@ -692,7 +748,7 @@
     const logicalH = parseFloat(canvas.dataset.logicalHeight) || rect.height;
     const px = ((clientX - rect.left) / rect.width) * logicalW;
     const py = ((clientY - rect.top) / rect.height) * logicalH;
-    const { padLeft, padTop, cellW, cellH } = layoutMetrics(cols, rows);
+    const { padLeft, padTop, cellW, cellH } = layoutFromCanvas(canvas, cols, rows, options);
     const col = Math.floor((px - padLeft) / cellW);
     const row = Math.floor((py - padTop) / cellH);
     if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
@@ -1304,9 +1360,66 @@
       drawColumnsOverlay(ctx, layout, options.columnRects, options.columnPreview, cols, rows, splitCellsMap);
     }
 
-    canvas.dataset.logicalWidth = String(drawW + padLeft + padRight);
-    canvas.dataset.logicalHeight = String(drawH + padTop + padBottom);
+    storeCanvasLayout(canvas, layout);
     return canvas;
+  }
+
+  function repaintPlanCells(canvas, result, cells, options = {}) {
+    if (!canvas || !result?.grid || !cells?.length) return;
+    const { grid, colors, cols, rows, pattern, colorCount: planColorCount } = result;
+    const layout = layoutFromCanvas(canvas, cols, rows, options);
+    const { padTop, padLeft, cellW, cellH } = layout;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(layout.ratio, 0, 0, layout.ratio, 0, 0);
+    const paintNeutralMode = options.paintNeutralMode === true;
+    const customPaintMap = options.customPaint || {};
+    const splitCellsMap = options.splitCells || {};
+    const columnKeys = options.columnCellKeys || columnCellKeys(options.columnRects, cols, rows);
+    const NEUTRAL_TILE = '#e2e2e2';
+
+    for (const { col, row } of cells) {
+      if (col < 0 || row < 0 || col >= cols || row >= rows) continue;
+      const idx = grid[row][col];
+      const x = padLeft + col * cellW;
+      const y = padTop + row * cellH;
+      const cw = cellW - 1;
+      const ch = cellH - 1;
+      const cellKey = `${col},${row}`;
+      const split = splitCellsMap[cellKey];
+
+      if (split && (split.columnHalf || split.paintHalf)) {
+        drawSplitCell(ctx, x, y, cw, ch, split, colors, {
+          paintNeutralMode,
+          baseColorIndex: idx >= 0 ? idx : 0,
+          baseColorHex: colors[idx >= 0 ? idx : 0]?.hex,
+          hasPaintData: true,
+        });
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+        ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+        continue;
+      }
+
+      if (idx < 0) {
+        if (columnKeys.has(cellKey)) {
+          drawColumnBlock(ctx, x + 0.5, y + 0.5, cw, ch, '');
+        }
+        ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+        ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+        continue;
+      }
+
+      const paintedIdx = customPaintMap[cellKey];
+      const isPainted = paintedIdx !== undefined;
+      const useNeutral = !isPainted && paintNeutralMode;
+      const colorIdx = isPainted ? paintedIdx : idx;
+      ctx.fillStyle = useNeutral ? NEUTRAL_TILE : (colors[colorIdx]?.hex || '#888');
+      ctx.fillRect(x + 0.5, y + 0.5, cw, ch);
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = Math.max(0.5, Math.min(cellW, cellH) * 0.02);
+      ctx.strokeRect(x + 0.5, y + 0.5, cw, ch);
+    }
   }
 
   function drawImageCover(ctx, img, x, y, w, h) {
@@ -1519,8 +1632,11 @@
     isFloorType,
     tilesPerBoxForPattern,
     cellFromPoint,
+    cellsAlongLine,
     metersFromCanvasPoint,
     layoutMetrics,
+    layoutFromCanvas,
     screenPlanMetrics,
+    repaintPlanCells,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
