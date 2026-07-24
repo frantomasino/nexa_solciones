@@ -67,6 +67,8 @@
       tileLengthCm: TileCalc.TILE_SIZE_CM,
       tilesPerBox: TileCalc.tilesPerBoxForPattern(null),
       sparePercent: 10,
+      bordes: 0,
+      esquineros: 0,
       pattern: null,
       colorCount: null,
       colors: TileCalc.DEFAULT_COLORS.map((c) => ({ ...c })),
@@ -147,6 +149,8 @@
       customPaint: TileCalc.hasCustomPaint(customPaint) ? { ...customPaint } : null,
       splitCells: TileCalc.hasSplitCells(splitCells) ? JSON.parse(JSON.stringify(splitCells)) : null,
       sparePercent: parseFloat($('#sparePercent').value) || 0,
+      bordes: Math.max(0, parseInt($('#bordesCount')?.value, 10) || 0),
+      esquineros: Math.max(0, parseInt($('#esquinerosCount')?.value, 10) || 0),
       pattern: selectedPattern,
       colorCount,
       colors: [
@@ -1113,6 +1117,8 @@
     $('#tilesPerBox').value = data.tilesPerBox ?? TileCalc.tilesPerBoxForPattern(data.pattern);
     updateTilesPerBoxUI();
     $('#sparePercent').value = data.sparePercent ?? 10;
+    $('#bordesCount').value = data.bordes ?? 0;
+    $('#esquinerosCount').value = data.esquineros ?? 0;
 
     excludedCells = parseExcludedFromData(data.excludedCells);
     columnRects = TileCalc.parseColumnRects(data.columnRects);
@@ -1488,6 +1494,8 @@
       $('#totalSparePct').textContent = '—';
       $('#totalFinalLabel').textContent = '—';
       $('#totalBoxes').textContent = '—';
+      $('#accessoriesSummary')?.classList.add('hidden');
+      $('#accessoriesSummary').textContent = '';
       $('#canvasEmpty').classList.remove('hidden');
       $('#planViewer').classList.add('hidden');
       return;
@@ -1542,6 +1550,22 @@
     $('#totalSparePct').textContent = sparePct;
     $('#totalFinalLabel').textContent = fmt(result.totalTilesWithSpare);
     $('#totalBoxes').textContent = result.totalBoxes;
+
+    const bordes = form?.bordes ?? 0;
+    const esquineros = form?.esquineros ?? 0;
+    const accessories = $('#accessoriesSummary');
+    if (accessories) {
+      const parts = [];
+      if (bordes > 0) parts.push(`${bordes} borde${bordes === 1 ? '' : 's'}`);
+      if (esquineros > 0) parts.push(`${esquineros} esquinero${esquineros === 1 ? '' : 's'}`);
+      if (parts.length) {
+        accessories.textContent = `Accesorios: ${parts.join(' · ')}`;
+        accessories.classList.remove('hidden');
+      } else {
+        accessories.textContent = '';
+        accessories.classList.add('hidden');
+      }
+    }
   }
 
   function createThumb(canvas, maxW = 96, maxH = 64) {
@@ -1766,6 +1790,8 @@
       `Repuesto cortes (+${form.sparePercent}%): +${lastResult.totalSpareTiles ?? 0}`,
       `Total a comprar: ${lastResult.totalTilesWithSpare}`,
       `Cajas: ${lastResult.totalBoxes}`,
+      ...(form.bordes > 0 ? [`Bordes: ${form.bordes}`] : []),
+      ...(form.esquineros > 0 ? [`Esquineros: ${form.esquineros}`] : []),
       ...lastResult.breakdown.map((r) => {
         const spare = r.spareTiles ?? (r.tilesWithSpare - r.tiles);
         return `• ${r.name}: ${r.tiles} netas + ${spare} rep. = ${r.tilesWithSpare} u. (${r.boxes} cajas)`;
@@ -2340,7 +2366,7 @@
     });
     setActiveColorSlot(1);
 
-    const inputs = '#cliente, #referencia, #link, #notas, #sparePercent, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
+    const inputs = '#cliente, #referencia, #link, #notas, #sparePercent, #bordesCount, #esquinerosCount, #color1Name, #color1Hex, #color2Name, #color2Hex, #color3Name, #color3Hex';
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
     $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());
