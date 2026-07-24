@@ -940,15 +940,16 @@
   }
 
   function screenPlanMetrics(cols, rows, stageWidth, stageHeight) {
-    const padW = 48;
-    const padH = 40;
+    const padW = 32;
+    const padH = 28;
     const sw = Math.max(200, stageWidth || 0);
     const sh = Math.max(180, stageHeight || 0);
-    if (!cols || !rows) return { minCellPx: 40, supersample: 2, maxSize: 4096 };
+    if (!cols || !rows) return { minCellPx: 48, supersample: 3, maxSize: 8192 };
     const byStage = Math.floor(Math.min((sw - padW) / cols, (sh - padH) / rows));
-    const minCellPx = Math.max(12, Math.min(180, byStage));
-    const supersample = 3;
-    return { minCellPx, supersample, maxSize: 4096 };
+    const minCellPx = Math.max(14, Math.min(220, byStage));
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    const supersample = dpr >= 2 ? 4 : 3;
+    return { minCellPx, supersample, maxSize: 8192 };
   }
 
   function layoutMetrics(cols, rows, options = {}) {
@@ -957,7 +958,7 @@
     const padRight = options.padRight ?? 20;
     const padBottom = options.padBottom ?? 20;
     const minCellPx = options.minCellPx ?? 40;
-    const maxDim = options.maxSize ?? 2048;
+    const maxDim = options.maxSize ?? 4096;
     let drawW = cols * minCellPx;
     let drawH = rows * minCellPx;
     const limit = maxDim - padLeft - padRight;
@@ -1739,7 +1740,7 @@
       maxSize: options.maxSize ?? printMetrics.maxSize,
       showGrid: true,
       showDimensions: true,
-      supersample: 2,
+      supersample: 3,
     });
     return canvas.toDataURL('image/png');
   }
