@@ -923,6 +923,14 @@
     TileCalc.loadImage(src).then((el) => { logoImageEl = el; debounce(recalculate); }).catch(() => {});
   }
 
+  function fitPlanToStage() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        planViewerControls?.fitView();
+      });
+    });
+  }
+
   function getDrawOptions(form) {
     const opts = {};
     if (form?.logoEnabled && selectedPattern === 'trama' && logoImageData) {
@@ -952,6 +960,17 @@
       opts.customPaint = customPaint;
     }
     if (TileCalc.hasSplitCells(splitCells)) opts.splitCells = splitCells;
+    if (lastResult?.cols && lastResult?.rows) {
+      const stage = $('#planStage');
+      const metrics = TileCalc.screenPlanMetrics(
+        lastResult.cols,
+        lastResult.rows,
+        stage?.clientWidth,
+        stage?.clientHeight
+      );
+      opts.minCellPx = metrics.minCellPx;
+      opts.supersample = metrics.supersample;
+    }
     return opts;
   }
 
@@ -1141,15 +1160,11 @@
     const canvas = $('#floorCanvas');
     const empty = $('#canvasEmpty');
     const viewer = $('#planViewer');
-    await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
     empty.classList.add('hidden');
     viewer.classList.remove('hidden');
-    if (planNeedsFitView) {
-      requestAnimationFrame(() => {
-        planViewerControls?.fitView();
-        planNeedsFitView = false;
-      });
-    }
+    await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
+    fitPlanToStage();
+    planNeedsFitView = false;
 
     $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
