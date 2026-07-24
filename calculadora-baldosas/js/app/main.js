@@ -668,15 +668,7 @@
 
   function paintAtPointer(clientX, clientY, { dragging = false } = {}) {
     if (!paintMode || !lastResult) return;
-    const canvas = $('#floorCanvas');
-    const cell = TileCalc.cellFromPoint(
-      canvas,
-      clientX,
-      clientY,
-      lastResult.cols,
-      lastResult.rows,
-      getDrawOptions(readForm())
-    );
+    const cell = planCellFromClient(clientX, clientY);
     if (!cell) return;
 
     const targets = dragging && lastPaintCol != null && lastPaintRow != null
@@ -919,7 +911,8 @@
       lastResult.cols,
       lastResult.rows,
       lastResult.actualWidthM,
-      lastResult.actualLengthM
+      lastResult.actualLengthM,
+      planPointerOptions()
     );
     if (!pt) return;
     roomPolygon.push(pt);
@@ -1063,6 +1056,22 @@
         planViewerControls?.resetView();
       });
     });
+  }
+
+  function planPointerOptions() {
+    return getDrawOptions(readForm());
+  }
+
+  function planCellFromClient(clientX, clientY) {
+    if (!lastResult) return null;
+    return TileCalc.cellFromPoint(
+      $('#floorCanvas'),
+      clientX,
+      clientY,
+      lastResult.cols,
+      lastResult.rows,
+      planPointerOptions()
+    );
   }
 
   function getDrawOptions(form) {
@@ -2059,7 +2068,7 @@
         return;
       }
       if (columnMode && lastResult) {
-        const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
+        const cell = planCellFromClient(clientX, clientY);
         if (!cell) return;
         if (halfColumnMode) {
           toggleHalfColumn(cell.col, cell.row);
@@ -2072,7 +2081,7 @@
         return;
       }
       if (!obstacleMode || !lastResult) return;
-      const cell = TileCalc.cellFromPoint($('#floorCanvas'), clientX, clientY, lastResult.cols, lastResult.rows);
+      const cell = planCellFromClient(clientX, clientY);
       if (cell) toggleExcludedCell(cell.col, cell.row);
     }
 
@@ -2113,7 +2122,7 @@
     $('#planStage')?.addEventListener('pointermove', (e) => {
       if (isColumnDragging && columnMode && lastResult) {
         e.preventDefault();
-        const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
+        const cell = planCellFromClient(e.clientX, e.clientY);
         if (cell) updateColumnPreview(cell.col, cell.row);
         return;
       }
@@ -2123,7 +2132,7 @@
     });
     window.addEventListener('pointerup', (e) => {
       if (isColumnDragging && columnMode && lastResult) {
-        const cell = TileCalc.cellFromPoint($('#floorCanvas'), e.clientX, e.clientY, lastResult.cols, lastResult.rows);
+        const cell = planCellFromClient(e.clientX, e.clientY);
         if (cell && columnDragStart) finishColumnDrag(cell.col, cell.row);
         else {
           columnDragStart = null;
