@@ -644,7 +644,10 @@
     const key = `${col},${row}`;
     if (skipDuplicate && key === lastPaintedKey) return false;
     const existing = splitCells[key];
-    const isColumnEdge = TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows);
+    const isColumnEdge = !!existing?.columnHalf
+      || (columnRects.length > 0 && TileCalc.isColumnEdgeCell(
+        col, row, columnRects, lastResult.cols, lastResult.rows, halfSide, activeHalfSide
+      ));
 
     if (isColumnEdge || existing?.columnHalf) {
       lastPaintedKey = key;
@@ -797,7 +800,11 @@
   function paintHalfCell(col, row, colorIndex, preferredSide = null) {
     if (!lastResult) return;
     const key = `${col},${row}`;
-    if (TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows)) {
+    const onColumnEdge = !!splitCells[key]?.columnHalf
+      || (columnRects.length > 0 && TileCalc.isColumnEdgeCell(
+        col, row, columnRects, lastResult.cols, lastResult.rows, preferredSide, activeHalfSide
+      ));
+    if (onColumnEdge) {
       applyColumnEdgePaint(col, row, colorIndex, preferredSide);
       return;
     }
@@ -858,7 +865,7 @@
   }
 
   function toggleHalfColumnAt(clientX, clientY) {
-    if (!lastResult || !columnRects.length) return;
+    if (!lastResult) return;
     const canvas = $('#floorCanvas');
     const opts = planPointerOptions();
     let resolved = TileCalc.resolveHalfColumnTapFromPoint(
@@ -886,7 +893,9 @@
     if (!resolved) {
       const summary = $('#columnSummary');
       if (summary) {
-        summary.textContent = 'Tocá la baldosa del piso pegada al pilar (o la columna). En esquinas usá ◧◨◤◥.';
+        summary.textContent = columnRects.length
+          ? 'Tocá una baldosa (o al lado del pilar). Usá ◧◨◤◥ o tocá el borde de la baldosa para elegir el lado.'
+          : 'Tocá una baldosa. Usá ◧◨◤◥ o tocá el borde de la baldosa para elegir qué mitad es columna. Tocá de nuevo para quitar.';
       }
       return;
     }

@@ -491,14 +491,22 @@
   }
 
   function resolveHalfColumnTap(col, row, columnRects, cols, rows, tapHalf = null, manualSide = null) {
-    if (!columnRects?.length || col < 0 || row < 0 || col >= cols || row >= rows) return null;
+    if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+
+    const directHalf = (HALF_SIDES.includes(tapHalf) ? tapHalf : null)
+      || (HALF_SIDES.includes(manualSide) ? manualSide : null);
+
+    if (!columnRects?.length) {
+      if (!directHalf) return null;
+      return { col, row, columnHalf: directHalf };
+    }
+
     const colKeys = columnCellKeys(columnRects, cols, rows);
     const key = `${col},${row}`;
 
     if (colKeys.has(key)) {
-      const columnHalf = (HALF_SIDES.includes(tapHalf) ? tapHalf : null)
-        || inferColumnHalfForCell(col, row, columnRects)
-        || (HALF_SIDES.includes(manualSide) ? manualSide : null);
+      const columnHalf = directHalf
+        || inferColumnHalfForCell(col, row, columnRects);
       if (!columnHalf) return null;
       return { col, row, columnHalf };
     }
@@ -513,7 +521,7 @@
       if (n.nc < 0 || n.nr < 0 || n.nc >= cols || n.nr >= rows) continue;
       if (!colKeys.has(`${n.nc},${n.nr}`)) continue;
       const towardColumn = halfFacingColumnFromFloor(col, row, n.nc, n.nr);
-      const columnHalf = (HALF_SIDES.includes(manualSide) ? manualSide : null) || towardColumn;
+      const columnHalf = directHalf || towardColumn;
       if (!columnHalf) continue;
       return { col, row, columnHalf };
     }
@@ -521,8 +529,17 @@
   }
 
   function resolveHalfColumnTapFromPoint(canvas, clientX, clientY, columnRects, cols, rows, options = {}, manualSide = null) {
-    if (!columnRects?.length || !canvas) return null;
+    if (!canvas) return null;
     const hit = cellHitFromClient(canvas, clientX, clientY, cols, rows, options);
+
+    if (!columnRects?.length) {
+      if (!hit) return null;
+      const columnHalf = (HALF_SIDES.includes(hit.halfSide) ? hit.halfSide : null)
+        || (HALF_SIDES.includes(manualSide) ? manualSide : null);
+      if (!columnHalf) return null;
+      return { col: hit.col, row: hit.row, columnHalf };
+    }
+
     if (hit) {
       const fromCell = resolveHalfColumnTap(
         hit.col,
@@ -576,8 +593,9 @@
     return best;
   }
 
-  function isColumnEdgeCell(col, row, columnRects, cols, rows) {
-    return !!resolveHalfColumnTap(col, row, columnRects, cols, rows, null, null);
+  function isColumnEdgeCell(col, row, columnRects, cols, rows, tapHalf = null, manualSide = null) {
+    if (!columnRects?.length) return false;
+    return !!resolveHalfColumnTap(col, row, columnRects, cols, rows, tapHalf, manualSide);
   }
 
   function adjustColumnExclusions(columnExcluded, splitCells) {
