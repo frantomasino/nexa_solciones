@@ -1619,6 +1619,9 @@ a.dropdown-item:hover {
 }
 
 .plan-stage canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   transform-origin: center center;
   will-change: transform;
   cursor: inherit;

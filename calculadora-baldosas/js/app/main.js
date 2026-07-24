@@ -926,7 +926,7 @@
   function fitPlanToStage() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        planViewerControls?.fitView();
+        planViewerControls?.resetView();
       });
     });
   }
