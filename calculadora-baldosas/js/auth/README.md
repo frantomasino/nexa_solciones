@@ -2,6 +2,23 @@
 
 **Esta rama tiene login activado.** Producción (`main`) sigue sin login hasta que lo apruebes.
 
+## URL correcta para probar
+
+| URL | ¿Muestra login? |
+|-----|-----------------|
+| `https://nexa-solciones.vercel.app` | **No** — es producción, entra directo al dashboard |
+| Preview del PR #55 (dominio con `supabas` en el nombre) | **Sí** — pantalla con Google y teléfono |
+| `http://localhost:8080` (servidor local en esta rama) | **Sí** |
+
+**Preview actual (jul 2026):**  
+https://nexa-solciones-git-cursor-supabas-cb32e5-frantomasinos-projects.vercel.app
+
+Si en incógnito ves el dashboard sin login, casi seguro estás en **producción**. Mirá la barra de direcciones: tiene que decir `supabas` en el dominio.
+
+Si Vercel pide iniciar sesión antes de ver la app, es la **protección de deployments** del proyecto. Entrá con tu cuenta de Vercel o desactivala en *Project Settings → Deployment Protection* para previews.
+
+Para forzar cierre de sesión en preview: agregá `?logout=1` al final de la URL.
+
 ## 1. SQL en Supabase
 
 En **SQL Editor**, ejecutá el archivo `schema.sql` de esta carpeta.

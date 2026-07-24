@@ -2565,31 +2565,34 @@
     });
   }
 
-  async function clearPreviewServiceWorker() {
+  async function clearPreviewCache() {
     if (!('serviceWorker' in navigator)) return;
-    if (!/supabas|localhost|127\.0\.0\.1/i.test(location.hostname)) return;
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.all(regs.map((r) => r.unregister()));
     if (window.caches) {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
     }
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith('sb-') && k.includes('auth')) localStorage.removeItem(k);
+    });
   }
 
   async function init() {
     if (/supabas|localhost|127\.0\.0\.1/i.test(location.hostname) && !$('#viewLogin')) {
-      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif">Esta URL es preview de login pero el navegador cargó una versión vieja. Probá en ventana privada o borrá datos del sitio.</p>';
+      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif;max-width:420px;margin:0 auto;line-height:1.5">Esta URL es el <strong>preview de login</strong>, pero el navegador cargó la versión vieja (sin login).<br><br>Probá en <strong>ventana privada</strong> o borrá datos del sitio.<br><br>La URL debe contener <code>supabas</code> en el dominio.</p>';
       return;
     }
 
-    if (new URLSearchParams(location.search).has('logout') && global.Auth?.signOut) {
-      await clearPreviewServiceWorker();
-      await global.Auth.signOut?.();
+    if (new URLSearchParams(location.search).has('logout')) {
+      await clearPreviewCache();
+      if (global.Auth?.isEnabled?.()) {
+        global.Auth.init();
+        try { await global.Auth.signOut(); } catch (_) { /* noop */ }
+      }
       location.replace(location.pathname);
       return;
     }
-
-    await clearPreviewServiceWorker();
 
     initTheme();
     buildPatternGrids();
