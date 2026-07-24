@@ -444,7 +444,6 @@
       if (onRight && !onLeft) return 'R';
       if (onTop && !onBottom) return 'T';
       if (onBottom && !onTop) return 'B';
-      if (edgeHalves.length > 0) return edgeHalves[0];
     }
     return null;
   }
@@ -464,8 +463,8 @@
     const key = `${col},${row}`;
 
     if (colKeys.has(key)) {
-      const columnHalf = inferColumnHalfForCell(col, row, columnRects)
-        || (HALF_SIDES.includes(tapHalf) ? tapHalf : null)
+      const columnHalf = (HALF_SIDES.includes(tapHalf) ? tapHalf : null)
+        || inferColumnHalfForCell(col, row, columnRects)
         || (HALF_SIDES.includes(manualSide) ? manualSide : null);
       if (!columnHalf) return null;
       return { col, row, columnHalf };
@@ -545,9 +544,9 @@
     const sideFromTap = halfSideFromPlanPoint(
       canvas, clientX, clientY, best.col, best.row, cols, rows, options
     );
-    const columnHalf = inferColumnHalfForCell(best.col, best.row, columnRects)
-      || sideFromTap
+    const columnHalf = sideFromTap
       || tapHalf
+      || inferColumnHalfForCell(best.col, best.row, columnRects)
       || (HALF_SIDES.includes(manualSide) ? manualSide : null);
     if (!columnHalf) return null;
     return { col: best.col, row: best.row, columnHalf };
