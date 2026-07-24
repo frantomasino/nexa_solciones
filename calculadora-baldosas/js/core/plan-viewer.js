@@ -21,7 +21,7 @@
     }
 
     function applyTransform() {
-      canvasEl.style.transform = `translate(calc(-50% + ${state.tx}px), calc(-50% + ${state.ty}px)) scale(${state.scale}) rotate(${state.rotation}deg)`;
+      canvasEl.style.transform = `translate(${state.tx}px, ${state.ty}px) scale(${state.scale}) rotate(${state.rotation}deg)`;
       if (zoomLabel) zoomLabel.textContent = `${Math.round(state.scale * 100)}%`;
       if (rotationRange) rotationRange.value = String(((state.rotation % 360) + 360) % 360);
       if (rotationValue) rotationValue.textContent = `${Math.round(state.rotation)}°`;

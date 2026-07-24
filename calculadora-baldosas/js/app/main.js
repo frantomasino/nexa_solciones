@@ -2111,6 +2111,7 @@
     $('#planStage')?.addEventListener('pointerdown', (e) => {
       if (!shapeMode && !obstacleMode && !paintMode && !columnMode) return;
       if (e.target.closest('.plan-toolbar') || e.target.closest('.paint-toolbar') || e.target.closest('.column-toolbar')) return;
+      if (e.target !== $('#floorCanvas')) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       isPaintingDrag = paintMode;
