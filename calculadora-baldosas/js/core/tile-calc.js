@@ -202,44 +202,25 @@
     };
   }
 
-  function clientToPlanPoint(canvas, clientX, clientY) {
-    const logicalW = parseFloat(canvas.dataset.logicalWidth);
-    const logicalH = parseFloat(canvas.dataset.logicalHeight);
-    const cssW = parseFloat(canvas.style.width) || logicalW;
-    const cssH = parseFloat(canvas.style.height) || logicalH;
-    if (!logicalW || !logicalH || !cssW || !cssH) return null;
-
+  function clientToPlanPoint(canvas, clientX, clientY, cols, rows, options = {}) {
+    if (!canvas || !cols || !rows) return null;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
-
-    const style = getComputedStyle(canvas);
-    const transform = style.transform;
-    if (!transform || transform === 'none') {
-      return {
-        px: ((clientX - rect.left) / rect.width) * logicalW,
-        py: ((clientY - rect.top) / rect.height) * logicalH,
-      };
-    }
-
-    const matrix = new DOMMatrixReadOnly(transform);
-    const inv = matrix.inverse();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    const local = inv.transformPoint(new DOMPoint(x - rect.width / 2, y - rect.height / 2));
-    const untransformedX = local.x + cssW / 2;
-    const untransformedY = local.y + cssH / 2;
+    const { padLeft, padRight, padTop, padBottom, drawW, drawH } = layoutMetrics(cols, rows, options);
+    const logicalW = drawW + padLeft + padRight;
+    const logicalH = drawH + padTop + padBottom;
     return {
-      px: (untransformedX / cssW) * logicalW,
-      py: (untransformedY / cssH) * logicalH,
+      px: ((clientX - rect.left) / rect.width) * logicalW,
+      py: ((clientY - rect.top) / rect.height) * logicalH,
     };
   }
 
   function metersFromCanvasPoint(canvas, clientX, clientY, cols, rows, actualWidthM, actualLengthM, options = {}) {
     if (!canvas || !cols || !rows) return null;
-    const point = clientToPlanPoint(canvas, clientX, clientY);
+    const point = clientToPlanPoint(canvas, clientX, clientY, cols, rows, options);
     if (!point) return null;
     const { px, py } = point;
-    const { padLeft, padTop, drawW, drawH } = layoutFromCanvas(canvas, cols, rows, options);
+    const { padLeft, padTop, drawW, drawH } = layoutMetrics(cols, rows, options);
     const xM = ((px - padLeft) / drawW) * actualWidthM;
     const yM = ((py - padTop) / drawH) * actualLengthM;
     if (xM < 0 || yM < 0 || xM > actualWidthM || yM > actualLengthM) return null;
@@ -771,14 +752,13 @@
 
   function cellFromPoint(canvas, clientX, clientY, cols, rows, options = {}) {
     if (!canvas || !cols || !rows) return null;
-    const point = clientToPlanPoint(canvas, clientX, clientY);
+    const point = clientToPlanPoint(canvas, clientX, clientY, cols, rows, options);
     if (!point) return null;
     const { px, py } = point;
-    const { padLeft, padTop, drawW, drawH, cellW, cellH } = layoutFromCanvas(canvas, cols, rows, options);
-    if (px < padLeft || py < padTop || px > padLeft + drawW || py > padTop + drawH) return null;
-    const col = Math.floor((px - padLeft) / cellW);
-    const row = Math.floor((py - padTop) / cellH);
-    if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+    const { padLeft, padTop, drawW, drawH, cellW, cellH } = layoutMetrics(cols, rows, options);
+    if (px < padLeft || py < padTop || px >= padLeft + drawW || py >= padTop + drawH) return null;
+    const col = Math.min(cols - 1, Math.max(0, Math.floor((px - padLeft) / cellW)));
+    const row = Math.min(rows - 1, Math.max(0, Math.floor((py - padTop) / cellH)));
     return { col, row };
   }
 
