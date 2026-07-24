@@ -910,24 +910,47 @@
       return;
     }
 
-    if (pattern === 'rejilla' && idx === 1) {
-      ctx.fillStyle = colors[idx]?.hex || '#888';
-      const thick = Math.max(1, Math.min(w, h) * 0.18);
-      if (w > h) ctx.fillRect(x + pad, y + h / 2 - thick / 2, w - pad * 2, thick);
-      else ctx.fillRect(x + w / 2 - thick / 2, y + pad, thick, h - pad * 2);
+    if (pattern === 'rejilla' && idx > 0) {
+      ctx.save();
+      ctx.strokeStyle = colors[idx]?.hex || '#888';
+      ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.065);
+      const x0 = x + pad;
+      const y0 = y + pad;
+      const x1 = x + w - pad;
+      const y1 = y + h - pad;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.moveTo(x1, y0);
+      ctx.lineTo(x0, y1);
+      ctx.stroke();
+      const steps = 3;
+      for (let i = 1; i <= steps; i++) {
+        const t = i / (steps + 1);
+        ctx.beginPath();
+        ctx.moveTo(x0 + (x1 - x0) * t, y0);
+        ctx.lineTo(x0 + (x1 - x0) * (1 - t), y1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x1 - (x1 - x0) * t, y0);
+        ctx.lineTo(x1 - (x1 - x0) * (1 - t), y1);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     if (pattern === 'trama') {
-      const lineColor = idx === 0 ? (colors[1]?.hex || '#444') : (colors[0]?.hex || '#aaa');
-      ctx.strokeStyle = lineColor;
-      ctx.lineWidth = Math.max(0.5, Math.min(w, h) * 0.12);
-      ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const off = pad + i * ((w - pad * 2) / 2);
-        ctx.moveTo(x + off, y + pad);
-        ctx.lineTo(x + off, y + h - pad);
+      const seed = (Math.round(x) * 17 + Math.round(y) * 31) | 0;
+      const speck = idx === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.25)';
+      for (let i = 0; i < 16; i++) {
+        const px = x + pad + ((seed + i * 19) % 100) / 100 * (w - pad * 2);
+        const py = y + pad + ((seed + i * 37) % 100) / 100 * (h - pad * 2);
+        const r = Math.max(0.45, Math.min(w, h) * (0.03 + (i % 4) * 0.01));
+        ctx.fillStyle = speck;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.stroke();
     }
   }
 
@@ -1334,7 +1357,7 @@
     const tilePhoto = options.floorTypeImage;
     const numColors = planColorCount || colors.length;
     const usePhotoTiles = !assemblyMode && tilePhoto && isFloorType(pattern) && numColors <= 1;
-    const photoAlpha = 0.82;
+    const photoAlpha = 0.9;
     const roomWidthM = options.roomWidthM ?? result.roomWidthM ?? actualWidthM;
     const roomLengthM = options.roomLengthM ?? result.roomLengthM ?? actualLengthM;
     const columnKeys = options.columnCellKeys || columnCellKeys(options.columnRects, cols, rows);
