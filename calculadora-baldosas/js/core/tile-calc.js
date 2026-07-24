@@ -426,9 +426,8 @@
     );
   }
 
-  function inferColumnHalfForCell(col, row, columnRects, preferredSide = null) {
+  function inferColumnHalfForCell(col, row, columnRects) {
     if (!columnRects?.length) return null;
-    if (HALF_SIDES.includes(preferredSide)) return preferredSide;
     for (const rect of columnRects) {
       if (col < rect.col0 || col > rect.col1 || row < rect.row0 || row > rect.row1) continue;
       const onLeft = col === rect.col0;
@@ -450,17 +449,26 @@
     return null;
   }
 
-  function resolveHalfColumnTap(col, row, columnRects, cols, rows, preferredSide = null) {
+  function isColumnEdgeCellKey(col, row, columnRects) {
+    if (!columnRects?.length) return false;
+    for (const rect of columnRects) {
+      if (col < rect.col0 || col > rect.col1 || row < rect.row0 || row > rect.row1) continue;
+      return col === rect.col0 || col === rect.col1 || row === rect.row0 || row === rect.row1;
+    }
+    return false;
+  }
+
+  function resolveHalfColumnTap(col, row, columnRects, cols, rows, tapHalf = null, manualSide = null) {
     if (!columnRects?.length || col < 0 || row < 0 || col >= cols || row >= rows) return null;
     const colKeys = columnCellKeys(columnRects, cols, rows);
     const key = `${col},${row}`;
 
     if (colKeys.has(key)) {
-      return {
-        col,
-        row,
-        columnHalf: inferColumnHalfForCell(col, row, columnRects, preferredSide) || preferredSide || 'L',
-      };
+      const columnHalf = inferColumnHalfForCell(col, row, columnRects)
+        || (HALF_SIDES.includes(tapHalf) ? tapHalf : null)
+        || (HALF_SIDES.includes(manualSide) ? manualSide : null);
+      if (!columnHalf) return null;
+      return { col, row, columnHalf };
     }
 
     const neighbors = [
@@ -475,13 +483,13 @@
       return {
         col: n.nc,
         row: n.nr,
-        columnHalf: preferredSide || n.columnHalf,
+        columnHalf: n.columnHalf,
       };
     }
     return null;
   }
 
-  function resolveHalfColumnTapFromPoint(canvas, clientX, clientY, columnRects, cols, rows, options = {}, preferredSide = null) {
+  function resolveHalfColumnTapFromPoint(canvas, clientX, clientY, columnRects, cols, rows, options = {}, manualSide = null) {
     if (!columnRects?.length || !canvas) return null;
     const hit = cellHitFromClient(canvas, clientX, clientY, cols, rows, options);
     if (hit) {
@@ -491,7 +499,8 @@
         columnRects,
         cols,
         rows,
-        preferredSide || hit.halfSide
+        hit.halfSide,
+        manualSide
       );
       if (fromCell) return fromCell;
     }
@@ -502,10 +511,13 @@
     const colKeys = columnCellKeys(columnRects, cols, rows);
     if (!colKeys.size) return null;
 
+    const tapHalf = hit?.halfSide
+      || (hit ? halfSideFromPlanPoint(canvas, clientX, clientY, hit.col, hit.row, cols, rows, options) : null);
+
     let best = null;
     let bestDist = Infinity;
-    for (const key of colKeys) {
-      const [col, row] = key.split(',').map(Number);
+    const maxDist = (Math.max(cellW, cellH) * 1.75) ** 2;
+    const considerKey = (col, row) => {
       const cx = padLeft + (col + 0.5) * cellW;
       const cy = padTop + (row + 0.5) * cellH;
       const dist = ((point.px - cx) ** 2) + ((point.py - cy) ** 2);
@@ -513,20 +525,36 @@
         bestDist = dist;
         best = { col, row };
       }
-    }
+    };
 
-    const maxDist = (Math.max(cellW, cellH) * 1.35) ** 2;
+    for (const key of colKeys) {
+      const [col, row] = key.split(',').map(Number);
+      if (!isColumnEdgeCellKey(col, row, columnRects)) continue;
+      considerKey(col, row);
+    }
+    if (!best || bestDist > maxDist) {
+      best = null;
+      bestDist = Infinity;
+      for (const key of colKeys) {
+        const [col, row] = key.split(',').map(Number);
+        considerKey(col, row);
+      }
+    }
     if (!best || bestDist > maxDist) return null;
 
-    const side = preferredSide
-      || halfSideFromPlanPoint(canvas, clientX, clientY, best.col, best.row, cols, rows, options)
-      || 'L';
-    const columnHalf = inferColumnHalfForCell(best.col, best.row, columnRects, side) || side;
+    const sideFromTap = halfSideFromPlanPoint(
+      canvas, clientX, clientY, best.col, best.row, cols, rows, options
+    );
+    const columnHalf = inferColumnHalfForCell(best.col, best.row, columnRects)
+      || sideFromTap
+      || tapHalf
+      || (HALF_SIDES.includes(manualSide) ? manualSide : null);
+    if (!columnHalf) return null;
     return { col: best.col, row: best.row, columnHalf };
   }
 
   function isColumnEdgeCell(col, row, columnRects, cols, rows) {
-    return !!resolveHalfColumnTap(col, row, columnRects, cols, rows, null);
+    return !!resolveHalfColumnTap(col, row, columnRects, cols, rows, null, null);
   }
 
   function adjustColumnExclusions(columnExcluded, splitCells) {
@@ -871,15 +899,15 @@
   }
 
   function screenPlanMetrics(cols, rows, stageWidth, stageHeight) {
-    const padW = 64;
-    const padH = 56;
+    const padW = 48;
+    const padH = 40;
     const sw = Math.max(200, stageWidth || 0);
     const sh = Math.max(180, stageHeight || 0);
-    if (!cols || !rows) return { minCellPx: 40, supersample: 1 };
+    if (!cols || !rows) return { minCellPx: 40, supersample: 2, maxSize: 4096 };
     const byStage = Math.floor(Math.min((sw - padW) / cols, (sh - padH) / rows));
-    const minCellPx = Math.max(10, Math.min(120, byStage));
-    const supersample = typeof window !== 'undefined' && window.devicePixelRatio > 1 ? 2 : 2;
-    return { minCellPx, supersample };
+    const minCellPx = Math.max(12, Math.min(180, byStage));
+    const supersample = 3;
+    return { minCellPx, supersample, maxSize: 4096 };
   }
 
   function layoutMetrics(cols, rows, options = {}) {

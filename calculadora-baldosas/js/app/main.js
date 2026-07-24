@@ -732,7 +732,7 @@
     if (!lastResult) return;
     const side = preferredSide || activeHalfSide;
     const resolved = TileCalc.resolveHalfColumnTap(
-      col, row, columnRects, lastResult.cols, lastResult.rows, side
+      col, row, columnRects, lastResult.cols, lastResult.rows, side, null
     );
     if (!resolved) return;
     const { col: tc, row: tr, columnHalf } = resolved;
@@ -794,13 +794,7 @@
     markSplitCellDirty(col, row);
   }
 
-  function toggleHalfColumn(col, row, preferredSide = null) {
-    if (!lastResult) return;
-    const resolved = TileCalc.resolveHalfColumnTap(
-      col, row, columnRects, lastResult.cols, lastResult.rows, preferredSide || activeHalfSide
-    );
-    if (!resolved) return false;
-    const { col: tc, row: tr, columnHalf: side } = resolved;
+  function applyHalfColumnToggle(tc, tr, side) {
     const key = `${tc},${tr}`;
     const entry = splitCells[key] || {};
     if (entry.columnHalf === side) {
@@ -815,31 +809,55 @@
     }
     updateColumnUI();
     updatePaintUI();
-    markSplitCellDirty(tc, tr);
+    schedulePlanRedraw();
     paintResultsPending = true;
+    syncPaintResults({ refreshThumb: false });
+  }
+
+  function toggleHalfColumn(col, row, tapHalf = null, manualSide = null) {
+    if (!lastResult) return false;
+    const resolved = TileCalc.resolveHalfColumnTap(
+      col, row, columnRects, lastResult.cols, lastResult.rows, tapHalf, manualSide
+    );
+    if (!resolved) return false;
+    applyHalfColumnToggle(resolved.col, resolved.row, resolved.columnHalf);
     return true;
   }
 
   function toggleHalfColumnAt(clientX, clientY) {
     if (!lastResult || !columnRects.length) return;
-    const resolved = TileCalc.resolveHalfColumnTapFromPoint(
-      $('#floorCanvas'),
+    const canvas = $('#floorCanvas');
+    const opts = planPointerOptions();
+    let resolved = TileCalc.resolveHalfColumnTapFromPoint(
+      canvas,
       clientX,
       clientY,
       columnRects,
       lastResult.cols,
       lastResult.rows,
-      planPointerOptions(),
-      activeHalfSide
+      opts,
+      null
     );
+    if (!resolved) {
+      resolved = TileCalc.resolveHalfColumnTapFromPoint(
+        canvas,
+        clientX,
+        clientY,
+        columnRects,
+        lastResult.cols,
+        lastResult.rows,
+        opts,
+        activeHalfSide
+      );
+    }
     if (!resolved) {
       const summary = $('#columnSummary');
       if (summary) {
-        summary.textContent = 'Tocá sobre la columna o la baldosa al lado del pilar. Usá los botones ◧◨◤◥ si hace falta elegir el lado.';
+        summary.textContent = 'Tocá la columna o la baldosa pegada al pilar. En esquinas usá ◧◨◤◥ para elegir el lado.';
       }
       return;
     }
-    toggleHalfColumn(resolved.col, resolved.row, resolved.columnHalf);
+    applyHalfColumnToggle(resolved.col, resolved.row, resolved.columnHalf);
   }
 
   function setActiveHalfSide(side) {
@@ -1179,6 +1197,7 @@
       );
       opts.minCellPx = metrics.minCellPx;
       opts.supersample = metrics.supersample;
+      opts.maxSize = metrics.maxSize;
     }
     return opts;
   }
