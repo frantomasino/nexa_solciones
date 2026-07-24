@@ -11,11 +11,10 @@
     moneda: 'Moneda',
   };
 
-  const FLOOR_IMAGE_VERSION = 'v4';
   const FLOOR_TYPE_IMAGES = {
-    rejilla: `images/piso-rejilla.jpg?${FLOOR_IMAGE_VERSION}`,
-    trama: `images/piso-trama.jpg?${FLOOR_IMAGE_VERSION}`,
-    moneda: `images/piso-moneda.jpg?${FLOOR_IMAGE_VERSION}`,
+    rejilla: 'images/piso-rejilla.jpg',
+    trama: 'images/piso-trama.jpg',
+    moneda: 'images/piso-moneda.jpg',
   };
 
   function usesPhotoTexture(pattern) {
@@ -1614,7 +1613,7 @@
     if (!isFloorType(pattern)) return Promise.resolve(null);
     const src = FLOOR_TYPE_IMAGES[pattern];
     if (!src) return Promise.resolve(null);
-    const cacheKey = `${pattern}:${FLOOR_IMAGE_VERSION}`;
+    const cacheKey = pattern;
     if (floorTypeImageCache[cacheKey]) return Promise.resolve(floorTypeImageCache[cacheKey]);
     return loadImage(src)
       .then((img) => {
