@@ -853,7 +853,7 @@
     if (!resolved) {
       const summary = $('#columnSummary');
       if (summary) {
-        summary.textContent = 'Tocá la columna o la baldosa pegada al pilar. En esquinas usá ◧◨◤◥ para elegir el lado.';
+        summary.textContent = 'Tocá la baldosa del piso pegada al pilar (o la columna). En esquinas usá ◧◨◤◥.';
       }
       return;
     }
