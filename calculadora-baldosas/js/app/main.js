@@ -1,7 +1,7 @@
 /**
  * Orquestación: vistas, formularios, eventos y cálculo en vivo.
  */
-(function () {
+(function (global) {
   'use strict';
 
   const DEBOUNCE_MS = 300;
@@ -2629,4 +2629,4 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
-})();
+})(typeof window !== 'undefined' ? window : globalThis);
