@@ -12,9 +12,9 @@
   };
 
   const FLOOR_TYPE_IMAGES = {
-    rejilla: 'images/piso-rejilla.jpg',
-    trama: 'images/piso-trama.jpg',
-    moneda: 'images/piso-moneda.jpg',
+    rejilla: 'assets/images/piso-rejilla.jpg',
+    trama: 'assets/images/piso-trama.jpg',
+    moneda: 'assets/images/piso-moneda.jpg',
   };
 
   function usesPhotoTexture(pattern) {

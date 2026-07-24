@@ -44,8 +44,8 @@ create policy "Users see own presupuestos"
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/pendiente-login/supabase-config.js"></script>
-<script src="js/pendiente-login/auth.js"></script>
+<script src="js/auth/supabase-config.js"></script>
+<script src="js/auth/auth.js"></script>
 ```
 
 5. Descomentar el código de inicialización en `auth.js`.

@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v75';
+const CACHE = 'nexa-v76';
 const ASSETS = [
   './',
   './index.html',
@@ -7,16 +7,16 @@ const ASSETS = [
   './js/core/plan-viewer.js',
   './js/core/photo-measure.js',
   './js/data/storage.js',
-  './js/core/export-excel.js',
+  './js/export/export-excel.js',
   './js/app/main.js',
   './manifest.json',
-  './icons/icon.svg',
-  './icons/nexa-logo.png',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './images/piso-rejilla.jpg',
-  './images/piso-trama.jpg',
-  './images/piso-moneda.jpg',
+  './assets/icons/icon.svg',
+  './assets/icons/nexa-logo.png',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
+  './assets/images/piso-rejilla.jpg',
+  './assets/images/piso-trama.jpg',
+  './assets/images/piso-moneda.jpg',
 ];
 
 self.addEventListener('install', (e) => {
