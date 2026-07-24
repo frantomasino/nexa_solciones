@@ -762,6 +762,24 @@
     return { col, row };
   }
 
+  function halfSideFromPlanPoint(canvas, clientX, clientY, col, row, cols, rows, options = {}) {
+    const point = clientToPlanPoint(canvas, clientX, clientY, cols, rows, options);
+    if (!point) return null;
+    const { px, py } = point;
+    const { padLeft, padTop, cellW, cellH } = layoutMetrics(cols, rows, options);
+    const relX = (px - padLeft - col * cellW) / cellW;
+    const relY = (py - padTop - row * cellH) / cellH;
+    if (Math.abs(relX - 0.5) > Math.abs(relY - 0.5)) return relX < 0.5 ? 'L' : 'R';
+    return relY < 0.5 ? 'T' : 'B';
+  }
+
+  function cellHitFromClient(canvas, clientX, clientY, cols, rows, options = {}) {
+    const cell = cellFromPoint(canvas, clientX, clientY, cols, rows, options);
+    if (!cell) return null;
+    const halfSide = halfSideFromPlanPoint(canvas, clientX, clientY, cell.col, cell.row, cols, rows, options);
+    return { ...cell, halfSide };
+  }
+
   function drawTileDetail(ctx, pattern, idx, x, y, w, h, colors) {
     const pad = Math.max(1, Math.min(w, h) * 0.08);
     const cx = x + w / 2;
@@ -1373,11 +1391,11 @@
 
   function repaintPlanCells(canvas, result, cells, options = {}) {
     if (!canvas || !result?.grid || !cells?.length) return;
-    const { grid, colors, cols, rows, pattern, colorCount: planColorCount } = result;
-    const layout = layoutFromCanvas(canvas, cols, rows, options);
-    const { padTop, padLeft, cellW, cellH } = layout;
+    const { grid, colors, cols, rows } = result;
+    const layout = layoutMetrics(cols, rows, options);
+    const { padTop, padLeft, cellW, cellH, ratio } = layout;
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(layout.ratio, 0, 0, layout.ratio, 0, 0);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     const paintNeutralMode = options.paintNeutralMode === true;
     const customPaintMap = options.customPaint || {};
     const splitCellsMap = options.splitCells || {};
@@ -1639,6 +1657,8 @@
     isFloorType,
     tilesPerBoxForPattern,
     cellFromPoint,
+    cellHitFromClient,
+    halfSideFromPlanPoint,
     cellsAlongLine,
     metersFromCanvasPoint,
     layoutMetrics,
