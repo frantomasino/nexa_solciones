@@ -481,6 +481,50 @@
     return null;
   }
 
+  function resolveHalfColumnTapFromPoint(canvas, clientX, clientY, columnRects, cols, rows, options = {}, preferredSide = null) {
+    if (!columnRects?.length || !canvas) return null;
+    const hit = cellHitFromClient(canvas, clientX, clientY, cols, rows, options);
+    if (hit) {
+      const fromCell = resolveHalfColumnTap(
+        hit.col,
+        hit.row,
+        columnRects,
+        cols,
+        rows,
+        preferredSide || hit.halfSide
+      );
+      if (fromCell) return fromCell;
+    }
+
+    const point = clientToPlanPoint(canvas, clientX, clientY, cols, rows, options);
+    if (!point) return null;
+    const { padLeft, padTop, cellW, cellH } = layoutMetrics(cols, rows, options);
+    const colKeys = columnCellKeys(columnRects, cols, rows);
+    if (!colKeys.size) return null;
+
+    let best = null;
+    let bestDist = Infinity;
+    for (const key of colKeys) {
+      const [col, row] = key.split(',').map(Number);
+      const cx = padLeft + (col + 0.5) * cellW;
+      const cy = padTop + (row + 0.5) * cellH;
+      const dist = ((point.px - cx) ** 2) + ((point.py - cy) ** 2);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { col, row };
+      }
+    }
+
+    const maxDist = (Math.max(cellW, cellH) * 1.35) ** 2;
+    if (!best || bestDist > maxDist) return null;
+
+    const side = preferredSide
+      || halfSideFromPlanPoint(canvas, clientX, clientY, best.col, best.row, cols, rows, options)
+      || 'L';
+    const columnHalf = inferColumnHalfForCell(best.col, best.row, columnRects, side) || side;
+    return { col: best.col, row: best.row, columnHalf };
+  }
+
   function isColumnEdgeCell(col, row, columnRects, cols, rows) {
     return !!resolveHalfColumnTap(col, row, columnRects, cols, rows, null);
   }
@@ -833,8 +877,9 @@
     const sh = Math.max(180, stageHeight || 0);
     if (!cols || !rows) return { minCellPx: 40, supersample: 1 };
     const byStage = Math.floor(Math.min((sw - padW) / cols, (sh - padH) / rows));
-    const minCellPx = Math.max(10, Math.min(96, byStage));
-    return { minCellPx, supersample: 1 };
+    const minCellPx = Math.max(10, Math.min(120, byStage));
+    const supersample = typeof window !== 'undefined' && window.devicePixelRatio > 1 ? 2 : 2;
+    return { minCellPx, supersample };
   }
 
   function layoutMetrics(cols, rows, options = {}) {
@@ -1639,6 +1684,7 @@
     oppositeHalf,
     inferColumnHalfForCell,
     resolveHalfColumnTap,
+    resolveHalfColumnTapFromPoint,
     isColumnEdgeCell,
     formatTileCount,
     sumPaintCounts,
