@@ -1625,6 +1625,8 @@ a.dropdown-item:hover {
   margin: 0;
   flex: 0 0 auto;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+  image-rendering: high-quality;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .plan-zoom-label {
