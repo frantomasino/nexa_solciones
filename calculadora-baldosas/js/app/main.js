@@ -1658,22 +1658,20 @@
   }
 
   async function enterAuthenticatedApp() {
-    try {
-      if (global.CloudStorage?.syncOnLogin) {
-        await global.CloudStorage.syncOnLogin();
-      }
-    } catch (err) {
-      console.warn('Sync inicial', err);
-      showLoginError('No se pudo sincronizar. ¿Ejecutaste js/auth/schema.sql en Supabase?');
-      showView('login');
-      return;
-    }
     const authUser = global.Auth.getUser();
     if (authUser?.name) {
       Storage.setCurrentUser(authUser.name);
       updateUserDisplay(authUser.name);
     }
     initAuthUserButton();
+    try {
+      if (global.CloudStorage?.syncOnLogin) {
+        await global.CloudStorage.syncOnLogin();
+      }
+    } catch (err) {
+      console.warn('Sync inicial', err);
+      alert('Entraste, pero no se pudo sincronizar. Si es la primera vez, ejecutá js/auth/schema.sql en Supabase.');
+    }
     showView('dashboard');
   }
 
@@ -2567,7 +2565,32 @@
     });
   }
 
+  async function clearPreviewServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (!/supabas|localhost|127\.0\.0\.1/i.test(location.hostname)) return;
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  }
+
   async function init() {
+    if (/supabas|localhost|127\.0\.0\.1/i.test(location.hostname) && !$('#viewLogin')) {
+      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif">Esta URL es preview de login pero el navegador cargó una versión vieja. Probá en ventana privada o borrá datos del sitio.</p>';
+      return;
+    }
+
+    if (new URLSearchParams(location.search).has('logout') && global.Auth?.signOut) {
+      await clearPreviewServiceWorker();
+      await global.Auth.signOut?.();
+      location.replace(location.pathname);
+      return;
+    }
+
+    await clearPreviewServiceWorker();
+
     initTheme();
     buildPatternGrids();
     buildColorPalette([]);
