@@ -2130,8 +2130,22 @@ a.dropdown-item:hover {
 @media (max-width: 1000px) {
   .editor-layout { grid-template-columns: 1fr; }
   .editor-preview { position: static; }
-  .dash-hero { align-items: flex-start; }
-  .stats-row { grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 0.75rem; }
+  .dash-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.1rem;
+  }
+  .stats-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.5rem 0.75rem;
+    padding: 0.75rem 0.85rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
   .budget-table .col-date,
   .budget-table .col-boxes { display: none; }
   .app-main { padding: 1rem; }
@@ -2141,54 +2155,98 @@ a.dropdown-item:hover {
 @media (max-width: 600px) {
   html { font-size: 14px; }
 
-  .dash-title { font-size: 1.45rem; }
-  .stats-row { grid-template-columns: 1fr 1fr; gap: 0.65rem 1rem; }
-  .stats-inline .stat-value { font-size: 1.1rem; }
+  .dash-title { font-size: 1.4rem; letter-spacing: -0.03em; }
+  .dash-sub { font-size: 0.82rem; }
+  .stats-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem 0.85rem;
+  }
+  .stats-inline .stat-value { font-size: 1.15rem; }
+  .stats-inline .stat-label { font-size: 0.65rem; }
 
   .header-inner {
     flex-direction: row;
     align-items: center;
-    padding: 0.55rem 0.85rem;
-    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    gap: 0.4rem;
   }
 
   .brand {
     flex: 1;
     min-width: 0;
-    gap: 0.55rem;
+    gap: 0.45rem;
   }
 
-  .brand-logo { height: 26px; }
-  .brand-title { font-size: 0.92rem; }
+  .brand-logo-wrap { padding: 0.25rem 0.4rem; }
+  .brand-logo { height: 24px; }
+  .brand-title { font-size: 0.88rem; }
 
   .header-actions {
     width: auto;
     display: flex;
     flex-wrap: nowrap;
-    gap: 0.25rem;
+    gap: 0.15rem;
     flex-shrink: 0;
   }
 
   #btnInstall {
     width: auto;
-    min-height: 40px;
-    padding: 0.35rem 0.45rem;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.35rem;
     order: 0;
   }
 
-  .btn-user {
-    padding: 0.35rem 0.55rem 0.35rem 0.35rem;
-    max-width: 7.5rem;
+  .btn-theme {
+    min-height: 44px;
+    min-width: 44px;
   }
 
-  .btn-user span:not(.user-avatar) { max-width: 4rem; overflow: hidden; text-overflow: ellipsis; }
+  .btn-user {
+    padding: 0.3rem 0.5rem 0.3rem 0.3rem;
+    max-width: 6.8rem;
+    min-height: 44px;
+  }
 
-  .list-toolbar { flex-direction: column; align-items: stretch; }
-  .list-toolbar-right { flex-direction: column; width: 100%; }
-  .list-toolbar-right .btn-primary { width: 100%; }
+  .btn-user span:not(.user-avatar) {
+    max-width: 3.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.9rem 0.95rem;
+    gap: 0.75rem;
+  }
+  .list-toolbar-right {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+  .list-toolbar-right .btn-primary {
+    width: 100%;
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
   .toolbar-export-group { width: 100%; }
-  .toolbar-export-group .btn { flex: 1; min-width: 0; }
-  .search-input { width: 100%; }
+  .toolbar-export-group .btn {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .search-input {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px; /* evita zoom iOS */
+  }
+
+  .budget-table th,
+  .budget-table td {
+    padding: 0.7rem 0.65rem;
+  }
 
   .editor-topbar {
     display: grid;
@@ -2196,16 +2254,17 @@ a.dropdown-item:hover {
     grid-template-areas:
       "title title"
       "back actions";
-    gap: 0.45rem 0.5rem;
+    gap: 0.5rem 0.45rem;
     margin-bottom: 0.85rem;
-    padding: 0.75rem;
+    padding: 0.7rem 0.75rem;
   }
 
   #btnBack {
     grid-area: back;
     justify-self: start;
-    padding-left: 0;
+    padding-left: 0.25rem;
     min-height: 44px;
+    font-size: 0.82rem;
   }
 
   .editor-title {
@@ -2220,21 +2279,26 @@ a.dropdown-item:hover {
     width: auto;
     justify-self: end;
     flex-wrap: nowrap;
+    gap: 0.3rem;
   }
 
   .editor-topbar-actions .btn {
     flex: 0 1 auto;
     min-height: 44px;
-    padding-left: 0.55rem;
-    padding-right: 0.55rem;
-    font-size: 0.7rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: 0.72rem;
   }
 
-  #btnSave { flex: 1 1 auto; min-width: 5.5rem; }
+  #btnSave {
+    flex: 1 1 auto;
+    min-width: 5.5rem;
+    box-shadow: 0 4px 12px rgba(238, 125, 48, 0.3);
+  }
 
-  .app-main { padding: 0.75rem 0.85rem calc(1.25rem + env(safe-area-inset-bottom)); }
+  .app-main { padding: 0.7rem 0.75rem calc(1.25rem + env(safe-area-inset-bottom)); }
 
-  .panel { padding: 0.95rem; }
+  .panel { padding: 0.9rem; }
   .panel legend { font-size: 0.88rem; }
 
   .budget-table .col-pattern,
@@ -2245,6 +2309,16 @@ a.dropdown-item:hover {
 
   .field-row { flex-direction: column; }
   .btn, .btn-calc, .measure-tab, .tile-size-btn { min-height: 44px; }
+  .measure-tabs {
+    width: 100%;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .measure-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.65rem 0.4rem;
+  }
   .colors-row { flex-direction: column; }
   .color-chip { min-width: 0; }
 
@@ -2253,8 +2327,19 @@ a.dropdown-item:hover {
   .plan-stage { min-height: min(44vh, 360px); }
   .plan-rotate-label { display: none; }
   .plan-toolbar-sep:nth-of-type(2) { display: none; }
-  .plan-toolbar { flex-wrap: nowrap; padding: 0.4rem 0.5rem; gap: 0.25rem; }
-  .plan-tool-btn { flex-shrink: 0; font-size: 0.68rem; padding: 0.3rem 0.4rem; }
+  .plan-toolbar {
+    flex-wrap: nowrap;
+    padding: 0.4rem 0.5rem;
+    gap: 0.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .plan-tool-btn {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    padding: 0.35rem 0.45rem;
+    min-height: 40px;
+  }
   .plan-zoom-label { font-size: 0.72rem; min-width: 2.5rem; }
 
   .color-palette {
@@ -2278,7 +2363,7 @@ a.dropdown-item:hover {
   .preview-panel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   .quick-stats { grid-template-columns: 1fr 1fr; gap: 0.35rem; }
-  .quick-stat { padding: 0.4rem 0.5rem; }
+  .quick-stat { padding: 0.45rem 0.5rem; }
   .qs-label { font-size: 0.6rem; }
   .qs-value { font-size: 0.95rem; }
   .qs-value-sm { font-size: 0.85rem; }
@@ -2291,10 +2376,26 @@ a.dropdown-item:hover {
   .floor-type-btn span { font-size: 0.68rem; }
   .floor-type-btn img { padding: 0.25rem; }
 
+  .shape-type-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+  }
+  .shape-type-btn { min-height: 44px; }
+
   .brand-stripe { height: 3px; }
 
   .results-table { font-size: 0.78rem; }
   .results-table th, .results-table td { padding: 0.4rem 0.25rem; }
+
+  .empty-state { padding: 2.75rem 1rem; }
+  .empty-state .btn-primary {
+    width: 100%;
+    max-width: 280px;
+    min-height: 48px;
+  }
+
+  .modal-box { padding: 1.25rem; }
+  .modal-box .btn-primary { min-height: 48px; width: 100%; }
 }
 
 @media (max-width: 380px) {
