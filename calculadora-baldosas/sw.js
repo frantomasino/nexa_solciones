@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v83-auth-preview';
+const CACHE = 'nexa-v84-auth';
 const ASSETS = [
   './',
   './index.html',

@@ -2579,8 +2579,8 @@
   }
 
   async function init() {
-    if (/supabas|localhost|127\.0\.0\.1/i.test(location.hostname) && !$('#viewLogin')) {
-      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif;max-width:420px;margin:0 auto;line-height:1.5">Esta URL es el <strong>preview de login</strong>, pero el navegador cargó la versión vieja (sin login).<br><br>Probá en <strong>ventana privada</strong> o borrá datos del sitio.<br><br>La URL debe contener <code>supabas</code> en el dominio.</p>';
+    if (global.Auth?.isEnabled?.() && !$('#viewLogin')) {
+      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif;max-width:420px;margin:0 auto;line-height:1.5">El navegador cargó una versión vieja sin pantalla de login.<br><br>Probá <strong>Ctrl+Shift+R</strong> o ventana privada. Si sigue igual, abrí <a href="?logout=1">?logout=1</a> para limpiar caché.</p>';
       return;
     }
 
