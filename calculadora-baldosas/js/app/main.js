@@ -1494,8 +1494,7 @@
       $('#totalSparePct').textContent = '—';
       $('#totalFinalLabel').textContent = '—';
       $('#totalBoxes').textContent = '—';
-      $('#accessoriesSummary')?.classList.add('hidden');
-      $('#accessoriesSummary').textContent = '';
+      $('#totalAccessoriesSuffix').textContent = '';
       $('#canvasEmpty').classList.remove('hidden');
       $('#planViewer').classList.add('hidden');
       return;
@@ -1517,6 +1516,31 @@
       </tr>`
       )
       .join('');
+
+    const bordes = form?.bordes ?? 0;
+    const esquineros = form?.esquineros ?? 0;
+    if (bordes > 0) {
+      tbody.innerHTML += `
+      <tr class="accessory-row">
+        <td>Bordes</td>
+        <td>—</td>
+        <td>—</td>
+        <td><strong>${fmt(bordes)}</strong></td>
+        <td>—</td>
+        <td>—</td>
+      </tr>`;
+    }
+    if (esquineros > 0) {
+      tbody.innerHTML += `
+      <tr class="accessory-row">
+        <td>Esquineros</td>
+        <td>—</td>
+        <td>—</td>
+        <td><strong>${fmt(esquineros)}</strong></td>
+        <td>—</td>
+        <td>—</td>
+      </tr>`;
+    }
 
     $('#statNetas').textContent = fmt(result.totalTiles);
     $('#statRepuesto').textContent = `+${fmt(result.totalSpareTiles ?? 0)} (${sparePct}%)`;
@@ -1551,21 +1575,15 @@
     $('#totalFinalLabel').textContent = fmt(result.totalTilesWithSpare);
     $('#totalBoxes').textContent = result.totalBoxes;
 
-    const bordes = form?.bordes ?? 0;
-    const esquineros = form?.esquineros ?? 0;
-    const accessories = $('#accessoriesSummary');
-    if (accessories) {
-      const parts = [];
-      if (bordes > 0) parts.push(`${bordes} borde${bordes === 1 ? '' : 's'}`);
-      if (esquineros > 0) parts.push(`${esquineros} esquinero${esquineros === 1 ? '' : 's'}`);
-      if (parts.length) {
-        accessories.textContent = `Accesorios: ${parts.join(' · ')}`;
-        accessories.classList.remove('hidden');
-      } else {
-        accessories.textContent = '';
-        accessories.classList.add('hidden');
-      }
+    const accessoryParts = [];
+    if (bordes > 0) accessoryParts.push(`${fmt(bordes)} borde${bordes === 1 ? '' : 's'}`);
+    if (esquineros > 0) accessoryParts.push(`${fmt(esquineros)} esquinero${esquineros === 1 ? '' : 's'}`);
+    const suffixEl = $('#totalAccessoriesSuffix');
+    if (suffixEl) {
+      suffixEl.textContent = accessoryParts.length ? ` + ${accessoryParts.join(' + ')}` : '';
     }
+    $('#accessoriesSummary')?.classList.add('hidden');
+    $('#accessoriesSummary').textContent = '';
   }
 
   function createThumb(canvas, maxW = 96, maxH = 64) {

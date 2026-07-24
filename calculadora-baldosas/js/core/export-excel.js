@@ -180,8 +180,18 @@
     }
 
     lines.push(rowToCsv(['TOTAL', '', t.netas, t.repuesto, t.comprar, '100', t.cajas]));
+    if ((p.bordes ?? 0) > 0) {
+      lines.push(rowToCsv(['Bordes', '', '', '', '', p.bordes]));
+    }
+    if ((p.esquineros ?? 0) > 0) {
+      lines.push(rowToCsv(['Esquineros', '', '', '', '', p.esquineros]));
+    }
     lines.push('');
-    lines.push(rowToCsv([`Total final: ${t.netas} netas + ${t.repuesto} repuesto = ${t.comprar} baldosas · ${t.cajas} cajas`]));
+    const acc = [];
+    if ((p.bordes ?? 0) > 0) acc.push(`${p.bordes} borde${p.bordes === 1 ? '' : 's'}`);
+    if ((p.esquineros ?? 0) > 0) acc.push(`${p.esquineros} esquinero${p.esquineros === 1 ? '' : 's'}`);
+    const accText = acc.length ? ` + ${acc.join(' + ')}` : '';
+    lines.push(rowToCsv([`Total final: ${t.netas} netas + ${t.repuesto} repuesto = ${t.comprar} baldosas${accText} · ${t.cajas} cajas`]));
 
     return `\ufeff${lines.join('\r\n')}`;
   }
