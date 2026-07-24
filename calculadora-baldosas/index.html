@@ -419,11 +419,12 @@
                       <button type="button" class="btn btn-sm btn-outline half-side-btn" data-half="B" title="Columna abajo">◥ Abj</button>
                     </div>
                   </div>
-                  <p id="columnSummary" class="column-summary">Arrastrá en el plano para marcar el rectángulo de cada columna o pilar. Con ½ Media columna, tocá la baldosa del piso al lado del pilar (o la columna misma).</p>
+                  <p id="columnSummary" class="column-summary">Arrastrá en el plano para marcar el rectángulo de cada columna o pilar. Con ½ Media columna, tocá la baldosa gris al lado del pilar. Tocá de nuevo para quitar.</p>
+                  <button type="button" id="planColumnHalfClear" class="btn btn-sm btn-ghost btn-danger-text hidden">Quitar todas las medias columnas</button>
                   <div id="columnList" class="column-list hidden"></div>
                 </div>
                 <div id="paintToolbar" class="paint-toolbar hidden">
-                  <p class="paint-toolbar-title">Pintar baldosas — elegí color y tocá el plano. Tocá de nuevo una baldosa pintada para borrarla sola. En el borde de una columna: media columna + media baldosa en un solo toque.</p>
+                  <p class="paint-toolbar-title">Pintar baldosas — elegí color y tocá el plano. Tocá de nuevo una baldosa pintada para borrarla. En columna sin pintar: tocá la baldosa gris al lado = solo media columna. Si ya está pintada: media columna + color.</p>
                   <div class="half-tile-controls">
                     <button type="button" id="paintHalfToggle" class="btn btn-sm btn-outline half-tile-toggle" title="Pintar solo media baldosa">½ Media baldosa</button>
                     <div id="paintHalfSides" class="half-side-btns hidden">

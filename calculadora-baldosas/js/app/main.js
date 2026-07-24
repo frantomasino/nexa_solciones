@@ -403,6 +403,7 @@
   function updateColumnUI() {
     const n = columnRects.length;
     const splitN = Object.values(splitCells).filter((e) => e.columnHalf).length;
+    $('#planColumnHalfClear')?.classList.toggle('hidden', splitN === 0);
     const tiles = lastResult?.columnCellCount ?? columnRects.reduce((sum, r) => sum + TileCalc.columnRectSize(r).tiles, 0);
     $('#planColumnToggle')?.classList.toggle('active', columnMode);
     $('#planColumnClear')?.classList.toggle('hidden', n === 0);
@@ -728,6 +729,12 @@
     }
   }
 
+  function cellHasUserPaint(key) {
+    if (customPaint[key] !== undefined) return true;
+    const entry = splitCells[key];
+    return entry?.paintHalf != null && entry.colorIndex != null;
+  }
+
   function applyColumnEdgePaint(col, row, colorIndex, preferredSide = null) {
     if (!lastResult) return;
     const side = preferredSide || activeHalfSide;
@@ -737,18 +744,42 @@
     if (!resolved) return;
     const { col: tc, row: tr, columnHalf } = resolved;
     const key = `${tc},${tr}`;
-    const paintHalf = TileCalc.oppositeHalf(columnHalf);
     const entry = splitCells[key] || {};
+
+    if (!cellHasUserPaint(key)) {
+      if (halfPaintMode) {
+        const paintHalf = TileCalc.oppositeHalf(columnHalf);
+        if (
+          entry.columnHalf === columnHalf
+          && entry.paintHalf === paintHalf
+          && entry.colorIndex === colorIndex
+        ) {
+          delete splitCells[key];
+        } else {
+          splitCells[key] = { columnHalf, paintHalf, colorIndex };
+        }
+      } else {
+        applyHalfColumnToggle(tc, tr, columnHalf);
+        return;
+      }
+      delete customPaint[key];
+      lastPaintedKey = key;
+      refreshSplitPaintUi();
+      markSplitCellDirty(tc, tr);
+      return;
+    }
+
+    const paintHalf = TileCalc.oppositeHalf(columnHalf);
 
     if (
       entry.columnHalf === columnHalf
       && entry.paintHalf === paintHalf
       && entry.colorIndex === colorIndex
     ) {
+      delete entry.columnHalf;
       delete entry.paintHalf;
       delete entry.colorIndex;
-      if (!entry.columnHalf) delete splitCells[key];
-      else splitCells[key] = entry;
+      delete splitCells[key];
     } else {
       splitCells[key] = {
         columnHalf,
@@ -797,13 +828,15 @@
   function applyHalfColumnToggle(tc, tr, side) {
     const key = `${tc},${tr}`;
     const entry = splitCells[key] || {};
-    if (entry.columnHalf === side) {
+    if (entry.columnHalf) {
       delete entry.columnHalf;
-      if (!entry.paintHalf) delete splitCells[key];
+      if (entry.paintHalf == null || entry.colorIndex == null) delete splitCells[key];
       else splitCells[key] = entry;
     } else {
       entry.columnHalf = side;
-      if (entry.colorIndex != null) entry.paintHalf = TileCalc.oppositeHalf(side);
+      if (entry.paintHalf != null && entry.colorIndex != null) {
+        entry.paintHalf = TileCalc.oppositeHalf(side);
+      }
       splitCells[key] = entry;
       delete customPaint[key];
     }
@@ -866,6 +899,23 @@
     $$('.half-side-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.half === side);
     });
+  }
+
+  function clearHalfColumns() {
+    const next = {};
+    for (const [key, entry] of Object.entries(splitCells)) {
+      if (!entry?.columnHalf) {
+        next[key] = entry;
+        continue;
+      }
+      const copy = { ...entry };
+      delete copy.columnHalf;
+      if (copy.paintHalf != null && copy.colorIndex != null) next[key] = copy;
+    }
+    splitCells = next;
+    updateColumnUI();
+    updatePaintUI();
+    debounce(recalculate);
   }
 
   function clearCustomPaint() {
@@ -1188,7 +1238,8 @@
     if (paintMode || columnMode || TileCalc.hasSplitCells(splitCells)) {
       opts.splitCells = splitCells;
     }
-    if (columnMode && hasPaint) {
+    const hasColumnHalf = Object.values(splitCells).some((e) => e?.columnHalf);
+    if (columnMode && (hasPaint || hasColumnHalf)) {
       opts.columnOutlineOnly = true;
     }
     if (lastResult?.cols && lastResult?.rows) {
@@ -2112,6 +2163,7 @@
       else startColumnMode();
     });
     $('#planColumnClear')?.addEventListener('click', clearColumnRects);
+    $('#planColumnHalfClear')?.addEventListener('click', clearHalfColumns);
     $('#columnList')?.addEventListener('click', (e) => {
       const btn = e.target.closest('.column-remove-btn');
       if (!btn) return;
