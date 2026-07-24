@@ -48,11 +48,7 @@
     { name: 'Yute', hex: '#C9B89A' },
     { name: 'Azul claro', hex: '#5B9BD5' },
     { name: 'Celeste', hex: '#7EC8E3' },
-<<<<<<< HEAD
     { name: 'Verde claro', hex: '#85E13F' },
-=======
-    { name: 'Verde claro', hex: '#9AD19A' },
->>>>>>> origin/main
     { name: 'Verde oscuro', hex: '#2D5A3D' },
     { name: 'Azul oscuro', hex: '#1E3A7A' },
     { name: 'Naranja', hex: '#E85D2B' },
@@ -747,6 +743,17 @@
 
   function formatMetrosAssembly(m) {
     return Number(m || 0).toFixed(2).replace('.', ',');
+  }
+
+  function screenPlanMetrics(cols, rows, stageWidth, stageHeight) {
+    const maxGrid = Math.max(cols, rows, 1);
+    const pad = 64;
+    const sw = Math.max(280, stageWidth || 0);
+    const sh = Math.max(220, stageHeight || 0);
+    const byStage = Math.floor(Math.min((sw - pad) / cols, (sh - pad) / rows));
+    const byGrid = Math.floor(3600 / maxGrid);
+    const minCellPx = Math.max(36, Math.min(88, Math.max(byStage, byGrid)));
+    return { minCellPx, supersample: 1 };
   }
 
   function layoutMetrics(cols, rows, options = {}) {
@@ -1514,5 +1521,6 @@
     cellFromPoint,
     metersFromCanvasPoint,
     layoutMetrics,
+    screenPlanMetrics,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

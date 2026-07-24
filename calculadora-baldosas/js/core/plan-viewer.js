@@ -44,8 +44,8 @@
         resetView();
         return;
       }
-      const pad = 24;
-      state.scale = clampScale(Math.min((sw - pad) / cw, (sh - pad) / ch, 1));
+      const pad = 12;
+      state.scale = clampScale(Math.min((sw - pad) / cw, (sh - pad) / ch));
       state.rotation = 0;
       state.tx = 0;
       state.ty = 0;
