@@ -11,7 +11,7 @@
     moneda: 'Moneda',
   };
 
-  const FLOOR_IMAGE_VERSION = 'v3';
+  const FLOOR_IMAGE_VERSION = 'v4';
   const FLOOR_TYPE_IMAGES = {
     rejilla: `images/piso-rejilla.jpg?${FLOOR_IMAGE_VERSION}`,
     trama: `images/piso-trama.jpg?${FLOOR_IMAGE_VERSION}`,
