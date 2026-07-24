@@ -929,12 +929,12 @@
     const padH = 28;
     const sw = Math.max(200, stageWidth || 0);
     const sh = Math.max(180, stageHeight || 0);
-    if (!cols || !rows) return { minCellPx: 48, supersample: 3, maxSize: 8192 };
+    if (!cols || !rows) return { minCellPx: 48, supersample: 4, maxSize: 16384 };
     const byStage = Math.floor(Math.min((sw - padW) / cols, (sh - padH) / rows));
-    const minCellPx = Math.max(14, Math.min(220, byStage));
+    const minCellPx = Math.max(14, Math.min(300, byStage));
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    const supersample = dpr >= 2 ? 4 : 3;
-    return { minCellPx, supersample, maxSize: 8192 };
+    const supersample = dpr >= 2 ? 5 : 4;
+    return { minCellPx, supersample, maxSize: 16384 };
   }
 
   function layoutMetrics(cols, rows, options = {}) {
@@ -1700,12 +1700,12 @@
 
   function assemblyPrintMetrics(cols, rows) {
     const maxGrid = Math.max(cols, rows, 1);
-    const minCellPx = Math.max(88, Math.min(260, Math.floor(5200 / maxGrid)));
-    const dimPad = Math.max(220, Math.min(400, minCellPx * 1.65));
+    const minCellPx = Math.max(96, Math.min(340, Math.floor(6800 / maxGrid)));
+    const dimPad = Math.max(240, Math.min(480, minCellPx * 1.7));
     const maxSize = Math.max(
-      6500,
-      cols * minCellPx + dimPad + 32,
-      rows * minCellPx + dimPad + 32
+      8000,
+      cols * minCellPx + dimPad + 40,
+      rows * minCellPx + dimPad + 40
     );
     return { minCellPx, maxSize, dimPad };
   }
@@ -1728,7 +1728,7 @@
       maxSize: options.maxSize ?? printMetrics.maxSize,
       showGrid: true,
       showDimensions: true,
-      supersample: 3,
+      supersample: 4,
     });
     return canvas.toDataURL('image/png');
   }
