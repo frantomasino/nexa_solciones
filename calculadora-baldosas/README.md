@@ -6,7 +6,7 @@ Programa a medida para presupuestar pisos de goma (baldosas). Permite cargar med
 
 - HTML + CSS + JavaScript vanilla (sin frameworks, sin build)
 - Persistencia local con `localStorage`
-- Supabase preparado pero desconectado (`js/pendiente-login/`)
+- Supabase preparado pero desconectado (`js/auth/`)
 
 ## Cómo correr
 
@@ -22,32 +22,37 @@ python3 -m http.server 8080
 # → http://localhost:8080
 ```
 
-### Publicar en internet (Netlify)
+### Publicar en internet (Netlify / Vercel)
 
-El repo incluye `netlify.toml` en la raíz. Pasos:
-
-1. Entrá a [netlify.com](https://www.netlify.com) con tu cuenta (o creá una gratis).
-2. **Add new site** → **Import an existing project** → conectá GitHub → elegí `nexa_solciones`.
-3. Netlify detecta solo: carpeta `calculadora-baldosas`, sin comando de build.
-4. **Deploy site**. Te da un link tipo `https://algo-random.netlify.app`.
-5. Abrí ese link en el celular o la compu → tocá **Instalar app** (amarillo arriba).
-
-Con HTTPS la instalación nativa del navegador funciona; con `file://` solo ves las instrucciones manuales.
+El repo incluye `netlify.toml` y `vercel.json` en la raíz. La carpeta publicada es `calculadora-baldosas`.
 
 ## Estructura
 
 ```
 calculadora-baldosas/
-├── index.html
-├── css/style.css
-├── js/
-│   ├── core/
-│   │   ├── tile-calc.js      # Cálculo y canvas
-│   │   └── photo-measure.js  # Medición con foto/video
-│   ├── data/storage.js       # localStorage
-│   ├── app/main.js           # UI y eventos
-│   └── pendiente-login/      # Supabase (no conectado)
-└── README.md
+├── index.html              # App principal
+├── manifest.json           # PWA
+├── sw.js                   # Service worker (caché offline)
+├── css/
+│   └── style.css           # Estilos
+├── assets/
+│   ├── icons/              # Logo e íconos PWA
+│   └── images/             # Fotos de tipos de piso
+└── js/
+    ├── app/
+    │   └── main.js         # UI, eventos y navegación
+    ├── core/
+    │   ├── tile-calc.js    # Cálculo, grilla y canvas
+    │   ├── plan-viewer.js  # Zoom/pan del plano
+    │   └── photo-measure.js # Medición con foto
+    ├── data/
+    │   └── storage.js      # localStorage (presupuestos, tema, usuario)
+    ├── export/
+    │   └── export-excel.js # Exportación CSV/Excel
+    └── auth/               # Supabase (no conectado aún)
+        ├── auth.js
+        ├── supabase-config.js
+        └── README.md
 ```
 
 ## Funcionalidades
@@ -66,5 +71,5 @@ calculadora-baldosas/
 
 ## Pendiente (cliente)
 
-1. Login con Supabase — ver `js/pendiente-login/README.md`
-2. Conectar Netlify al repo y compartir el link al equipo
+1. Login con Supabase — ver `js/auth/README.md`
+2. Sincronizar presupuestos en la nube (reemplazar o extender `js/data/storage.js`)
