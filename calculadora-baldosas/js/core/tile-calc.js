@@ -457,6 +457,39 @@
     return false;
   }
 
+  function halfFacingColumnFromFloor(floorCol, floorRow, columnCol, columnRow) {
+    if (columnCol > floorCol) return 'R';
+    if (columnCol < floorCol) return 'L';
+    if (columnRow > floorRow) return 'B';
+    if (columnRow < floorRow) return 'T';
+    return null;
+  }
+
+  function columnAdjacentFloorTargets(columnRects, cols, rows) {
+    const colKeys = columnCellKeys(columnRects, cols, rows);
+    const targets = [];
+    const seen = new Set();
+    for (const key of colKeys) {
+      const [cc, cr] = key.split(',').map(Number);
+      const neighbors = [
+        { col: cc + 1, row: cr, cc, cr },
+        { col: cc - 1, row: cr, cc, cr },
+        { col: cc, row: cr + 1, cc, cr },
+        { col: cc, row: cr - 1, cc, cr },
+      ];
+      for (const n of neighbors) {
+        if (n.col < 0 || n.row < 0 || n.col >= cols || n.row >= rows) continue;
+        if (colKeys.has(`${n.col},${n.row}`)) continue;
+        const k = `${n.col},${n.row}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const columnHalf = halfFacingColumnFromFloor(n.col, n.row, n.cc, n.cr);
+        if (columnHalf) targets.push({ col: n.col, row: n.row, columnHalf });
+      }
+    }
+    return targets;
+  }
+
   function resolveHalfColumnTap(col, row, columnRects, cols, rows, tapHalf = null, manualSide = null) {
     if (!columnRects?.length || col < 0 || row < 0 || col >= cols || row >= rows) return null;
     const colKeys = columnCellKeys(columnRects, cols, rows);
@@ -470,20 +503,19 @@
       return { col, row, columnHalf };
     }
 
-    const neighbors = [
-      { nc: col - 1, nr: row, columnHalf: 'R' },
-      { nc: col + 1, nr: row, columnHalf: 'L' },
-      { nc: col, nr: row - 1, columnHalf: 'B' },
-      { nc: col, nr: row + 1, columnHalf: 'T' },
+    const floorAdj = [
+      { nc: col + 1, nr: row },
+      { nc: col - 1, nr: row },
+      { nc: col, nr: row + 1 },
+      { nc: col, nr: row - 1 },
     ];
-    for (const n of neighbors) {
+    for (const n of floorAdj) {
       if (n.nc < 0 || n.nr < 0 || n.nc >= cols || n.nr >= rows) continue;
       if (!colKeys.has(`${n.nc},${n.nr}`)) continue;
-      return {
-        col: n.nc,
-        row: n.nr,
-        columnHalf: n.columnHalf,
-      };
+      const towardColumn = halfFacingColumnFromFloor(col, row, n.nc, n.nr);
+      const columnHalf = (HALF_SIDES.includes(manualSide) ? manualSide : null) || towardColumn;
+      if (!columnHalf) continue;
+      return { col, row, columnHalf };
     }
     return null;
   }
@@ -510,46 +542,38 @@
     const colKeys = columnCellKeys(columnRects, cols, rows);
     if (!colKeys.size) return null;
 
-    const tapHalf = hit?.halfSide
-      || (hit ? halfSideFromPlanPoint(canvas, clientX, clientY, hit.col, hit.row, cols, rows, options) : null);
-
+    const maxDist = (Math.max(cellW, cellH) * 2) ** 2;
     let best = null;
     let bestDist = Infinity;
-    const maxDist = (Math.max(cellW, cellH) * 1.75) ** 2;
-    const considerKey = (col, row) => {
+
+    const consider = (col, row, columnHalf) => {
+      if (!HALF_SIDES.includes(columnHalf)) return;
       const cx = padLeft + (col + 0.5) * cellW;
       const cy = padTop + (row + 0.5) * cellH;
       const dist = ((point.px - cx) ** 2) + ((point.py - cy) ** 2);
       if (dist < bestDist) {
         bestDist = dist;
-        best = { col, row };
+        best = { col, row, columnHalf };
       }
     };
+
+    for (const t of columnAdjacentFloorTargets(columnRects, cols, rows)) {
+      const half = (HALF_SIDES.includes(manualSide) ? manualSide : null) || t.columnHalf;
+      consider(t.col, t.row, half);
+    }
 
     for (const key of colKeys) {
       const [col, row] = key.split(',').map(Number);
       if (!isColumnEdgeCellKey(col, row, columnRects)) continue;
-      considerKey(col, row);
+      const sideFromTap = halfSideFromPlanPoint(canvas, clientX, clientY, col, row, cols, rows, options);
+      const columnHalf = sideFromTap
+        || inferColumnHalfForCell(col, row, columnRects)
+        || (HALF_SIDES.includes(manualSide) ? manualSide : null);
+      consider(col, row, columnHalf);
     }
-    if (!best || bestDist > maxDist) {
-      best = null;
-      bestDist = Infinity;
-      for (const key of colKeys) {
-        const [col, row] = key.split(',').map(Number);
-        considerKey(col, row);
-      }
-    }
-    if (!best || bestDist > maxDist) return null;
 
-    const sideFromTap = halfSideFromPlanPoint(
-      canvas, clientX, clientY, best.col, best.row, cols, rows, options
-    );
-    const columnHalf = sideFromTap
-      || tapHalf
-      || inferColumnHalfForCell(best.col, best.row, columnRects)
-      || (HALF_SIDES.includes(manualSide) ? manualSide : null);
-    if (!columnHalf) return null;
-    return { col: best.col, row: best.row, columnHalf };
+    if (!best || bestDist > maxDist) return null;
+    return best;
   }
 
   function isColumnEdgeCell(col, row, columnRects, cols, rows) {
