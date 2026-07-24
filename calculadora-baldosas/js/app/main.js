@@ -454,7 +454,7 @@
         if (colN > 0) parts.push(`${colN} columna(s)`);
         hint.textContent = `Plano con ${parts.join(' y ')}. Usá las herramientas de arriba para ajustar.`;
       } else {
-        hint.textContent = 'Arrastrá para mover · Zoom +/− · <strong>Columnas</strong> para pilares · <strong>Pintar</strong> para el diseño';
+        hint.innerHTML = 'Arrastrá para mover · Zoom +/− · <strong>Columnas</strong> para pilares · <strong>Pintar</strong> para el diseño';
       }
     }
   }
