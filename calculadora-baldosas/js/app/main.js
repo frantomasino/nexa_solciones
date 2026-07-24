@@ -1710,10 +1710,10 @@
           <td class="col-boxes">${boxes}</td>
           <td class="col-actions">
             <div class="row-actions">
-              <button type="button" class="btn-icon-action has-tip" data-action="excel" data-id="${p.id}" data-tip="Exportar a Excel" aria-label="Exportar a Excel" title="Exportar a Excel">↓</button>
-              <button type="button" class="btn-icon-action has-tip" data-action="edit" data-id="${p.id}" data-tip="Editar presupuesto" aria-label="Editar presupuesto" title="Editar presupuesto">✎</button>
-              <button type="button" class="btn-icon-action has-tip" data-action="dup" data-id="${p.id}" data-tip="Duplicar presupuesto" aria-label="Duplicar presupuesto" title="Duplicar presupuesto">⧉</button>
-              <button type="button" class="btn-icon-action btn-icon-danger has-tip" data-action="del" data-id="${p.id}" data-tip="Eliminar presupuesto" aria-label="Eliminar presupuesto" title="Eliminar presupuesto">✕</button>
+              <button type="button" class="btn-icon-action has-tip" data-action="excel" data-id="${p.id}" data-tip="Exportar a Excel" aria-label="Exportar a Excel" title="Exportar a Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></button>
+              <button type="button" class="btn-icon-action has-tip" data-action="edit" data-id="${p.id}" data-tip="Editar presupuesto" aria-label="Editar presupuesto" title="Editar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+              <button type="button" class="btn-icon-action has-tip" data-action="dup" data-id="${p.id}" data-tip="Duplicar presupuesto" aria-label="Duplicar presupuesto" title="Duplicar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+              <button type="button" class="btn-icon-action btn-icon-danger has-tip" data-action="del" data-id="${p.id}" data-tip="Eliminar presupuesto" aria-label="Eliminar presupuesto" title="Eliminar presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
             </div>
           </td>
         </tr>`;
@@ -1784,14 +1784,12 @@
   function initTheme() {
     const theme = Storage.getTheme();
     document.documentElement.dataset.theme = theme;
-    $('#themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
   }
 
   function toggleTheme() {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     Storage.setTheme(next);
-    $('#themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
     if (lastResult) recalculate();
   }
 

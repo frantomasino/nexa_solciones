@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v77';
+const CACHE = 'nexa-v78-design-lift';
 const ASSETS = [
   './',
   './index.html',
