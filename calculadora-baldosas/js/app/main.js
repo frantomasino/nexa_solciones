@@ -627,7 +627,18 @@
     paintResultsPending = false;
   }
 
-  function paintCell(col, row, colorIndex, { skipDuplicate = false, fast = false } = {}) {
+  function markSplitCellDirty(col, row) {
+    markPaintCellDirty(col, row);
+  }
+
+  function refreshSplitPaintUi() {
+    updatePaintCounts();
+    updatePaintTally();
+    updateColumnUI();
+    paintResultsPending = true;
+  }
+
+  function paintCell(col, row, colorIndex, { skipDuplicate = false, fast = false, halfSide = null } = {}) {
     if (!lastResult) return false;
     const key = `${col},${row}`;
     if (skipDuplicate && key === lastPaintedKey) return false;
@@ -636,7 +647,7 @@
 
     if (isColumnEdge || existing?.columnHalf) {
       lastPaintedKey = key;
-      applyColumnEdgePaint(col, row, colorIndex);
+      applyColumnEdgePaint(col, row, colorIndex, halfSide);
       return true;
     }
 
@@ -644,7 +655,7 @@
 
     if (halfPaintMode) {
       lastPaintedKey = key;
-      paintHalfCell(col, row, colorIndex);
+      paintHalfCell(col, row, colorIndex, halfSide);
       return true;
     }
 
@@ -668,30 +679,44 @@
 
   function paintAtPointer(clientX, clientY, { dragging = false } = {}) {
     if (!paintMode || !lastResult) return;
-    const cell = planCellFromClient(clientX, clientY);
-    if (!cell) return;
+    const hit = planCellFromClient(clientX, clientY);
+    if (!hit) return;
+
+    if (halfPaintMode) {
+      if (dragging && `${hit.col},${hit.row}` === lastPaintedKey) return;
+      if (paintCell(hit.col, hit.row, activePaintIndex, { halfSide: activeHalfSide })) {
+        lastPaintCol = hit.col;
+        lastPaintRow = hit.row;
+      }
+      return;
+    }
 
     const targets = dragging && lastPaintCol != null && lastPaintRow != null
-      ? TileCalc.cellsAlongLine(lastPaintCol, lastPaintRow, cell.col, cell.row)
-      : [cell];
+      ? TileCalc.cellsAlongLine(lastPaintCol, lastPaintRow, hit.col, hit.row)
+      : [hit];
 
     let painted = false;
     for (const target of targets) {
-      if (paintCell(target.col, target.row, activePaintIndex, { skipDuplicate: dragging, fast: dragging })) {
+      if (paintCell(target.col, target.row, activePaintIndex, {
+        skipDuplicate: dragging,
+        fast: dragging,
+        halfSide: hit.halfSide,
+      })) {
         painted = true;
       }
     }
 
     if (painted) {
-      lastPaintCol = cell.col;
-      lastPaintRow = cell.row;
+      lastPaintCol = hit.col;
+      lastPaintRow = hit.row;
     }
   }
 
-  function applyColumnEdgePaint(col, row, colorIndex) {
+  function applyColumnEdgePaint(col, row, colorIndex, preferredSide = null) {
     if (!lastResult) return;
+    const side = preferredSide || activeHalfSide;
     const resolved = TileCalc.resolveHalfColumnTap(
-      col, row, columnRects, lastResult.cols, lastResult.rows, activeHalfSide
+      col, row, columnRects, lastResult.cols, lastResult.rows, side
     );
     if (!resolved) return;
     const { col: tc, row: tr, columnHalf } = resolved;
@@ -717,24 +742,22 @@
     }
 
     delete customPaint[key];
-    updatePaintCounts();
-    updatePaintTally();
-    updateColumnUI();
-    schedulePlanRedraw();
-    paintResultsPending = true;
+    lastPaintedKey = key;
+    refreshSplitPaintUi();
+    markSplitCellDirty(tc, tr);
   }
 
-  function paintHalfCell(col, row, colorIndex) {
+  function paintHalfCell(col, row, colorIndex, preferredSide = null) {
     if (!lastResult) return;
     const key = `${col},${row}`;
     if (TileCalc.isColumnEdgeCell(col, row, columnRects, lastResult.cols, lastResult.rows)) {
-      applyColumnEdgePaint(col, row, colorIndex);
+      applyColumnEdgePaint(col, row, colorIndex, preferredSide);
       return;
     }
 
     const hasSplitColumn = !!splitCells[key]?.columnHalf;
     if (lastResult.grid?.[row]?.[col] < 0 && !hasSplitColumn) return;
-    let paintHalf = activeHalfSide;
+    let paintHalf = preferredSide || activeHalfSide;
     if (hasSplitColumn) paintHalf = TileCalc.oppositeHalf(splitCells[key].columnHalf);
     const entry = splitCells[key] || {};
     if (entry.paintHalf === paintHalf && entry.colorIndex === colorIndex) {
@@ -750,21 +773,20 @@
       };
     }
     delete customPaint[key];
-    updatePaintCounts();
-    updatePaintTally();
-    schedulePlanRedraw();
-    paintResultsPending = true;
+    lastPaintedKey = key;
+    refreshSplitPaintUi();
+    markSplitCellDirty(col, row);
   }
 
-  function toggleHalfColumn(col, row) {
+  function toggleHalfColumn(col, row, preferredSide = null) {
     if (!lastResult) return;
     const resolved = TileCalc.resolveHalfColumnTap(
-      col, row, columnRects, lastResult.cols, lastResult.rows, activeHalfSide
+      col, row, columnRects, lastResult.cols, lastResult.rows, preferredSide || activeHalfSide
     );
     if (!resolved) {
       const summary = $('#columnSummary');
       if (summary) {
-        summary.textContent = 'Tocá la columna (COL) o la baldosa pegada al pilar. Elegí el lado con ◧◨◤◥ si hace falta.';
+        summary.textContent = 'Tocá la columna (COL) o la baldosa pegada al pilar. Tocá el lado de la baldosa que querés marcar.';
       }
       return;
     }
@@ -783,7 +805,8 @@
     }
     updateColumnUI();
     updatePaintUI();
-    debounce(recalculate);
+    schedulePlanRedraw();
+    paintResultsPending = true;
   }
 
   function setActiveHalfSide(side) {
@@ -1064,7 +1087,7 @@
 
   function planCellFromClient(clientX, clientY) {
     if (!lastResult) return null;
-    return TileCalc.cellFromPoint(
+    return TileCalc.cellHitFromClient(
       $('#floorCanvas'),
       clientX,
       clientY,
@@ -1102,7 +1125,9 @@
     } else if (TileCalc.hasPaintData(customPaint, splitCells)) {
       opts.customPaint = customPaint;
     }
-    if (TileCalc.hasSplitCells(splitCells)) opts.splitCells = splitCells;
+    if (paintMode || columnMode || TileCalc.hasSplitCells(splitCells)) {
+      opts.splitCells = splitCells;
+    }
     if (lastResult?.cols && lastResult?.rows) {
       const stage = $('#planStage');
       const metrics = TileCalc.screenPlanMetrics(
@@ -2068,14 +2093,14 @@
         return;
       }
       if (columnMode && lastResult) {
-        const cell = planCellFromClient(clientX, clientY);
-        if (!cell) return;
+        const hit = planCellFromClient(clientX, clientY);
+        if (!hit) return;
         if (halfColumnMode) {
-          toggleHalfColumn(cell.col, cell.row);
+          toggleHalfColumn(hit.col, hit.row, hit.halfSide);
           return;
         }
-        columnDragStart = { col: cell.col, row: cell.row };
-        columnPreview = TileCalc.normalizeColumnRect(cell.col, cell.row, cell.col, cell.row);
+        columnDragStart = { col: hit.col, row: hit.row };
+        columnPreview = TileCalc.normalizeColumnRect(hit.col, hit.row, hit.col, hit.row);
         isColumnDragging = true;
         redrawPlan();
         return;
