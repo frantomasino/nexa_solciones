@@ -1765,6 +1765,11 @@ a.dropdown-item:hover {
   font-weight: 600;
 }
 
+.results-table .accessory-row td {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .results-table .subtotal-row td {
   border-top: 1px solid var(--border);
   font-weight: 600;
