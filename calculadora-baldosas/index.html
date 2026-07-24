@@ -374,6 +374,18 @@
                 <small class="field-hint">Repuesto por cortes en costados y bordes</small>
               </label>
             </div>
+            <div class="field-row">
+              <label class="field">
+                <span>Bordes</span>
+                <input type="number" id="bordesCount" min="0" step="1" value="0" placeholder="0">
+                <small class="field-hint">Cantidad de piezas de borde</small>
+              </label>
+              <label class="field">
+                <span>Esquineros</span>
+                <input type="number" id="esquinerosCount" min="0" step="1" value="0" placeholder="0">
+                <small class="field-hint">Cantidad de piezas de esquinero</small>
+              </label>
+            </div>
           </fieldset>
         </div>
 
@@ -492,6 +504,7 @@
               </tfoot>
             </table>
             <p id="resultsEmpty" class="hint">Cargá las medidas para ver cuántas baldosas necesitás por color.</p>
+            <p id="accessoriesSummary" class="hint hidden"></p>
           </div>
         </aside>
       </div>

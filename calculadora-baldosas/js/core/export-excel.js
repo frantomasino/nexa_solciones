@@ -75,6 +75,8 @@
       'Repuesto cortes',
       'Total a comprar',
       'Cajas',
+      'Bordes',
+      'Esquineros',
       'Usuario',
       'Fecha',
     ];
@@ -108,6 +110,8 @@
       t.repuesto,
       t.comprar,
       t.cajas,
+      p.bordes ?? 0,
+      p.esquineros ?? 0,
       p.createdBy || p.updatedBy || '',
       formatDate(p.updatedAt || p.createdAt || new Date().toISOString()),
     ];
@@ -147,6 +151,8 @@
       ['Repuesto', t.repuesto],
       ['Total a comprar', t.comprar],
       ['Cajas totales', t.cajas],
+      ['Bordes', p.bordes ?? 0],
+      ['Esquineros', p.esquineros ?? 0],
       ['Notas', p.notas || ''],
       ['Elaborado por', p.createdBy || p.updatedBy || ''],
     ];
