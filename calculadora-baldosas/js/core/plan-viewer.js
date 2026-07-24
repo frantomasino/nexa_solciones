@@ -21,7 +21,7 @@
     }
 
     function applyTransform() {
-      canvasEl.style.transform = `translate(${state.tx}px, ${state.ty}px) scale(${state.scale}) rotate(${state.rotation}deg)`;
+      canvasEl.style.transform = `translate(calc(-50% + ${state.tx}px), calc(-50% + ${state.ty}px)) scale(${state.scale}) rotate(${state.rotation}deg)`;
       if (zoomLabel) zoomLabel.textContent = `${Math.round(state.scale * 100)}%`;
       if (rotationRange) rotationRange.value = String(((state.rotation % 360) + 360) % 360);
       if (rotationValue) rotationValue.textContent = `${Math.round(state.rotation)}°`;
@@ -45,7 +45,8 @@
         return;
       }
       const pad = 12;
-      state.scale = clampScale(Math.min((sw - pad) / cw, (sh - pad) / ch));
+      const fit = Math.min((sw - pad) / cw, (sh - pad) / ch);
+      state.scale = fit >= 0.95 ? 1 : clampScale(fit);
       state.rotation = 0;
       state.tx = 0;
       state.ty = 0;
@@ -122,6 +123,7 @@
     controls.reset?.addEventListener('click', () => fitView());
     rotationRange?.addEventListener('input', () => setRotation(parseFloat(rotationRange.value) || 0));
 
+    applyTransform();
     return { resetView, fitView, applyTransform };
   }
 

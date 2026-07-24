@@ -746,13 +746,13 @@
   }
 
   function screenPlanMetrics(cols, rows, stageWidth, stageHeight) {
-    const maxGrid = Math.max(cols, rows, 1);
-    const pad = 64;
-    const sw = Math.max(280, stageWidth || 0);
-    const sh = Math.max(220, stageHeight || 0);
-    const byStage = Math.floor(Math.min((sw - pad) / cols, (sh - pad) / rows));
-    const byGrid = Math.floor(3600 / maxGrid);
-    const minCellPx = Math.max(36, Math.min(88, Math.max(byStage, byGrid)));
+    const padW = 64;
+    const padH = 56;
+    const sw = Math.max(200, stageWidth || 0);
+    const sh = Math.max(180, stageHeight || 0);
+    if (!cols || !rows) return { minCellPx: 40, supersample: 1 };
+    const byStage = Math.floor(Math.min((sw - padW) / cols, (sh - padH) / rows));
+    const minCellPx = Math.max(10, Math.min(96, byStage));
     return { minCellPx, supersample: 1 };
   }
 
