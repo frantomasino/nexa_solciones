@@ -492,7 +492,12 @@
     updateShapeStatus();
     updatePaintUI();
     updateColumnUI();
-    if (lastResult) redrawPlan();
+    if (lastResult) {
+      redrawPlanSync();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => planViewerControls?.fitView());
+      });
+    }
   }
 
   function clearColumnRects() {
@@ -1459,16 +1464,20 @@
     const empty = $('#canvasEmpty');
     const viewer = $('#planViewer');
     const wrap = $('#canvasPlaceholder');
+    const firstPlanShow = viewer.classList.contains('hidden');
     empty.classList.add('hidden');
     viewer.classList.remove('hidden');
-    if (wrap) {
-      wrap.classList.remove('plan-reveal');
-      void wrap.offsetWidth;
+    /* Animación de reveal solo la primera vez que aparece el plano (no al pintar) */
+    if (firstPlanShow && wrap && !wrap.classList.contains('plan-reveal')) {
       wrap.classList.add('plan-reveal');
     }
     await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
-    fitPlanToStage();
-    planNeedsFitView = false;
+    if (planNeedsFitView) {
+      fitPlanToStage();
+      planNeedsFitView = false;
+    } else {
+      planViewerControls?.applyTransform?.();
+    }
 
     $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
@@ -2514,7 +2523,21 @@
         }
       }
       if (paintResultsPending) {
-        redrawPlanSync();
+        /* En pintar no re-dibujar todo el canvas: eso cambia el tamaño y parece zoom.
+           Las celdas ya se actualizan con repaintPlanCells. */
+        if (paintRepaintRaf != null) {
+          cancelAnimationFrame(paintRepaintRaf);
+          paintRepaintRaf = null;
+        }
+        if (paintDirtyCells.size > 0 && lastResult) {
+          const canvas = $('#floorCanvas');
+          const cells = [...paintDirtyCells].map((key) => {
+            const [col, row] = key.split(',').map(Number);
+            return { col, row };
+          });
+          paintDirtyCells.clear();
+          TileCalc.repaintPlanCells(canvas, lastResult, cells, getDrawOptions(readForm()));
+        }
         syncPaintResults({ refreshThumb: false });
         requestAnimationFrame(() => {
           const canvas = $('#floorCanvas');
