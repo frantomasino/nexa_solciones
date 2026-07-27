@@ -2042,7 +2042,7 @@
     }
 
     const planImg = $('#printPlanImg');
-    planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
+    let planSrc = TileCalc.renderAssemblyPlanImage(lastResult, {
       columnRects,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
       splitCells: TileCalc.hasSplitCells(splitCells) ? splitCells : null,
@@ -2053,7 +2053,25 @@
         ? new Set(lastResult.polygonExcludedKeys)
         : null,
     });
+    /* Fallback: usar el plano de pantalla si el render de armado falla */
+    if (!planSrc) {
+      try {
+        planSrc = $('#floorCanvas')?.toDataURL('image/png') || null;
+      } catch {
+        planSrc = null;
+      }
+    }
+    if (!planSrc) {
+      alert('No se pudo generar la imagen del plano para el PDF. Probá de nuevo.');
+      document.title = 'Nexa Soluciones';
+      return;
+    }
+    planImg.removeAttribute('hidden');
     planImg.classList.remove('hidden');
+    planImg.alt = 'Plano de armado del piso';
+    planImg.onload = null;
+    planImg.onerror = null;
+    planImg.src = planSrc;
 
     const legend = $('#printLegend');
     const legendCounts = TileCalc.hasPaintData(customPaint, splitCells)
@@ -2078,7 +2096,10 @@
       doPrint();
     } else {
       planImg.onload = doPrint;
-      planImg.onerror = doPrint;
+      planImg.onerror = () => {
+        alert('No se pudo cargar el plano en el PDF.');
+        document.title = 'Nexa Soluciones';
+      };
     }
   }
 
@@ -2283,7 +2304,10 @@
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (lastResult) planViewerControls?.fitView();
+        if (!lastResult) return;
+        /* Durante pintar, no re-encuadrar: parece zoom */
+        if (paintMode || columnMode || obstacleMode || shapeMode) return;
+        planViewerControls?.fitView();
       }, 150);
     });
   }

@@ -93,6 +93,14 @@
     }
 
     function onWheel(e) {
+      /* En modos de edición el scroll no debe hacer zoom (rompe pintar) */
+      if (stageEl.classList.contains('obstacle-mode')
+        || stageEl.classList.contains('shape-mode')
+        || stageEl.classList.contains('paint-mode')
+        || stageEl.classList.contains('column-mode')) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.12 : 0.12;
       zoomBy(delta);

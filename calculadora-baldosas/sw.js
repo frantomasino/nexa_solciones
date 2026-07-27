@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v88-fix-paint-zoom';
+const CACHE = 'nexa-v89-fix-pdf-paint';
 const ASSETS = [
   './',
   './index.html',

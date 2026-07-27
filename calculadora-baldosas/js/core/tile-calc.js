@@ -1516,7 +1516,8 @@
   function repaintPlanCells(canvas, result, cells, options = {}) {
     if (!canvas || !result?.grid || !cells?.length) return;
     const { grid, colors, cols, rows } = result;
-    const layout = layoutMetrics(cols, rows, options);
+    /* Usar el layout ya dibujado: recalcular métricas cambia el “zoom” al pintar */
+    const layout = layoutFromCanvas(canvas, cols, rows, options);
     const { padTop, padLeft, cellW, cellH, ratio } = layout;
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -1700,37 +1701,51 @@
 
   function assemblyPrintMetrics(cols, rows) {
     const maxGrid = Math.max(cols, rows, 1);
-    const minCellPx = Math.max(96, Math.min(340, Math.floor(6800 / maxGrid)));
-    const dimPad = Math.max(240, Math.min(480, minCellPx * 1.7));
-    const maxSize = Math.max(
-      8000,
-      cols * minCellPx + dimPad + 40,
-      rows * minCellPx + dimPad + 40
+    /* Células grandes para el cliente, pero tope seguro para dataURL del navegador */
+    const minCellPx = Math.max(48, Math.min(160, Math.floor(3200 / maxGrid)));
+    const dimPad = Math.max(120, Math.min(280, minCellPx * 1.5));
+    const maxSize = Math.min(
+      4096,
+      Math.max(
+        2400,
+        cols * minCellPx + dimPad + 40,
+        rows * minCellPx + dimPad + 40
+      )
     );
     return { minCellPx, maxSize, dimPad };
   }
 
   function renderAssemblyPlanImage(result, options = {}) {
-    const { cols, rows } = result;
-    const printMetrics = assemblyPrintMetrics(cols, rows);
-    const dimPad = printMetrics.dimPad;
-    const canvas = document.createElement('canvas');
-    drawFloorPlan(canvas, result, {
-      ...options,
-      assemblyMode: true,
-      customPaint: options.customPaint || result.customPaint || null,
-      splitCells: options.splitCells || result.splitCells || null,
-      padTop: 8,
-      padLeft: 8,
-      padRight: dimPad,
-      padBottom: dimPad,
-      minCellPx: options.minCellPx ?? printMetrics.minCellPx,
-      maxSize: options.maxSize ?? printMetrics.maxSize,
-      showGrid: true,
-      showDimensions: true,
-      supersample: 4,
-    });
-    return canvas.toDataURL('image/png');
+    try {
+      const { cols, rows } = result;
+      if (!cols || !rows) return null;
+      const printMetrics = assemblyPrintMetrics(cols, rows);
+      const dimPad = printMetrics.dimPad;
+      const canvas = document.createElement('canvas');
+      drawFloorPlan(canvas, result, {
+        ...options,
+        assemblyMode: true,
+        customPaint: options.customPaint || result.customPaint || null,
+        splitCells: options.splitCells || result.splitCells || null,
+        padTop: 8,
+        padLeft: 8,
+        padRight: dimPad,
+        padBottom: dimPad,
+        minCellPx: options.minCellPx ?? printMetrics.minCellPx,
+        maxSize: options.maxSize ?? printMetrics.maxSize,
+        showGrid: true,
+        showDimensions: true,
+        supersample: 2,
+        pixelRatio: 1,
+      });
+      if (!canvas.width || !canvas.height) return null;
+      const url = canvas.toDataURL('image/png');
+      if (!url || url.length < 100 || url === 'data:,') return null;
+      return url;
+    } catch (err) {
+      console.warn('PDF plano:', err);
+      return null;
+    }
   }
 
   global.TileCalc = {
