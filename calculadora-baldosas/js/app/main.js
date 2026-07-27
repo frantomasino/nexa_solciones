@@ -492,25 +492,7 @@
     updateShapeStatus();
     updatePaintUI();
     updateColumnUI();
-    if (lastResult) {
-      /* Redibujar en neutro sin cambiar tamaño del canvas (evita zoom al pintar) */
-      const canvas = $('#floorCanvas');
-      const form = readForm();
-      const opts = getDrawOptions(form);
-      if (canvas?.dataset?.cellW) {
-        opts.minCellPx = parseFloat(canvas.dataset.cellW);
-        opts.padTop = parseFloat(canvas.dataset.padTop) || opts.padTop;
-        opts.padLeft = parseFloat(canvas.dataset.padLeft) || opts.padLeft;
-        opts.padRight = parseFloat(canvas.dataset.padRight) || opts.padRight;
-        opts.padBottom = parseFloat(canvas.dataset.padBottom) || opts.padBottom;
-        opts.maxSize = 16384;
-        const ratio = parseFloat(canvas.dataset.layoutRatio) || 2;
-        const dpr = window.devicePixelRatio || 1;
-        opts.pixelRatio = dpr;
-        opts.supersample = Math.max(1, Math.round(ratio / dpr));
-      }
-      TileCalc.drawFloorPlanSync(canvas, lastResult, opts);
-    }
+    if (lastResult) redrawPlan();
   }
 
   function clearColumnRects() {
@@ -1476,21 +1458,11 @@
     const canvas = $('#floorCanvas');
     const empty = $('#canvasEmpty');
     const viewer = $('#planViewer');
-    const wrap = $('#canvasPlaceholder');
-    const firstPlanShow = viewer.classList.contains('hidden');
     empty.classList.add('hidden');
     viewer.classList.remove('hidden');
-    /* Animación de reveal solo la primera vez que aparece el plano (no al pintar) */
-    if (firstPlanShow && wrap && !wrap.classList.contains('plan-reveal')) {
-      wrap.classList.add('plan-reveal');
-    }
     await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
-    if (planNeedsFitView) {
-      fitPlanToStage();
-      planNeedsFitView = false;
-    } else {
-      planViewerControls?.applyTransform?.();
-    }
+    fitPlanToStage();
+    planNeedsFitView = false;
 
     $('#photoThumbData').value = canvas.toDataURL('image/png');
     renderResults(lastResult, form);
@@ -1663,14 +1635,6 @@
     document.body.dataset.view = view;
     document.querySelector('.app-header')?.classList.toggle('hidden', view === 'login');
     if (view === 'dashboard') renderDashboard();
-    if (view === 'editor') {
-      const ed = $('#viewEditor');
-      if (ed) {
-        ed.classList.remove('view-enter');
-        void ed.offsetWidth;
-        ed.classList.add('view-enter');
-      }
-    }
   }
 
   let loginPhonePending = '';
@@ -2051,7 +2015,7 @@
     }
 
     const planImg = $('#printPlanImg');
-    const printOpts = {
+    planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
       columnRects,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
       splitCells: TileCalc.hasSplitCells(splitCells) ? splitCells : null,
@@ -2061,27 +2025,8 @@
       polygonCellKeys: lastResult.polygonExcludedKeys?.length
         ? new Set(lastResult.polygonExcludedKeys)
         : null,
-    };
-    let planSrc = TileCalc.renderAssemblyPlanImage(lastResult, printOpts);
-    /* Fallback: plano de pantalla si el render de armado falla (canvas demasiado grande, etc.) */
-    if (!planSrc) {
-      try {
-        planSrc = $('#floorCanvas')?.toDataURL('image/png') || null;
-      } catch {
-        planSrc = null;
-      }
-    }
-    if (!planSrc || planSrc === 'data:,') {
-      alert('No se pudo generar la imagen del plano para el PDF. Probá de nuevo.');
-      document.title = 'Nexa Soluciones';
-      return;
-    }
-    planImg.removeAttribute('hidden');
+    });
     planImg.classList.remove('hidden');
-    planImg.alt = 'Plano de armado del piso';
-    planImg.onload = null;
-    planImg.onerror = null;
-    planImg.src = planSrc;
 
     const legend = $('#printLegend');
     const legendCounts = TileCalc.hasPaintData(customPaint, splitCells)
@@ -2106,10 +2051,7 @@
       doPrint();
     } else {
       planImg.onload = doPrint;
-      planImg.onerror = () => {
-        alert('No se pudo cargar el plano en el PDF.');
-        document.title = 'Nexa Soluciones';
-      };
+      planImg.onerror = doPrint;
     }
   }
 
@@ -2314,10 +2256,7 @@
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (!lastResult) return;
-        /* Durante pintar, no re-encuadrar: parece zoom */
-        if (paintMode || columnMode || obstacleMode || shapeMode) return;
-        planViewerControls?.fitView();
+        if (lastResult) planViewerControls?.fitView();
       }, 150);
     });
   }
@@ -2557,21 +2496,7 @@
         }
       }
       if (paintResultsPending) {
-        /* En pintar no re-dibujar todo el canvas: eso cambia el tamaño y parece zoom.
-           Las celdas ya se actualizan con repaintPlanCells. */
-        if (paintRepaintRaf != null) {
-          cancelAnimationFrame(paintRepaintRaf);
-          paintRepaintRaf = null;
-        }
-        if (paintDirtyCells.size > 0 && lastResult) {
-          const canvas = $('#floorCanvas');
-          const cells = [...paintDirtyCells].map((key) => {
-            const [col, row] = key.split(',').map(Number);
-            return { col, row };
-          });
-          paintDirtyCells.clear();
-          TileCalc.repaintPlanCells(canvas, lastResult, cells, getDrawOptions(readForm()));
-        }
+        redrawPlanSync();
         syncPaintResults({ refreshThumb: false });
         requestAnimationFrame(() => {
           const canvas = $('#floorCanvas');
