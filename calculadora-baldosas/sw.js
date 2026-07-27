@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v92-pdf-one-page';
+const CACHE = 'nexa-v93-tiles-straight';
 const ASSETS = [
   './',
   './index.html',
