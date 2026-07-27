@@ -2015,7 +2015,7 @@
     }
 
     const planImg = $('#printPlanImg');
-    planImg.src = TileCalc.renderAssemblyPlanImage(lastResult, {
+    const printOpts = {
       columnRects,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
       splitCells: TileCalc.hasSplitCells(splitCells) ? splitCells : null,
@@ -2025,8 +2025,7 @@
       polygonCellKeys: lastResult.polygonExcludedKeys?.length
         ? new Set(lastResult.polygonExcludedKeys)
         : null,
-    });
-    planImg.classList.remove('hidden');
+    };
 
     const legend = $('#printLegend');
     const legendCounts = TileCalc.hasPaintData(customPaint, splitCells)
@@ -2047,12 +2046,55 @@
       document.title = 'Nexa Soluciones';
     };
 
-    if (planImg.complete && planImg.naturalWidth > 0) {
-      doPrint();
-    } else {
-      planImg.onload = doPrint;
-      planImg.onerror = doPrint;
+    const failPrint = (msg) => {
+      alert(msg || 'No se pudo generar el plano para el PDF. Probá de nuevo.');
+      document.title = 'Nexa Soluciones';
+    };
+
+    const setImgAndPrint = (src, revokeUrl) => {
+      if (!src) {
+        failPrint();
+        return;
+      }
+      planImg.classList.remove('hidden');
+      planImg.removeAttribute('hidden');
+      planImg.onload = () => {
+        doPrint();
+        if (revokeUrl) setTimeout(() => URL.revokeObjectURL(revokeUrl), 8000);
+      };
+      planImg.onerror = () => {
+        if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+        failPrint('No se pudo cargar la imagen del plano en el PDF.');
+      };
+      planImg.src = src;
+    };
+
+    const assemblyCanvas = typeof TileCalc.buildAssemblyPlanCanvas === 'function'
+      ? TileCalc.buildAssemblyPlanCanvas(lastResult, printOpts)
+      : null;
+
+    if (assemblyCanvas && typeof assemblyCanvas.toBlob === 'function') {
+      assemblyCanvas.toBlob((blob) => {
+        if (blob && blob.size > 100) {
+          const url = URL.createObjectURL(blob);
+          setImgAndPrint(url, url);
+          return;
+        }
+        /* Fallback dataURL / pantalla */
+        let src = TileCalc.renderAssemblyPlanImage(lastResult, printOpts);
+        if (!src) {
+          try { src = $('#floorCanvas')?.toDataURL('image/png') || null; } catch { src = null; }
+        }
+        setImgAndPrint(src);
+      }, 'image/png');
+      return;
     }
+
+    let src = TileCalc.renderAssemblyPlanImage(lastResult, printOpts);
+    if (!src) {
+      try { src = $('#floorCanvas')?.toDataURL('image/png') || null; } catch { src = null; }
+    }
+    setImgAndPrint(src);
   }
 
   function buildPatternGrids() {

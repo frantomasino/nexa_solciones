@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v86-fix-global';
+const CACHE = 'nexa-v91-fix-pdf-only';
 const ASSETS = [
   './',
   './index.html',

@@ -1700,37 +1700,78 @@
 
   function assemblyPrintMetrics(cols, rows) {
     const maxGrid = Math.max(cols, rows, 1);
-    const minCellPx = Math.max(96, Math.min(340, Math.floor(6800 / maxGrid)));
-    const dimPad = Math.max(240, Math.min(480, minCellPx * 1.7));
-    const maxSize = Math.max(
-      8000,
+    /* Grande para el cliente, pero dentro del límite de PNG del navegador */
+    const minCellPx = Math.max(64, Math.min(200, Math.floor(4200 / maxGrid)));
+    const dimPad = Math.max(160, Math.min(340, minCellPx * 1.55));
+    const needed = Math.max(
       cols * minCellPx + dimPad + 40,
       rows * minCellPx + dimPad + 40
     );
+    const maxSize = Math.min(4096, Math.max(2600, needed));
     return { minCellPx, maxSize, dimPad };
   }
 
+  /**
+   * Plano de armado para PDF/cliente: colores, grilla y medidas.
+   * Prueba varias calidades si el canvas es demasiado grande para toDataURL.
+   */
+  function buildAssemblyPlanCanvas(result, options = {}) {
+    const { cols, rows } = result || {};
+    if (!cols || !rows) return null;
+
+    const attempts = [
+      { supersample: 2, cellScale: 1 },
+      { supersample: 1, cellScale: 1 },
+      { supersample: 1, cellScale: 0.7 },
+    ];
+
+    for (const attempt of attempts) {
+      try {
+        const printMetrics = assemblyPrintMetrics(cols, rows);
+        const dimPad = printMetrics.dimPad;
+        const minCellPx = Math.max(
+          40,
+          Math.round(printMetrics.minCellPx * attempt.cellScale)
+        );
+        const canvas = document.createElement('canvas');
+        drawFloorPlan(canvas, result, {
+          ...options,
+          assemblyMode: true,
+          customPaint: options.customPaint || result.customPaint || null,
+          splitCells: options.splitCells || result.splitCells || null,
+          padTop: 8,
+          padLeft: 8,
+          padRight: dimPad,
+          padBottom: dimPad,
+          minCellPx: options.minCellPx ?? minCellPx,
+          maxSize: options.maxSize ?? printMetrics.maxSize,
+          showGrid: true,
+          showDimensions: true,
+          /* Fijo en 1: no multiplicar por DPR del monitor (rompe el PDF) */
+          supersample: attempt.supersample,
+          pixelRatio: 1,
+        });
+        if (!canvas.width || !canvas.height) continue;
+        if (canvas.width > 8192 || canvas.height > 8192) continue;
+        return canvas;
+      } catch (err) {
+        console.warn('PDF plano intento falló:', err);
+      }
+    }
+    return null;
+  }
+
   function renderAssemblyPlanImage(result, options = {}) {
-    const { cols, rows } = result;
-    const printMetrics = assemblyPrintMetrics(cols, rows);
-    const dimPad = printMetrics.dimPad;
-    const canvas = document.createElement('canvas');
-    drawFloorPlan(canvas, result, {
-      ...options,
-      assemblyMode: true,
-      customPaint: options.customPaint || result.customPaint || null,
-      splitCells: options.splitCells || result.splitCells || null,
-      padTop: 8,
-      padLeft: 8,
-      padRight: dimPad,
-      padBottom: dimPad,
-      minCellPx: options.minCellPx ?? printMetrics.minCellPx,
-      maxSize: options.maxSize ?? printMetrics.maxSize,
-      showGrid: true,
-      showDimensions: true,
-      supersample: 4,
-    });
-    return canvas.toDataURL('image/png');
+    const canvas = buildAssemblyPlanCanvas(result, options);
+    if (!canvas) return null;
+    try {
+      const url = canvas.toDataURL('image/png');
+      if (!url || url.length < 200 || url === 'data:,') return null;
+      return url;
+    } catch (err) {
+      console.warn('PDF plano toDataURL:', err);
+      return null;
+    }
   }
 
   global.TileCalc = {
@@ -1771,6 +1812,7 @@
     roundSpareDelta,
     adjustColumnExclusions,
     renderAssemblyPlanImage,
+    buildAssemblyPlanCanvas,
     calculate,
     drawFloorPlan,
     drawFloorPlanAsync,
