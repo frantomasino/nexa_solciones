@@ -493,10 +493,23 @@
     updatePaintUI();
     updateColumnUI();
     if (lastResult) {
-      redrawPlanSync();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => planViewerControls?.fitView());
-      });
+      /* Redibujar en neutro sin cambiar tamaño del canvas (evita zoom al pintar) */
+      const canvas = $('#floorCanvas');
+      const form = readForm();
+      const opts = getDrawOptions(form);
+      if (canvas?.dataset?.cellW) {
+        opts.minCellPx = parseFloat(canvas.dataset.cellW);
+        opts.padTop = parseFloat(canvas.dataset.padTop) || opts.padTop;
+        opts.padLeft = parseFloat(canvas.dataset.padLeft) || opts.padLeft;
+        opts.padRight = parseFloat(canvas.dataset.padRight) || opts.padRight;
+        opts.padBottom = parseFloat(canvas.dataset.padBottom) || opts.padBottom;
+        opts.maxSize = 16384;
+        const ratio = parseFloat(canvas.dataset.layoutRatio) || 2;
+        const dpr = window.devicePixelRatio || 1;
+        opts.pixelRatio = dpr;
+        opts.supersample = Math.max(1, Math.round(ratio / dpr));
+      }
+      TileCalc.drawFloorPlanSync(canvas, lastResult, opts);
     }
   }
 
@@ -2021,15 +2034,11 @@
 
     document.title = `Armado ${cliente} — Nexa`;
 
-    const titleEl = $('#printClientTitle');
-    if (titleEl) titleEl.textContent = cliente;
-
-    const headerParts = [];
-    if (referencia) headerParts.push(`Ref. ${referencia}`);
+    const headerParts = [cliente];
+    if (referencia) headerParts.push(referencia);
     headerParts.push(`${formatMetrosLabel(form.roomWidthM)} × ${formatMetrosLabel(form.roomLengthM)}`);
     headerParts.push(patron);
-    headerParts.push(`${TileCalc.formatTileCount(lastResult.totalTilesWithSpare)} baldosas`);
-    $('#printHeaderLine').textContent = headerParts.join('  ·  ');
+    $('#printHeaderLine').textContent = headerParts.join(' · ');
 
     const notasEl = $('#printNotesLine');
     const notas = form.notas?.trim();
@@ -2042,7 +2051,7 @@
     }
 
     const planImg = $('#printPlanImg');
-    let planSrc = TileCalc.renderAssemblyPlanImage(lastResult, {
+    const printOpts = {
       columnRects,
       customPaint: TileCalc.hasCustomPaint(customPaint) ? customPaint : null,
       splitCells: TileCalc.hasSplitCells(splitCells) ? splitCells : null,
@@ -2052,8 +2061,9 @@
       polygonCellKeys: lastResult.polygonExcludedKeys?.length
         ? new Set(lastResult.polygonExcludedKeys)
         : null,
-    });
-    /* Fallback: usar el plano de pantalla si el render de armado falla */
+    };
+    let planSrc = TileCalc.renderAssemblyPlanImage(lastResult, printOpts);
+    /* Fallback: plano de pantalla si el render de armado falla (canvas demasiado grande, etc.) */
     if (!planSrc) {
       try {
         planSrc = $('#floorCanvas')?.toDataURL('image/png') || null;
@@ -2061,7 +2071,7 @@
         planSrc = null;
       }
     }
-    if (!planSrc) {
+    if (!planSrc || planSrc === 'data:,') {
       alert('No se pudo generar la imagen del plano para el PDF. Probá de nuevo.');
       document.title = 'Nexa Soluciones';
       return;
