@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v86-fix-global';
+const CACHE = 'nexa-v87-design-wow';
 const ASSETS = [
   './',
   './index.html',

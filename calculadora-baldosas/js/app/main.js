@@ -1458,8 +1458,14 @@
     const canvas = $('#floorCanvas');
     const empty = $('#canvasEmpty');
     const viewer = $('#planViewer');
+    const wrap = $('#canvasPlaceholder');
     empty.classList.add('hidden');
     viewer.classList.remove('hidden');
+    if (wrap) {
+      wrap.classList.remove('plan-reveal');
+      void wrap.offsetWidth;
+      wrap.classList.add('plan-reveal');
+    }
     await TileCalc.drawFloorPlanAsync(canvas, lastResult, getDrawOptions(form));
     fitPlanToStage();
     planNeedsFitView = false;
@@ -1635,6 +1641,14 @@
     document.body.dataset.view = view;
     document.querySelector('.app-header')?.classList.toggle('hidden', view === 'login');
     if (view === 'dashboard') renderDashboard();
+    if (view === 'editor') {
+      const ed = $('#viewEditor');
+      if (ed) {
+        ed.classList.remove('view-enter');
+        void ed.offsetWidth;
+        ed.classList.add('view-enter');
+      }
+    }
   }
 
   let loginPhonePending = '';
@@ -1998,11 +2012,15 @@
 
     document.title = `Armado ${cliente} — Nexa`;
 
-    const headerParts = [cliente];
-    if (referencia) headerParts.push(referencia);
+    const titleEl = $('#printClientTitle');
+    if (titleEl) titleEl.textContent = cliente;
+
+    const headerParts = [];
+    if (referencia) headerParts.push(`Ref. ${referencia}`);
     headerParts.push(`${formatMetrosLabel(form.roomWidthM)} × ${formatMetrosLabel(form.roomLengthM)}`);
     headerParts.push(patron);
-    $('#printHeaderLine').textContent = headerParts.join(' · ');
+    headerParts.push(`${TileCalc.formatTileCount(lastResult.totalTilesWithSpare)} baldosas`);
+    $('#printHeaderLine').textContent = headerParts.join('  ·  ');
 
     const notasEl = $('#printNotesLine');
     const notas = form.notas?.trim();

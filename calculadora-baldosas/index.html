@@ -565,15 +565,31 @@
   </main>
 
   <div id="printArea" class="print-only">
-    <p id="printHeaderLine" class="print-header-line"></p>
-    <p id="printNotesLine" class="print-notes-line hidden"></p>
+    <header class="print-brand">
+      <div class="print-brand-stripe" aria-hidden="true"></div>
+      <div class="print-brand-row">
+        <img src="assets/icons/nexa-logo.png" alt="NEXA" class="print-logo" width="110" height="36">
+        <div class="print-brand-copy">
+          <p class="print-doc-label">Plano de armado</p>
+          <h1 id="printClientTitle" class="print-client-title">Cliente</h1>
+        </div>
+      </div>
+      <p id="printHeaderLine" class="print-meta"></p>
+      <p id="printNotesLine" class="print-notes-line hidden"></p>
+    </header>
 
     <figure class="print-plan-wrap">
       <img id="printPlanImg" class="print-plan-img" alt="Plano de armado del piso">
       <div id="printLegend" class="print-legend"></div>
     </figure>
 
-    <footer class="print-footer">Nexa Soluciones · Baldosa 40×40 cm</footer>
+    <footer class="print-footer">
+      <span class="print-footer-brand">Nexa Soluciones</span>
+      <span class="print-footer-sep" aria-hidden="true">·</span>
+      <span>Baldosa 40×40 cm</span>
+      <span class="print-footer-sep" aria-hidden="true">·</span>
+      <span>Documento para cliente</span>
+    </footer>
   </div>
 
   <!-- Modal instalar app -->
