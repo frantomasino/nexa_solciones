@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v99-rejilla-level';
+const CACHE = 'nexa-v100-rejilla-replace';
 const ASSETS = [
   './',
   './index.html',
