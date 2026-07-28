@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v94-trama-new';
+const CACHE = 'nexa-v95-rejilla-new';
 const ASSETS = [
   './',
   './index.html',
