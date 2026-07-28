@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v107-tiles-polish';
+const CACHE = 'nexa-v108-tiles-straight';
 const ASSETS = [
   './',
   './index.html',
