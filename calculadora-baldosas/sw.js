@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v101-foto2-real';
+const CACHE = 'nexa-v102-rejilla-align';
 const ASSETS = [
   './',
   './index.html',
