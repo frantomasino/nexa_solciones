@@ -2039,16 +2039,25 @@
     `).join('');
 
     const landscape = lastResult.cols >= lastResult.rows;
-    $('#printArea')?.classList.toggle('print-landscape', landscape);
+    const printArea = $('#printArea');
+    printArea?.classList.toggle('print-landscape', landscape);
+    document.documentElement.classList.toggle('print-landscape', landscape);
+
+    const resetPrintState = () => {
+      document.title = 'Nexa Soluciones';
+      printArea?.classList.remove('print-landscape');
+      document.documentElement.classList.remove('print-landscape');
+    };
 
     const doPrint = () => {
+      window.addEventListener('afterprint', resetPrintState, { once: true });
       window.print();
-      document.title = 'Nexa Soluciones';
+      setTimeout(resetPrintState, 4000);
     };
 
     const failPrint = (msg) => {
+      resetPrintState();
       alert(msg || 'No se pudo generar el plano para el PDF. Probá de nuevo.');
-      document.title = 'Nexa Soluciones';
     };
 
     const setImgAndPrint = (src, revokeUrl) => {
@@ -2058,15 +2067,37 @@
       }
       planImg.classList.remove('hidden');
       planImg.removeAttribute('hidden');
-      planImg.onload = () => {
-        doPrint();
-        if (revokeUrl) setTimeout(() => URL.revokeObjectURL(revokeUrl), 8000);
+
+      let started = false;
+      const runPrint = () => {
+        const go = () => doPrint();
+        if (typeof planImg.decode === 'function') {
+          planImg.decode().then(go).catch(go);
+        } else {
+          go();
+        }
+        if (revokeUrl) setTimeout(() => URL.revokeObjectURL(revokeUrl), 12000);
       };
+
+      const schedulePrint = () => {
+        if (started) return;
+        started = true;
+        requestAnimationFrame(() => requestAnimationFrame(runPrint));
+      };
+
       planImg.onerror = () => {
         if (revokeUrl) URL.revokeObjectURL(revokeUrl);
         failPrint('No se pudo cargar la imagen del plano en el PDF.');
       };
+
+      const prevSrc = planImg.getAttribute('src');
+      planImg.onload = schedulePrint;
+      if (prevSrc === src) planImg.removeAttribute('src');
       planImg.src = src;
+
+      if (planImg.complete && planImg.naturalWidth > 0 && prevSrc !== src) {
+        schedulePrint();
+      }
     };
 
     const assemblyCanvas = typeof TileCalc.buildAssemblyPlanCanvas === 'function'

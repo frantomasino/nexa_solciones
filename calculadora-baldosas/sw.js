@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260728-trama-revert-rot';
+const CACHE = 'nexa-v20260728-premium-preview';
 const ASSETS = [
   './',
   './index.html',
