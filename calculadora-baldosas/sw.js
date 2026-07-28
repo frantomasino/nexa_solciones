@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v96-rejilla-straight';
+const CACHE = 'nexa-v97-rejilla-encastres';
 const ASSETS = [
   './',
   './index.html',
