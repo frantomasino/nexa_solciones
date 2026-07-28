@@ -44,8 +44,15 @@
   }
 
   function setCurrentUser(name) {
-    const user = { name: (name || '').trim(), id: `local_${Date.now()}` };
+    const existing = getCurrentUser();
+    const user = {
+      name: (name || '').trim(),
+      id: existing.id || `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
+    if (global.CloudStorage?.isActive?.()) {
+      global.CloudStorage.upsertUser(user).catch((err) => console.warn('Sync nube (usuario)', err));
+    }
     return user;
   }
 
@@ -142,6 +149,21 @@
     return getAll();
   }
 
+  /** Combina presupuestos traídos de la nube con los locales (gana el más nuevo por id). */
+  function mergeIncoming(items) {
+    if (!Array.isArray(items) || !items.length) return getAll();
+    const byId = new Map(readAll().map((p) => [p.id, p]));
+    for (const remote of items) {
+      if (!remote?.id) continue;
+      const local = byId.get(remote.id);
+      const remoteTime = new Date(remote.updatedAt || 0).getTime();
+      const localTime = new Date(local?.updatedAt || 0).getTime();
+      if (!local || remoteTime >= localTime) byId.set(remote.id, remote);
+    }
+    writeAll([...byId.values()]);
+    return getAll();
+  }
+
   function getTheme() {
     return localStorage.getItem(THEME_KEY) || 'light';
   }
@@ -152,7 +174,7 @@
 
   global.Storage = {
     getAll, getById, save, remove, duplicate,
-    exportAll, importAll, getTheme, setTheme,
+    exportAll, importAll, mergeIncoming, getTheme, setTheme,
     getCurrentUser, setCurrentUser,
     getCompanyLogo, setCompanyLogo,
   };

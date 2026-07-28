@@ -1,17 +1,23 @@
 /**
- * Sincronización de presupuestos con Supabase.
+ * Sincronización de presupuestos con Supabase — SIN login.
+ * Usa la anon/publishable key directo; cada fila queda etiquetada con el
+ * nombre de texto libre ("Tu nombre en Nexa"), no con un usuario autenticado.
  */
 (function (global) {
   'use strict';
 
-  const STORAGE_KEY = 'calculadora_baldosas_presupuestos';
+  const TABLE = 'presupuestos';
+  let client = null;
 
   function isActive() {
-    return global.AUTH_ENABLED && global.Auth?.isLoggedIn?.();
+    return !!global.CLOUD_ENABLED;
   }
 
   function getClient() {
-    return global.Auth?.getClient?.();
+    if (client) return client;
+    if (!isActive() || !global.supabase?.createClient) return null;
+    client = global.supabase.createClient(global.SUPABASE_URL, global.SUPABASE_PUBLISHABLE_KEY);
+    return client;
   }
 
   function rowToPresupuesto(row) {
@@ -19,80 +25,62 @@
     return {
       ...data,
       id: row.id,
+      cliente: data.cliente || row.cliente || '',
+      createdBy: data.createdBy || row.created_by || 'Sin usuario',
+      updatedBy: data.updatedBy || row.updated_by || 'Sin usuario',
+      createdAt: data.createdAt || row.created_at || row.updated_at,
       updatedAt: data.updatedAt || row.updated_at,
-      createdAt: data.createdAt || row.updated_at,
     };
   }
 
-  function writeLocal(items) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }
-
-  function readLocal() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }
-
   async function pushItem(presupuesto) {
-    const client = getClient();
-    const user = global.Auth.getUser();
-    if (!client || !user?.id || !presupuesto?.id) return;
+    const c = getClient();
+    if (!c || !presupuesto?.id) return;
 
-    const { error } = await client.from('presupuestos').upsert({
+    const { error } = await c.from(TABLE).upsert({
       id: presupuesto.id,
-      user_id: user.id,
       data: presupuesto,
+      cliente: presupuesto.cliente || null,
+      created_by: presupuesto.createdBy || null,
+      updated_by: presupuesto.updatedBy || null,
       updated_at: presupuesto.updatedAt || new Date().toISOString(),
     });
     if (error) throw error;
   }
 
   async function deleteItem(id) {
-    const client = getClient();
-    const user = global.Auth.getUser();
-    if (!client || !user?.id || !id) return;
+    const c = getClient();
+    if (!c || !id) return;
 
-    const { error } = await client.from('presupuestos').delete().eq('id', id).eq('user_id', user.id);
+    const { error } = await c.from(TABLE).delete().eq('id', id);
     if (error) throw error;
   }
 
+  /** Trae todos los presupuestos de la nube (tabla compartida por el equipo). */
   async function syncDown() {
-    const client = getClient();
-    const user = global.Auth.getUser();
-    if (!client || !user?.id) return readLocal();
+    const c = getClient();
+    if (!c) return null;
 
-    const { data, error } = await client
-      .from('presupuestos')
-      .select('id, data, updated_at')
-      .eq('user_id', user.id)
+    const { data, error } = await c
+      .from(TABLE)
+      .select('id, data, cliente, created_by, updated_by, created_at, updated_at')
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
-
-    const items = (data || []).map(rowToPresupuesto);
-    writeLocal(items);
-    return items;
+    return (data || []).map(rowToPresupuesto);
   }
 
-  /** Primera vez: sube lo local y baja la nube (merge por id). */
-  async function syncOnLogin() {
-    const client = getClient();
-    const user = global.Auth.getUser();
-    if (!client || !user?.id) return readLocal();
+  /** Guarda/actualiza el nombre de usuario apenas se carga en el modal, sin esperar a un presupuesto. */
+  async function upsertUser(user) {
+    const c = getClient();
+    if (!c || !user?.id || !user?.name) return;
 
-    const local = readLocal();
-    for (const p of local) {
-      try {
-        await pushItem(p);
-      } catch (err) {
-        console.warn('No se pudo subir presupuesto local', p.id, err);
-      }
-    }
-    return syncDown();
+    const { error } = await c.from('usuarios').upsert({
+      id: user.id,
+      name: user.name,
+      last_seen: new Date().toISOString(),
+    });
+    if (error) throw error;
   }
 
   global.CloudStorage = {
@@ -100,6 +88,6 @@
     pushItem,
     deleteItem,
     syncDown,
-    syncOnLogin,
+    upsertUser,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

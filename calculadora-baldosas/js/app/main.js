@@ -2667,6 +2667,21 @@
     } else {
       initUser();
       showView('dashboard');
+      syncCloudOnStart();
+    }
+  }
+
+  /** Trae presupuestos de la nube (tabla compartida) y los mezcla con lo local. */
+  async function syncCloudOnStart() {
+    if (!global.CloudStorage?.isActive?.()) return;
+    try {
+      const remote = await global.CloudStorage.syncDown();
+      if (remote) {
+        Storage.mergeIncoming(remote);
+        renderDashboard();
+      }
+    } catch (err) {
+      console.warn('No se pudo sincronizar con Supabase', err);
     }
   }
 
