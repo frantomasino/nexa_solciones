@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v104-align-css';
+const CACHE = 'nexa-v105-fix-css-shift';
 const ASSETS = [
   './',
   './index.html',

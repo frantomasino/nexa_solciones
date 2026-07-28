@@ -1424,14 +1424,6 @@ body[data-view='login'] .brand-stripe-top { display: none; }
   display: block;
 }
 
-/* Alinear visualmente sin tocar la foto (fondo / enganches intactos) */
-.floor-type-btn[data-pattern="rejilla"] img {
-  transform: rotate(1.2deg);
-}
-.floor-type-btn[data-pattern="trama"] img {
-  transform: rotate(-0.65deg);
-}
-
 .pattern-btn span {
   font-size: 0.65rem;
   text-transform: uppercase;
