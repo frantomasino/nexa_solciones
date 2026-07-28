@@ -28,7 +28,7 @@
           <img src="assets/icons/nexa-logo.png" alt="NEXA" class="brand-logo" width="120" height="40">
         </div>
         <div class="brand-text">
-          <p class="brand-title">Soluciones</p>
+          <p class="brand-title">Soluciones <span class="brand-chip">Equipo interno</span></p>
           <p class="brand-sub">Pisos encastrables de alto rendimiento</p>
         </div>
       </div>
@@ -159,7 +159,7 @@
         <div class="editor-topbar-actions">
           <button type="button" id="btnShare" class="btn btn-outline btn-sm">Compartir</button>
           <button type="button" id="btnExportExcel" class="btn btn-outline btn-sm" title="Descargar este presupuesto en Excel">Excel</button>
-          <button type="button" id="btnPrint" class="btn btn-outline btn-sm">PDF</button>
+          <button type="button" id="btnPrint" class="btn btn-outline btn-sm btn-pdf" title="Generar PDF de armado">PDF</button>
           <button type="button" id="btnSave" class="btn btn-primary">Guardar</button>
         </div>
       </div>
@@ -564,16 +564,20 @@
     </section>
   </main>
 
-  <div id="printArea" class="print-only">
+  <div id="printArea" class="print-only" aria-hidden="true">
+    <header class="print-brand-bar">
+      <img src="assets/icons/nexa-logo.png" alt="" class="print-brand-logo" width="72" height="24">
+      <span class="print-brand-tag">Plano de armado</span>
+    </header>
     <p id="printHeaderLine" class="print-header-line"></p>
     <p id="printNotesLine" class="print-notes-line hidden"></p>
 
     <figure class="print-plan-wrap">
-      <img id="printPlanImg" class="print-plan-img" alt="Plano de armado del piso">
+      <img id="printPlanImg" class="print-plan-img" alt="Plano de armado del piso" decoding="sync">
       <div id="printLegend" class="print-legend"></div>
     </figure>
 
-    <footer class="print-footer">Nexa Soluciones · Baldosa 40×40 cm</footer>
+    <footer class="print-footer">Nexa Soluciones · Baldosa 40×40 cm · Uso interno</footer>
   </div>
 
   <!-- Modal instalar app -->
