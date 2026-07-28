@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v108-tiles-straight';
+const CACHE = 'nexa-v109-trama-fix';
 const ASSETS = [
   './',
   './index.html',
@@ -20,6 +20,7 @@ const ASSETS = [
   './assets/images/piso-rejilla.jpg',
   './assets/images/piso-rejilla-foto2.jpg',
   './assets/images/piso-trama.jpg',
+  './assets/images/piso-trama-v2.jpg',
   './assets/images/piso-moneda.jpg',
 ];
 
