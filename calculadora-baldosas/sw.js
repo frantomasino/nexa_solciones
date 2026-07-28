@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v100-rejilla-replace';
+const CACHE = 'nexa-v101-foto2-real';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const ASSETS = [
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/images/piso-rejilla.jpg',
+  './assets/images/piso-rejilla-foto2.jpg',
   './assets/images/piso-trama.jpg',
   './assets/images/piso-moneda.jpg',
 ];

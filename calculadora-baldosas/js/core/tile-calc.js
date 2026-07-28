@@ -12,7 +12,7 @@
   };
 
   const FLOOR_TYPE_IMAGES = {
-    rejilla: 'assets/images/piso-rejilla.jpg',
+    rejilla: 'assets/images/piso-rejilla-foto2.jpg',
     trama: 'assets/images/piso-trama.jpg',
     moneda: 'assets/images/piso-moneda.jpg',
   };
