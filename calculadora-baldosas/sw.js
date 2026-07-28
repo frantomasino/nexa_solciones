@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v109-trama-fix';
+const CACHE = 'nexa-v110-size-match-moneda';
 const ASSETS = [
   './',
   './index.html',
