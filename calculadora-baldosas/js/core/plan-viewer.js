@@ -1,5 +1,6 @@
 /**
  * Visor del plano: zoom, arrastrar y rotar 360°.
+ * Zoom solo con +/− o rueda del mouse (no al pintar / gestos táctiles).
  */
 (function (global) {
   'use strict';
@@ -11,10 +12,18 @@
     let dragging = false;
     let lastX = 0;
     let lastY = 0;
+    let pointersDown = 0;
 
     const zoomLabel = controls.zoomLabel;
     const rotationRange = controls.rotationRange;
     const rotationValue = controls.rotationValue;
+
+    function isToolMode() {
+      return stageEl.classList.contains('obstacle-mode')
+        || stageEl.classList.contains('shape-mode')
+        || stageEl.classList.contains('paint-mode')
+        || stageEl.classList.contains('column-mode');
+    }
 
     function clampScale(s) {
       return Math.min(6, Math.max(0.35, s));
@@ -69,7 +78,7 @@
     }
 
     function onPointerDown(e) {
-      if (stageEl.classList.contains('obstacle-mode') || stageEl.classList.contains('shape-mode') || stageEl.classList.contains('paint-mode') || stageEl.classList.contains('column-mode')) return;
+      if (isToolMode()) return;
       if (e.button !== undefined && e.button !== 0) return;
       dragging = true;
       lastX = e.clientX;
@@ -93,10 +102,19 @@
     }
 
     function onWheel(e) {
+      // Mientras se pinta / usa herramienta con el dedo o el click, no zoom.
+      if (pointersDown > 0 || stageEl.classList.contains('is-painting') || dragging) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.12 : 0.12;
       zoomBy(delta);
     }
+
+    stageEl.addEventListener('pointerdown', () => { pointersDown += 1; });
+    window.addEventListener('pointerup', () => { pointersDown = Math.max(0, pointersDown - 1); });
+    window.addEventListener('pointercancel', () => { pointersDown = Math.max(0, pointersDown - 1); });
 
     stageEl.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mousemove', onPointerMove);
@@ -104,15 +122,31 @@
     stageEl.addEventListener('mouseleave', onPointerUp);
 
     stageEl.addEventListener('touchstart', (e) => {
+      // Pinch / multi-touch: bloquear zoom del navegador y del plano
+      if (e.touches.length > 1) {
+        e.preventDefault();
+        dragging = false;
+        return;
+      }
       if (e.touches.length === 1) onPointerDown(e.touches[0]);
     }, { passive: false });
     stageEl.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+        return;
+      }
       if (e.touches.length === 1) {
         e.preventDefault();
         onPointerMove(e.touches[0]);
       }
     }, { passive: false });
     stageEl.addEventListener('touchend', onPointerUp);
+    stageEl.addEventListener('touchcancel', onPointerUp);
+
+    // iOS Safari legacy gesture events (pinch page zoom)
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach((type) => {
+      stageEl.addEventListener(type, (e) => e.preventDefault());
+    });
 
     stageEl.addEventListener('wheel', onWheel, { passive: false });
 
@@ -124,7 +158,7 @@
     rotationRange?.addEventListener('input', () => setRotation(parseFloat(rotationRange.value) || 0));
 
     applyTransform();
-    return { resetView, fitView, applyTransform };
+    return { resetView, fitView, applyTransform, zoomBy };
   }
 
   global.PlanViewer = { createPlanViewer };
