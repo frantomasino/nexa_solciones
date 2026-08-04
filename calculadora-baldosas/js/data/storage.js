@@ -1,5 +1,5 @@
 /**
- * Persistencia en localStorage + usuario local (Supabase pendiente).
+ * Persistencia en localStorage + sync con Supabase (CloudStorage).
  */
 (function (global) {
   'use strict';

@@ -1,21 +1,45 @@
 /**
  * Sincronización de presupuestos con Supabase — SIN login.
- * Usa la anon/publishable key directo; cada fila queda etiquetada con el
- * nombre de texto libre ("Tu nombre en Nexa"), no con un usuario autenticado.
+ * Tabla compartida: todos ven todos los presupuestos en cualquier computadora.
  */
 (function (global) {
   'use strict';
 
   const TABLE = 'presupuestos';
+  const CLIENT_WAIT_MS = 8000;
+  const CLIENT_POLL_MS = 200;
   let client = null;
 
   function isActive() {
     return !!global.CLOUD_ENABLED;
   }
 
-  function getClient() {
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /** Espera a que cargue el SDK de Supabase (CDN) antes de fallar. */
+  async function waitForSdk(timeoutMs = CLIENT_WAIT_MS) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (global.supabase?.createClient) return true;
+      await sleep(CLIENT_POLL_MS);
+    }
+    return !!global.supabase?.createClient;
+  }
+
+  async function getClient() {
     if (client) return client;
-    if (!isActive() || !global.supabase?.createClient) return null;
+    if (!isActive()) return null;
+    if (!global.supabase?.createClient) {
+      const ok = await waitForSdk();
+      if (!ok) {
+        throw new Error('No cargó el SDK de Supabase. Revisá la conexión o un bloqueador.');
+      }
+    }
+    if (!global.SUPABASE_URL || !global.SUPABASE_PUBLISHABLE_KEY) {
+      throw new Error('Faltan credenciales de Supabase en la app.');
+    }
     client = global.supabase.createClient(global.SUPABASE_URL, global.SUPABASE_PUBLISHABLE_KEY);
     return client;
   }
@@ -34,7 +58,7 @@
   }
 
   async function pushItem(presupuesto) {
-    const c = getClient();
+    const c = await getClient();
     if (!c || !presupuesto?.id) return;
 
     const { error } = await c.from(TABLE).upsert({
@@ -49,7 +73,7 @@
   }
 
   async function deleteItem(id) {
-    const c = getClient();
+    const c = await getClient();
     if (!c || !id) return;
 
     const { error } = await c.from(TABLE).delete().eq('id', id);
@@ -58,8 +82,8 @@
 
   /** Trae todos los presupuestos de la nube (tabla compartida por el equipo). */
   async function syncDown() {
-    const c = getClient();
-    if (!c) return null;
+    const c = await getClient();
+    if (!c) return [];
 
     const { data, error } = await c
       .from(TABLE)
@@ -70,9 +94,9 @@
     return (data || []).map(rowToPresupuesto);
   }
 
-  /** Guarda/actualiza el nombre de usuario apenas se carga en el modal, sin esperar a un presupuesto. */
+  /** Guarda/actualiza el nombre de usuario apenas se carga en el modal. */
   async function upsertUser(user) {
-    const c = getClient();
+    const c = await getClient();
     if (!c || !user?.id || !user?.name) return;
 
     const { error } = await c.from('usuarios').upsert({
@@ -83,11 +107,28 @@
     if (error) throw error;
   }
 
+  /** Reintenta syncDown unas veces (red floja / cold start). */
+  async function syncDownWithRetry(attempts = 3) {
+    let lastErr = null;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await syncDown();
+      } catch (err) {
+        lastErr = err;
+        if (i < attempts - 1) await sleep(600 * (i + 1));
+      }
+    }
+    throw lastErr || new Error('No se pudo sincronizar con la nube');
+  }
+
   global.CloudStorage = {
     isActive,
     pushItem,
     deleteItem,
     syncDown,
+    syncDownWithRetry,
     upsertUser,
+    /** Alias por si el flujo de login vuelve a activarse. */
+    syncOnLogin: syncDownWithRetry,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
