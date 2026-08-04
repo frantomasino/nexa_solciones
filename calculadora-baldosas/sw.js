@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260804-dash-filters';
+const CACHE = 'nexa-v20260804-polish-micro';
 const ASSETS = [
   './',
   './index.html',

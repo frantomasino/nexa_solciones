@@ -1739,12 +1739,26 @@
       return true;
     });
   }
+  function playViewEnter(view) {
+    const map = {
+      dashboard: '#viewDashboard',
+      editor: '#viewEditor',
+      login: '#viewLogin',
+    };
+    const el = $(map[view]);
+    if (!el || el.classList.contains('hidden')) return;
+    el.classList.remove('view-enter');
+    void el.offsetWidth;
+    el.classList.add('view-enter');
+  }
+
   function showView(view) {
     $('#viewLogin')?.classList.toggle('hidden', view !== 'login');
     $('#viewDashboard').classList.toggle('hidden', view !== 'dashboard');
     $('#viewEditor').classList.toggle('hidden', view !== 'editor');
     document.body.dataset.view = view;
     document.querySelector('.app-header')?.classList.toggle('hidden', view === 'login');
+    playViewEnter(view);
     if (view === 'dashboard') renderDashboard();
   }
 
@@ -1925,9 +1939,11 @@
       if (getFilterUser()) parts.push(`usuario ${escapeHtml(getFilterUser())}`);
       if (getFilterDatePreset()) parts.push('la fecha elegida');
       const detail = parts.length ? parts.join(', ') : 'estos filtros';
-      const msg = `No hay resultados para ${detail}`;
-      tbody.innerHTML = `<tr><td colspan="9" class="table-empty">${msg}</td></tr>`;
-      if (mobileList) mobileList.innerHTML = `<p class="table-empty budget-mobile-empty">${msg}</p>`;
+      const emptyHtml = `
+        <span class="table-empty-title">Sin resultados</span>
+        <span class="table-empty-hint">No hay presupuestos para ${detail}. Probá limpiar los filtros.</span>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="table-empty">${emptyHtml}</td></tr>`;
+      if (mobileList) mobileList.innerHTML = `<div class="table-empty budget-mobile-empty">${emptyHtml}</div>`;
       return;
     }
 
