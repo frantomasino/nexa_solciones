@@ -1616,16 +1616,127 @@
     return ($('#searchPresupuestos')?.value || '').trim().toLowerCase();
   }
 
+  function getFilterUser() {
+    return ($('#filterUser')?.value || '').trim();
+  }
+
+  function getFilterDatePreset() {
+    return ($('#filterDatePreset')?.value || '').trim();
+  }
+
+  function startOfLocalDay(d) {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  function endOfLocalDay(d) {
+    const x = new Date(d);
+    x.setHours(23, 59, 59, 999);
+    return x;
+  }
+
+  function getDateFilterRange() {
+    const preset = getFilterDatePreset();
+    if (!preset) return null;
+
+    const now = new Date();
+    if (preset === 'today') {
+      return { from: startOfLocalDay(now), to: endOfLocalDay(now) };
+    }
+    if (preset === '7d') {
+      const from = startOfLocalDay(now);
+      from.setDate(from.getDate() - 6);
+      return { from, to: endOfLocalDay(now) };
+    }
+    if (preset === '30d') {
+      const from = startOfLocalDay(now);
+      from.setDate(from.getDate() - 29);
+      return { from, to: endOfLocalDay(now) };
+    }
+    if (preset === 'custom') {
+      const fromRaw = $('#filterDateFrom')?.value;
+      const toRaw = $('#filterDateTo')?.value;
+      if (!fromRaw && !toRaw) return null;
+      return {
+        from: fromRaw ? startOfLocalDay(fromRaw) : null,
+        to: toRaw ? endOfLocalDay(toRaw) : null,
+      };
+    }
+    return null;
+  }
+
+  function hasActiveFilters() {
+    return !!(getSearchQuery() || getFilterUser() || getFilterDatePreset());
+  }
+
+  function presupuestoUserName(p) {
+    return (p.updatedBy || p.createdBy || '').trim();
+  }
+
+  function populateUserFilter(items) {
+    const sel = $('#filterUser');
+    if (!sel) return;
+    const prev = sel.value;
+    const names = [...new Set(items.map(presupuestoUserName).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+    sel.innerHTML = '<option value="">Todos</option>'
+      + names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+
+    if (prev && names.includes(prev)) sel.value = prev;
+    else sel.value = '';
+  }
+
+  function updateFilterUiState() {
+    const preset = getFilterDatePreset();
+    $('#filterDateRange')?.classList.toggle('hidden', preset !== 'custom');
+    $('#btnClearFilters')?.classList.toggle('hidden', !hasActiveFilters());
+  }
+
+  function clearDashboardFilters() {
+    const search = $('#searchPresupuestos');
+    if (search) search.value = '';
+    const user = $('#filterUser');
+    if (user) user.value = '';
+    const preset = $('#filterDatePreset');
+    if (preset) preset.value = '';
+    const from = $('#filterDateFrom');
+    if (from) from.value = '';
+    const to = $('#filterDateTo');
+    if (to) to.value = '';
+    updateFilterUiState();
+    renderDashboard();
+  }
+
   function filterItems(items) {
     const q = getSearchQuery();
-    if (!q) return items;
+    const user = getFilterUser().toLowerCase();
+    const range = getDateFilterRange();
+
     return items.filter((p) => {
-      const hay = [
-        p.cliente, p.referencia, p.link, p.notas,
-        p.createdBy, p.updatedBy,
-        TileCalc.PATTERNS[p.pattern] || p.pattern,
-      ].filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
+      if (q) {
+        const hay = [
+          p.cliente, p.referencia, p.link, p.notas,
+          p.createdBy, p.updatedBy,
+          TileCalc.PATTERNS[p.pattern] || p.pattern,
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+
+      if (user) {
+        const u = presupuestoUserName(p).toLowerCase();
+        if (u !== user) return false;
+      }
+
+      if (range) {
+        const t = new Date(p.updatedAt || p.createdAt || 0).getTime();
+        if (Number.isNaN(t)) return false;
+        if (range.from && t < range.from.getTime()) return false;
+        if (range.to && t > range.to.getTime()) return false;
+      }
+
+      return true;
     });
   }
   function showView(view) {
@@ -1767,6 +1878,8 @@
 
   function renderDashboard() {
     const items = Storage.getAll();
+    populateUserFilter(items);
+    updateFilterUiState();
     const filtered = filterItems(items);
     const tbody = $('#dashboardTableBody');
     const tableWrap = $('#dashboardTableWrap');
@@ -1787,7 +1900,9 @@
     $('#statM2').textContent = totalM2.toFixed(0);
     $('#statBaldosas').textContent = totalBaldosas;
     $('#statLinks').textContent = totalLinks;
-    $('#listCount').textContent = items.length;
+    $('#listCount').textContent = hasActiveFilters()
+      ? `${filtered.length}/${items.length}`
+      : String(items.length);
     $('#listExportHint')?.classList.toggle('hidden', !items.length);
 
     if (!items.length) {
@@ -1804,7 +1919,13 @@
     mobileList?.classList.remove('hidden');
 
     if (!filtered.length) {
-      const msg = `No hay resultados para "${escapeHtml(getSearchQuery())}"`;
+      const q = getSearchQuery();
+      const parts = [];
+      if (q) parts.push(`“${escapeHtml(q)}”`);
+      if (getFilterUser()) parts.push(`usuario ${escapeHtml(getFilterUser())}`);
+      if (getFilterDatePreset()) parts.push('la fecha elegida');
+      const detail = parts.length ? parts.join(', ') : 'estos filtros';
+      const msg = `No hay resultados para ${detail}`;
       tbody.innerHTML = `<tr><td colspan="9" class="table-empty">${msg}</td></tr>`;
       if (mobileList) mobileList.innerHTML = `<p class="table-empty budget-mobile-empty">${msg}</p>`;
       return;
@@ -2381,10 +2502,9 @@
       alert('No hay presupuestos guardados para exportar.');
       return;
     }
-    const q = getSearchQuery();
-    const toExport = q ? filterItems(items) : items;
+    const toExport = hasActiveFilters() ? filterItems(items) : items;
     if (!toExport.length) {
-      alert('No hay presupuestos que coincidan con la búsqueda.');
+      alert('No hay presupuestos que coincidan con los filtros.');
       return;
     }
     const result = NexaExport.exportPresupuestos(toExport);
@@ -2589,6 +2709,14 @@
     $$(inputs).forEach((el) => el.addEventListener('input', () => debounce(recalculate)));
 
     $('#searchPresupuestos')?.addEventListener('input', () => renderDashboard());
+    $('#filterUser')?.addEventListener('change', () => renderDashboard());
+    $('#filterDatePreset')?.addEventListener('change', () => {
+      updateFilterUiState();
+      renderDashboard();
+    });
+    $('#filterDateFrom')?.addEventListener('change', () => renderDashboard());
+    $('#filterDateTo')?.addEventListener('change', () => renderDashboard());
+    $('#btnClearFilters')?.addEventListener('click', clearDashboardFilters);
 
     $('#dashboardTableBody').addEventListener('click', handleDashboardActivate);
     $('#dashboardMobileList')?.addEventListener('click', handleDashboardActivate);

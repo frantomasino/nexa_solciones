@@ -118,6 +118,35 @@
             <button type="button" id="btnNew" class="btn btn-primary">Nuevo presupuesto</button>
           </div>
         </div>
+        <div class="list-filters" id="listFilters">
+          <label class="list-filter">
+            <span>Usuario</span>
+            <select id="filterUser" class="filter-select">
+              <option value="">Todos</option>
+            </select>
+          </label>
+          <label class="list-filter">
+            <span>Fecha</span>
+            <select id="filterDatePreset" class="filter-select">
+              <option value="">Todas</option>
+              <option value="today">Hoy</option>
+              <option value="7d">Últimos 7 días</option>
+              <option value="30d">Últimos 30 días</option>
+              <option value="custom">Rango…</option>
+            </select>
+          </label>
+          <div class="list-filter-range hidden" id="filterDateRange">
+            <label class="list-filter">
+              <span>Desde</span>
+              <input type="date" id="filterDateFrom" class="filter-date">
+            </label>
+            <label class="list-filter">
+              <span>Hasta</span>
+              <input type="date" id="filterDateTo" class="filter-date">
+            </label>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm hidden" id="btnClearFilters">Limpiar filtros</button>
+        </div>
         <p class="list-export-hint hidden" id="listExportHint">Descargá un presupuesto con el ícono de descarga en cada fila o todos juntos con <strong>Excel (todos)</strong>.</p>
 
         <div id="dashboardEmpty" class="empty-state">

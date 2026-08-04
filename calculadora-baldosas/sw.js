@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260804-hide-sync-ui';
+const CACHE = 'nexa-v20260804-dash-filters';
 const ASSETS = [
   './',
   './index.html',
