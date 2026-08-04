@@ -517,33 +517,6 @@ img, video, canvas { max-width: 100%; display: block; }
   color: var(--text-muted);
 }
 
-.cloud-sync-status {
-  margin: 0 0 0.75rem;
-  min-height: 1.25rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.cloud-sync-status.is-syncing {
-  color: var(--nexa-blue);
-}
-
-.cloud-sync-status.is-ok {
-  color: var(--text-muted);
-}
-
-.cloud-sync-status.is-error {
-  color: #b42318;
-}
-
-.empty-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  justify-content: center;
-  align-items: center;
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260804-cloud-sync';
+const CACHE = 'nexa-v20260804-hide-sync-ui';
 const ASSETS = [
   './',
   './index.html',
