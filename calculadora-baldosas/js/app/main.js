@@ -45,6 +45,8 @@
   let paintDirtyCells = new Set();
   let paintResultsPending = false;
   let paintUiPending = false;
+  /** Congela el tamaño del plano mientras se pinta / edita (evita “zoom” al redibujar). */
+  let lockedPlanMetrics = null;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -492,6 +494,18 @@
     updateShapeStatus();
     updatePaintUI();
     updateColumnUI();
+    if (mode === 'none') {
+      lockedPlanMetrics = null;
+    } else if (lastResult) {
+      // Lock AFTER toolbars toggle, so redraws keep a fixed cell size.
+      const stage = $('#planStage');
+      lockedPlanMetrics = TileCalc.screenPlanMetrics(
+        lastResult.cols,
+        lastResult.rows,
+        stage?.clientWidth,
+        stage?.clientHeight
+      );
+    }
     if (lastResult) redrawPlan();
   }
 
@@ -1258,12 +1272,11 @@
       opts.columnOutlineOnly = true;
     }
     if (lastResult?.cols && lastResult?.rows) {
-      const stage = $('#planStage');
-      const metrics = TileCalc.screenPlanMetrics(
+      const metrics = lockedPlanMetrics || TileCalc.screenPlanMetrics(
         lastResult.cols,
         lastResult.rows,
-        stage?.clientWidth,
-        stage?.clientHeight
+        $('#planStage')?.clientWidth,
+        $('#planStage')?.clientHeight
       );
       opts.minCellPx = metrics.minCellPx;
       opts.supersample = metrics.supersample;
@@ -2435,7 +2448,10 @@
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (lastResult) planViewerControls?.fitView();
+        if (!lastResult) return;
+        // No re-encuadrar mientras se pinta / edita el plano (evita “zoom” en mobile).
+        if (paintMode || columnMode || obstacleMode || shapeMode) return;
+        planViewerControls?.fitView();
       }, 150);
     });
   }
@@ -2646,6 +2662,7 @@
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       isPaintingDrag = paintMode;
+      $('#planStage')?.classList.toggle('is-painting', !!paintMode);
       lastPaintedKey = null;
       lastPaintCol = null;
       lastPaintRow = null;
@@ -2686,6 +2703,7 @@
       lastPaintRow = null;
       paintDirtyCells.clear();
       isPaintingDrag = false;
+      $('#planStage')?.classList.remove('is-painting');
     });
     $('#roomWidth').addEventListener('input', () => {
       excludedCells.clear();

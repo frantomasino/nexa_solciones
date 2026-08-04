@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260804-polish-micro';
+const CACHE = 'nexa-v20260804-paint-zoom-fix';
 const ASSETS = [
   './',
   './index.html',

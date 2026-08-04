@@ -1920,6 +1920,9 @@ body[data-view='editor'] .app-main {
   flex: 1;
   min-height: 380px;
   width: 100%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .plan-toolbar {
@@ -2105,6 +2108,8 @@ body[data-view='editor'] .app-main {
   position: relative;
   cursor: grab;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2123,6 +2128,8 @@ body[data-view='editor'] .app-main {
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
   image-rendering: high-quality;
   image-rendering: -webkit-optimize-contrast;
+  touch-action: none;
+  -webkit-user-drag: none;
 }
 
 .plan-zoom-label {
