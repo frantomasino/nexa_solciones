@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260804-paint-zoom-fix';
+const CACHE = 'nexa-v20260806-sync-btn';
 const ASSETS = [
   './',
   './index.html',

@@ -113,11 +113,13 @@
           <div class="list-toolbar-right">
             <input type="search" id="searchPresupuestos" class="search-input" placeholder="Buscar cliente, referencia o patrón…">
             <div class="toolbar-export-group">
+              <button type="button" id="btnSyncCloud" class="btn btn-outline btn-sm" title="Bajar todos los presupuestos de la nube">Sincronizar</button>
               <button type="button" id="btnExportAllExcel" class="btn btn-outline btn-sm" title="Descargar todos los presupuestos en Excel">Excel (todos)</button>
             </div>
             <button type="button" id="btnNew" class="btn btn-primary">Nuevo presupuesto</button>
           </div>
         </div>
+        <p class="cloud-sync-status" id="cloudSyncStatus" role="status" aria-live="polite"></p>
         <div class="list-filters" id="listFilters">
           <label class="list-filter">
             <span>Usuario</span>
@@ -154,8 +156,11 @@
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           </div>
           <h3>Todavía no hay presupuestos</h3>
-          <p>Cuando guardes el primero, va a aparecer acá para todo el equipo.</p>
-          <button type="button" class="btn btn-primary" id="btnNewEmpty">Nuevo presupuesto</button>
+          <p id="dashboardEmptyText">Creá tu primer presupuesto o tocá <strong>Sincronizar</strong> para bajar los del equipo desde la nube.</p>
+          <div class="empty-actions">
+            <button type="button" class="btn btn-outline" id="btnSyncEmpty">Sincronizar nube</button>
+            <button type="button" class="btn btn-primary" id="btnNewEmpty">Nuevo presupuesto</button>
+          </div>
         </div>
 
         <div id="dashboardTableWrap" class="table-wrap desktop-only hidden">

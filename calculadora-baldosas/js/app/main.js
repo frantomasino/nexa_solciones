@@ -2552,6 +2552,8 @@
     $('#btnExportExcel').addEventListener('click', exportCurrentToExcel);
     $('#btnPrint').addEventListener('click', printPresupuesto);
     $('#btnExportAllExcel')?.addEventListener('click', exportAllToExcel);
+    $('#btnSyncCloud')?.addEventListener('click', () => { syncCloudFromServer(); });
+    $('#btnSyncEmpty')?.addEventListener('click', () => { syncCloudFromServer(); });
     $('#themeToggle').addEventListener('click', toggleTheme);
 
     $$('.measure-tab').forEach((tab) => tab.addEventListener('click', () => setMeasureTab(tab.dataset.tab)));
@@ -2833,27 +2835,70 @@
     }
   }
 
+  function setCloudSyncStatus(message, state) {
+    const el = $('#cloudSyncStatus');
+    if (!el) return;
+    el.textContent = message || '';
+    el.classList.remove('is-syncing', 'is-ok', 'is-error');
+    if (state) el.classList.add(`is-${state}`);
+  }
+
+  function setSyncButtonsBusy(busy) {
+    ['#btnSyncCloud', '#btnSyncEmpty'].forEach((sel) => {
+      const btn = $(sel);
+      if (!btn) return;
+      btn.disabled = !!busy;
+      if (sel === '#btnSyncCloud') {
+        btn.textContent = busy ? 'Sincronizando…' : 'Sincronizar';
+      }
+    });
+  }
+
   /**
    * Baja todos los presupuestos de Supabase (tabla compartida) y los mezcla
-   * con lo local. Silencioso en UI; errores solo en consola.
+   * con lo local. Así en cualquier computadora se ven los de todo el equipo.
    */
-  async function syncCloudFromServer() {
-    if (!global.CloudStorage?.isActive?.()) return { ok: false, count: 0 };
+  async function syncCloudFromServer(opts = {}) {
+    const { silent = false } = opts;
+    if (!global.CloudStorage?.isActive?.()) {
+      if (!silent) setCloudSyncStatus('La nube no está configurada en esta app.', 'error');
+      return { ok: false, count: 0 };
+    }
+
+    setSyncButtonsBusy(true);
+    if (!silent) setCloudSyncStatus('Sincronizando presupuestos del equipo…', 'syncing');
 
     try {
       const remote = await global.CloudStorage.syncDownWithRetry(3);
       const list = Array.isArray(remote) ? remote : [];
       Storage.mergeIncoming(list);
       renderDashboard();
+      const total = Storage.getAll().length;
+      const msg = list.length
+        ? `Nube OK · ${list.length} en Supabase · ${total} en este equipo`
+        : `Nube OK · no hay presupuestos guardados todavía · ${total} locales`;
+      setCloudSyncStatus(msg, 'ok');
       return { ok: true, count: list.length };
     } catch (err) {
       console.warn('No se pudo sincronizar con Supabase', err);
+      const detail = err?.message || String(err);
+      setCloudSyncStatus(
+        `No se pudo sincronizar con la nube. Los de otras PCs no van a aparecer. ${detail}`,
+        'error'
+      );
+      const emptyText = $('#dashboardEmptyText');
+      if (emptyText && !Storage.getAll().length) {
+        emptyText.innerHTML =
+          'No se pudo conectar a la nube. Tocá <strong>Sincronizar</strong> de nuevo o revisá la conexión / bloqueadores.';
+      }
       return { ok: false, count: 0, error: err };
+    } finally {
+      setSyncButtonsBusy(false);
     }
   }
 
   async function syncCloudOnStart() {
-    await syncCloudFromServer();
+    await syncCloudFromServer({ silent: false });
   }
 
   document.addEventListener('DOMContentLoaded', init);
