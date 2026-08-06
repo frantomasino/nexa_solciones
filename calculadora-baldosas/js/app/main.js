@@ -2866,18 +2866,14 @@
     }
 
     setSyncButtonsBusy(true);
-    if (!silent) setCloudSyncStatus('Sincronizando presupuestos del equipo…', 'syncing');
+    if (!silent) setCloudSyncStatus('Sincronizando…', 'syncing');
 
     try {
       const remote = await global.CloudStorage.syncDownWithRetry(3);
       const list = Array.isArray(remote) ? remote : [];
       Storage.mergeIncoming(list);
       renderDashboard();
-      const total = Storage.getAll().length;
-      const msg = list.length
-        ? `Nube OK · ${list.length} en Supabase · ${total} en este equipo`
-        : `Nube OK · no hay presupuestos guardados todavía · ${total} locales`;
-      setCloudSyncStatus(msg, 'ok');
+      setCloudSyncStatus('Sincronizado.', 'ok');
       return { ok: true, count: list.length };
     } catch (err) {
       console.warn('No se pudo sincronizar con Supabase', err);
