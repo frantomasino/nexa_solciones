@@ -48,11 +48,24 @@
     const user = {
       name: (name || '').trim(),
       id: existing.id || `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      nameSkipped: false,
     };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     if (global.CloudStorage?.isActive?.()) {
       global.CloudStorage.upsertUser(user).catch((err) => console.warn('Sync nube (usuario)', err));
     }
+    return user;
+  }
+
+  /** Cierra el prompt de nombre sin guardar uno: no vuelve a pedirlo solo. */
+  function skipUserNamePrompt() {
+    const existing = getCurrentUser();
+    const user = {
+      name: existing.name || '',
+      id: existing.id || null,
+      nameSkipped: true,
+    };
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
     return user;
   }
 
@@ -175,7 +188,7 @@
   global.Storage = {
     getAll, getById, save, remove, duplicate,
     exportAll, importAll, mergeIncoming, getTheme, setTheme,
-    getCurrentUser, setCurrentUser,
+    getCurrentUser, setCurrentUser, skipUserNamePrompt,
     getCompanyLogo, setCompanyLogo,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

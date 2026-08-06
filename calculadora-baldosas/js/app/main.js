@@ -2028,11 +2028,6 @@
       $('#cliente').focus();
       return;
     }
-    if (!Storage.getCurrentUser().name) {
-      openUserModal();
-      alert('Configurá tu nombre de usuario primero.');
-      return;
-    }
     if (!lastResult) await recalculate();
 
     const payload = {
@@ -2378,6 +2373,13 @@
     updateUserDisplay(user.name);
 
     $('#btnUser').addEventListener('click', openUserModal);
+    $('#btnUserModalClose')?.addEventListener('click', () => {
+      $('#userModal').close();
+    });
+    $('#userModal')?.addEventListener('close', () => {
+      const u = Storage.getCurrentUser();
+      if (!u.name) Storage.skipUserNamePrompt();
+    });
     $('#userForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = $('#userNameInput').value.trim();
@@ -2387,7 +2389,8 @@
       $('#userModal').close();
     });
 
-    if (!user.name) setTimeout(openUserModal, 500);
+    // Solo pedir nombre si no hay uno y no lo saltearon con la X
+    if (!user.name && !user.nameSkipped) setTimeout(openUserModal, 500);
   }
 
   function updateUserDisplay(name) {

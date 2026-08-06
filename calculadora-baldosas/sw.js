@@ -1,4 +1,4 @@
-const CACHE = 'nexa-v20260806-sync-msg';
+const CACHE = 'nexa-v20260806-user-skip';
 const ASSETS = [
   './',
   './index.html',
